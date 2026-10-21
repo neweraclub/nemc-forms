@@ -47,8 +47,7 @@ const EMAIL_DESIGN_SYSTEM_PROMPT = `You are a senior email designer and front-en
 - language: Français
 - type: confirmation d'inscription / convocation / rappel / résultats / annonce
 - title (H1): e.g. "Votre inscription est confirmée." or context-adapted
-- eyebrow / badge: e.g. "ECOS · Hépato-Gastro-Entérologie" or "RECRUTEMENT · 2026"
-- greeting variable: {{prenom}} (keep literal, e.g. "Bonjour {{prenom}},")
+- greeting: Use the recipient's name variable ONLY if a name field is present in the selected dynamic variables, otherwise use a warm universal greeting like "Bonjour," without inventing non-existent variables.
 - intro (1–2 sentences): warm, inspiring, university medical standard
 - key info (label: value pairs):
   - Date et heure
@@ -195,7 +194,7 @@ export async function generateEmailTemplate(input: EmailGenerationInput): Promis
   const selectedFieldsList =
     input.selectedFields && input.selectedFields.length > 0
       ? input.selectedFields.map((f) => `  - {{${f.key}}} : intitulé "${f.label}"`).join('\n')
-      : '  - {{full_name}} : Nom complet du destinataire\n  - {{email}} : Adresse email';
+      : '  (Aucune variable personnalisée sélectionnée. N\'utiliser aucune variable {{...}} fictive, saluer simplement avec "Bonjour,".)';
 
   const userInstructions = (input.contentPrompt || input.keyInfo || '').trim();
 
@@ -209,11 +208,12 @@ export async function generateEmailTemplate(input: EmailGenerationInput): Promis
 
 ## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'New Era Medical Club'}" (slug: /f/${input.selectedFormSlug || 'general'})
 
-## VARIABLES DE PERSONNALISATION STRICTES DU FORMULAIRE :
-- Variables sélectionnées disponibles :
+## VARIABLES DE PERSONNALISATION DYNAMIQUES DU FORMULAIRE :
+- Variables réelles sélectionnées disponibles :
 ${selectedFieldsList}
-- RÈGLE FONDAMENTALE DE SALUTATION : Salue naturellement le destinataire en utilisant le champ de nom sélectionné s'il existe (ex: "Bonjour {{full_name}}," ou "Bonjour {{nom}},") ou simplement "Bonjour," si aucun champ de nom n'a été sélectionné.
-- Utilise UNIQUEMENT ces variables {{cle}} sélectionnées dans le corps du texte ou le récapitulatif. Ne JAMAIS inventer de variables aléatoires non sélectionnées. Si des champs comme le nom, l'email, la faculté, le matricule ou le téléphone sont sélectionnés, intègre-les élégamment dans le texte ou les blocs d'information.
+- RÈGLE FONDAMENTALE DYNAMIQUE : N'utilise AUCUNE variable par défaut ni variable inventée. Ne JAMAIS insérer de variables arbitraires (comme {{prenom}} ou {{email}}) sauf si leur clé figure expressément dans la liste ci-dessus.
+- Si un champ correspondant au nom ou prénom du candidat figure dans les variables sélectionnées ci-dessus, utilise sa clé pour saluer (ex: "Bonjour {{cle}},"). Sinon, salue simplement avec "Bonjour," sans variable.
+- Intègre élégamment les réponses des variables sélectionnées {{cle}} dans le texte ou les blocs récapitulatifs.
 
 ## CONSIGNES & CONTENU DU MESSAGE :
 - language: Français

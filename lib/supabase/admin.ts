@@ -73,11 +73,46 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
   const allSubs = cloudSubs || [];
 
   for (const item of storageItems) {
-    if (item.form?.slug && !formsMap.has(item.form.slug)) {
+    if (!item.form?.slug) continue;
+    const itemSlug = item.form.slug.trim().toLowerCase();
+    const itemId = item.form.id;
+
+    let matchedKey: string | undefined;
+    for (const [key, val] of formsMap.entries()) {
+      if (
+        key.toLowerCase() === itemSlug ||
+        val.form.id === itemId ||
+        val.form.slug?.toLowerCase() === itemSlug
+      ) {
+        matchedKey = key;
+        break;
+      }
+    }
+
+    const sortedStorageFields = (item.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+    const storageSubCount = allSubs.filter((s) => s.form_id === item.form.id).length;
+
+    if (matchedKey) {
+      const existing = formsMap.get(matchedKey)!;
+      // Enrich fields if DB has 0 fields or fewer fields than storage
+      if (
+        (!existing.fields || existing.fields.length === 0 || existing.fields.length < sortedStorageFields.length) &&
+        sortedStorageFields.length > 0
+      ) {
+        existing.fields = sortedStorageFields;
+      }
+      if (existing.submissionsCount === 0 && storageSubCount > 0) {
+        existing.submissionsCount = storageSubCount;
+      }
+      if (!existing.form.custom_email_html && item.form.custom_email_html) {
+        existing.form.custom_email_html = item.form.custom_email_html;
+        existing.form.custom_email_subject = item.form.custom_email_subject;
+      }
+    } else {
       formsMap.set(item.form.slug, {
         form: item.form,
-        fields: (item.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0)),
-        submissionsCount: allSubs.filter((s) => s.form_id === item.form.id).length,
+        fields: sortedStorageFields,
+        submissionsCount: storageSubCount,
       });
     }
   }

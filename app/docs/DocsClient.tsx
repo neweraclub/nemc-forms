@@ -689,7 +689,7 @@ export function DocsClient() {
                     <li><strong>Langue</strong> : Français médical académique.</li>
                     <li><strong>Type</strong> : Confirmation, convocation, rappel, résultats.</li>
                     <li><strong>Titre (H1) & Eyebrow</strong> : Grand titre hiérarchisé avec sur-titre violet (#8B3EE1).</li>
-                    <li><strong>Salutation littérale</strong> : Variable <code>{'{{prenom}}'}</code> conservée pour publipostage.</li>
+                    <li><strong>Variables dynamiques réelles</strong> : Seules les variables sélectionnées des questions de votre formulaire (ex: <code>{'{{nom}}'}</code>, <code>{'{{n}}'}</code>) sont injectées pour un publipostage précis.</li>
                     <li><strong>Informations clés</strong> : Paires libellé / valeur dans un tableau aéré.</li>
                     <li><strong>Avertissement important</strong> : Encadré orange (#F97316).</li>
                     <li><strong>Bouton d&apos;action</strong> : Bouton d&apos;émargement ou de confirmation.</li>

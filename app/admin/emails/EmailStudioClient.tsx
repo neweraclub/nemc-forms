@@ -50,16 +50,23 @@ export function EmailStudioClient({
     activeFormWithFields?.form || formsList.find((f) => f.slug === selectedFormSlug);
   const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
 
-  // 2. Variable Selection State
+  // 2. Variable Selection State (100% dynamic, strict form questions only)
   const [selectedFieldKeys, setSelectedFieldKeys] = useState<string[]>(() => {
-    if (currentFields.length > 0) {
-      const initial = currentFields
-        .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
-        .map((f) => f.key);
-      return initial.length > 0 ? initial : currentFields.slice(0, 3).map((f) => f.key);
-    }
-    return ['full_name', 'email'];
+    return currentFields.map((f) => f.key);
   });
+
+  // Keep selectedFieldKeys in sync with active form fields
+  useEffect(() => {
+    if (currentFields.length > 0) {
+      const validKeys = currentFields.map((f) => f.key);
+      setSelectedFieldKeys((prev) => {
+        const stillValid = prev.filter((k) => validKeys.includes(k));
+        return stillValid.length > 0 ? stillValid : validKeys;
+      });
+    } else {
+      setSelectedFieldKeys([]);
+    }
+  }, [selectedFormSlug, formsWithFields]);
 
   // When selected form changes, update active fields and default filename
   const handleFormChange = (slug: string) => {
@@ -67,13 +74,10 @@ export function EmailStudioClient({
     setSaveFileName(`${slug}.html`);
     const target = formsWithFields?.find((f) => f.form.slug === slug);
     if (target) {
-      if (target.fields.length > 0) {
-        const keys = target.fields
-          .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
-          .map((f) => f.key);
-        setSelectedFieldKeys(keys.length > 0 ? keys : target.fields.slice(0, 3).map((f) => f.key));
-      }
+      setSelectedFieldKeys(target.fields.map((f) => f.key));
       setSubject(`Accusé de réception : ${target.form.title} — New Era Medical Club`);
+    } else {
+      setSelectedFieldKeys([]);
     }
   };
 
@@ -657,22 +661,27 @@ export function EmailStudioClient({
                     type="button"
                     onClick={() => {
                       if (selectedFieldKeys.length === currentFields.length) {
-                        setSelectedFieldKeys(['full_name', 'email']);
+                        setSelectedFieldKeys([]);
                       } else {
                         setSelectedFieldKeys(currentFields.map((f) => f.key));
                       }
                     }}
-                    className="text-[10px] font-semibold text-[#3B33FF] hover:underline"
+                    className="text-[10px] font-semibold text-[#3B33FF] hover:underline cursor-pointer"
                   >
-                    {selectedFieldKeys.length === currentFields.length ? 'Sélection min.' : 'Tout sélectionner'}
+                    {selectedFieldKeys.length === currentFields.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                   </button>
                 )}
               </div>
 
               {currentFields.length === 0 ? (
-                <p className="text-xs text-[#71717A] italic p-3 bg-white rounded-lg border border-[#E6DFD5]">
-                  Aucune question personnalisée trouvée pour ce formulaire. Les variables par défaut &#123;&#123;prenom&#125;&#125; et &#123;&#123;email&#125;&#125; seront utilisées.
-                </p>
+                <div className="p-3 bg-white rounded-lg border border-[#E6DFD5] text-xs text-[#71717A] space-y-1">
+                  <p className="font-semibold text-[#18181B]">
+                    Aucune question configurée pour ce formulaire.
+                  </p>
+                  <p className="text-[11px]">
+                    Ajoutez des questions dynamiques dans l&apos;éditeur de formulaire pour pouvoir les sélectionner et les injecter dans ce template.
+                  </p>
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-1.5 p-2.5 bg-white rounded-lg border border-[#E6DFD5] max-h-48 overflow-y-auto">
                   {currentFields.map((f) => {
@@ -682,18 +691,24 @@ export function EmailStudioClient({
                         key={f.id || f.key}
                         type="button"
                         onClick={() => toggleFieldKey(f.key)}
-                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition ${isChecked
+                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer ${
+                          isChecked
                             ? 'bg-[#3B33FF]/10 border-[#3B33FF] text-[#18181B] font-semibold shadow-2xs'
                             : 'bg-[#FAF8F5] border-[#E6DFD5] text-[#71717A] hover:border-[#D4D4D8]'
-                          }`}
-                        title={`Champ: ${f.label} (clé: ${f.key})`}
+                        }`}
+                        title={`Champ dynamique: ${f.label} (variable: {{${f.key}}})`}
                       >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
-                          }`}>
+                        <span
+                          className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
+                            isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
+                          }`}
+                        >
                           {isChecked ? '✓' : ''}
                         </span>
                         <span>{f.label}</span>
-                        <code className="text-[10px] text-[#71717A] font-mono">&#123;&#123;{f.key}&#125;&#125;</code>
+                        <code className="text-[10px] text-[#3B33FF] font-mono bg-[#3B33FF]/5 px-1 py-0.5 rounded border border-[#3B33FF]/20">
+                          &#123;&#123;{f.key}&#125;&#125;
+                        </code>
                       </button>
                     );
                   })}
@@ -701,7 +716,7 @@ export function EmailStudioClient({
               )}
 
               <p className="text-[11px] text-[#71717A] pt-0.5">
-                💡 Seules ces variables réelles sélectionnées seront transmises à Gemini pour être insérées précisément dans le template.
+                💡 Seules ces variables réelles sélectionnées seront transmises à Gemini. Aucune variable fictive par défaut n&apos;est injectée.
               </p>
             </div>
           </div>

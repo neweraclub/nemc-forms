@@ -30,9 +30,13 @@ export async function persistFormWithFields(
     updated_at: now,
   };
 
+  const isValidUuid = (val?: string) =>
+    typeof val === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
   const fullFields: FormFieldRecord[] = fieldsData.map((f, idx) => ({
     ...f,
-    id: f.id || crypto.randomUUID(),
+    id: isValidUuid(f.id) ? f.id! : crypto.randomUUID(),
     form_id: formId,
     position: idx + 1,
     created_at: now,
@@ -98,7 +102,7 @@ export async function persistFormWithFields(
 
       if (!formErr) {
         await serviceClient.from('form_fields').delete().eq('form_id', fullForm.id);
-        await serviceClient.from('form_fields').insert(
+        const { error: fieldsErr } = await serviceClient.from('form_fields').insert(
           fullFields.map((f) => ({
             id: f.id,
             form_id: f.form_id,
@@ -114,9 +118,12 @@ export async function persistFormWithFields(
             show_if: f.show_if || null,
           }))
         );
+        if (fieldsErr) {
+          console.warn('Supabase DB form_fields insert warning:', fieldsErr.message);
+        }
       }
-    } catch {
-      // PostgreSQL tables notice
+    } catch (e) {
+      console.warn('Supabase DB form persist notice:', e);
     }
   }
 

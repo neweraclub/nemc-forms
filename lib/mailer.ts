@@ -320,13 +320,49 @@ export function renderCustomEmailHtml(
     </table>
   `;
 
-  const fullName = String(answers.full_name || answers.nom_complet || answers.nom || 'Candidat');
-  const firstName = fullName.split(' ')[0] || 'Candidat';
+  let rendered = templateHtml;
+
+  // 1. Dynamic replacement of all actual form answers by question key (e.g. {{n}}, {{question_mvinqcoq}}, etc.)
+  for (const [key, val] of Object.entries(answers)) {
+    if (val !== undefined && val !== null) {
+      const displayVal = Array.isArray(val) ? val.join(', ') : String(val);
+      const reg = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+      rendered = rendered.replace(reg, escapeHtml(displayVal));
+    }
+  }
+
+  // 2. Dynamic replacement by question label as slugified variable (e.g. {{name}}, {{nouvelle_question}})
+  for (const item of summary) {
+    if (item.value) {
+      const sanitizedLabel = item.label
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_');
+      if (sanitizedLabel) {
+        const reg = new RegExp(`\\{\\{${sanitizedLabel}\\}\\}`, 'gi');
+        rendered = rendered.replace(reg, escapeHtml(item.value));
+      }
+    }
+  }
+
+  // 3. Fallback name detection (if name question used a custom key like 'n' or 'name')
+  let detectedFullName = String(answers.full_name || answers.nom_complet || answers.nom || '');
+  if (!detectedFullName) {
+    for (const [k, v] of Object.entries(answers)) {
+      const keyLower = k.toLowerCase();
+      if ((keyLower === 'n' || keyLower.includes('name') || keyLower.includes('nom')) && typeof v === 'string' && v.trim()) {
+        detectedFullName = v.trim();
+        break;
+      }
+    }
+  }
+  const firstName = detectedFullName ? detectedFullName.split(' ')[0] : 'Candidat';
   const email = String(answers.email || answers.adresse_email || '');
 
-  const rendered = templateHtml
-    .replace(/\{\{nom\}\}/gi, escapeHtml(fullName))
-    .replace(/\{\{full_name\}\}/gi, escapeHtml(fullName))
+  rendered = rendered
+    .replace(/\{\{nom\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
+    .replace(/\{\{full_name\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
     .replace(/\{\{prenom\}\}/gi, escapeHtml(firstName))
     .replace(/\{\{email\}\}/gi, escapeHtml(email))
     .replace(/\{\{confirmation_id\}\}/gi, escapeHtml(submissionId.slice(0, 8).toUpperCase()))
@@ -576,8 +612,15 @@ export async function sendSubmissionEmails(params: {
         if (rawSubject.toLowerCase().endsWith('.html') || rawSubject.toLowerCase().startsWith('modèle ')) {
           rawSubject = `Accusé de réception : ${form.title} — New Era Medical Club`;
         }
+        let subjectProcessed = rawSubject;
+        for (const [k, v] of Object.entries(answers)) {
+          if (v !== undefined && v !== null) {
+            const strV = Array.isArray(v) ? v.join(', ') : String(v);
+            subjectProcessed = subjectProcessed.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'gi'), strV);
+          }
+        }
         receiptSubject = sanitizeHeader(
-          rawSubject
+          subjectProcessed
             .replace(/\{\{full_name\}\}/gi, String(answers.full_name || answers.nom || ''))
             .replace(/\{\{nom\}\}/gi, String(answers.full_name || answers.nom || ''))
             .replace(/\{\{prenom\}\}/gi, String(answers.prenom || ''))
