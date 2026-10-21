@@ -30,9 +30,18 @@ export function sanitizeHeader(str: string): string {
 export function getSenderAddress(): { fromAddress: string; replyTo: string } {
   const user = process.env.SMTP_USER?.trim();
   const rawFrom = process.env.SMTP_FROM?.trim();
-  const clubName = 'New Era Medical Club';
+  const clubName = 'Club Médical New Era';
   const eventEmail = 'event@new-era-medical-club-univ-ouargla.dz';
 
+  // 1. Prioritize explicitly configured SMTP_FROM
+  if (rawFrom) {
+    return {
+      fromAddress: rawFrom,
+      replyTo: `${clubName} <${eventEmail}>`,
+    };
+  }
+
+  // 2. Fallback to authenticated SMTP user
   if (user) {
     return {
       fromAddress: `${clubName} <${user}>`,
@@ -41,7 +50,7 @@ export function getSenderAddress(): { fromAddress: string; replyTo: string } {
   }
 
   return {
-    fromAddress: rawFrom || `${clubName} <${eventEmail}>`,
+    fromAddress: `${clubName} <${eventEmail}>`,
     replyTo: `${clubName} <${eventEmail}>`,
   };
 }
