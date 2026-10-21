@@ -17,6 +17,22 @@ export const metadata: Metadata = {
   title: 'Club Médical New Era — Formulaires & Recrutement',
   description:
     'Plateforme officielle de candidatures et formulaires pour le Club Médical New Era.',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/logo_light_mode.png',
+  },
+  openGraph: {
+    title: 'Club Médical New Era — Formulaires & Recrutement',
+    description: 'Plateforme officielle de candidatures et formulaires pour le Club Médical New Era.',
+    images: [
+      {
+        url: '/cover.png',
+        width: 1200,
+        height: 630,
+        alt: 'Club Médical New Era Banner',
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

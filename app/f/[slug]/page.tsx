@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getFormBySlug } from '@/lib/supabase/server';
 import { FormRenderer } from './FormRenderer';
+import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -36,13 +38,27 @@ export default async function FormPage({ params }: PageProps) {
   // Unavailable states: closed, not yet open, expired, capacity reached, or draft
   if (!state.isAvailable && form) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4">
+      <main className="min-h-screen flex items-center justify-center p-4 bg-[#FAF6EE]">
         <div className="w-full max-w-lg bg-white border border-[#E6DFD5] rounded-xl p-6 sm:p-10 shadow-xs">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E53888]" />
-            <span className="text-xs font-semibold text-[#52525B] uppercase tracking-wide">
-              Club Médical New Era
-            </span>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+              <Image
+                src="/logo_light_mode.png"
+                alt="Club Médical New Era Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
+                Club Médical New Era
+              </span>
+              <span className="text-[11px] text-[#71717A] block">
+                Faculté de Médecine &bull; Univ. Ouargla
+              </span>
+            </div>
           </div>
 
           <h1 className="text-xl sm:text-2xl font-bold text-[#18181B] mb-2 tracking-tight">
@@ -58,7 +74,7 @@ export default async function FormPage({ params }: PageProps) {
             )}
           </div>
 
-          <p className="text-xs text-[#71717A] leading-relaxed">
+          <p className="text-xs text-[#71717A] leading-relaxed mb-6">
             Pour toute question ou demande particulière, vous pouvez contacter le bureau du club à{' '}
             <a
               href="mailto:event@new-era-medical-club-univ-ouargla.dz"
@@ -68,6 +84,11 @@ export default async function FormPage({ params }: PageProps) {
             </a>
             .
           </p>
+
+          <div className="pt-4 border-t border-[#E6DFD5] flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs text-[#71717A]">Suivez nos actualités :</span>
+            <ClubSocialLinks />
+          </div>
         </div>
       </main>
     );

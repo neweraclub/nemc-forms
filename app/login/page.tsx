@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getAdminSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { LoginForm } from './LoginForm';
@@ -18,11 +19,25 @@ export default async function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-[#FAF6EE]">
       <div className="w-full max-w-md bg-white border border-[#E6DFD5] rounded-xl p-6 sm:p-8 shadow-xs">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
-          <span className="text-xs font-semibold text-[#52525B] uppercase tracking-wide">
-            Club Médical New Era
-          </span>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+            <Image
+              src="/logo_light_mode.png"
+              alt="Club Médical New Era Logo"
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+              priority
+            />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
+              Club Médical New Era
+            </span>
+            <span className="text-[11px] text-[#71717A] block">
+              Faculté de Médecine &bull; Univ. Ouargla
+            </span>
+          </div>
         </div>
 
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#18181B] mb-1">

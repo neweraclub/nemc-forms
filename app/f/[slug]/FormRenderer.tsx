@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
+import Image from 'next/image';
 import { FormFieldRecord, FormRecord } from '@/types/form';
 import { isFieldVisible } from '@/lib/schema-builder';
 import { submitFormAction } from '@/app/actions/submitForm';
+import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
 
 interface FormRendererProps {
   form: FormRecord;
@@ -255,17 +257,29 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         </div>
 
         <div className="bg-white border border-[#E6DFD5] rounded-xl p-6 sm:p-10 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-[#10B981]/10 text-[#059669] flex items-center justify-center mb-6">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div className="w-12 h-12 rounded-full bg-[#10B981]/10 text-[#059669] flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+              <Image
+                src="/logo_light_mode.png"
+                alt="Club Médical New Era Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
           </div>
 
           <p className="text-xs font-semibold text-[#52525B] tracking-wide uppercase mb-1">
-            Club Médical New Era
+            Club Médical New Era &bull; Faculté de Médecine Univ. Ouargla
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#18181B] tracking-tight mb-3">
-            Candidature envoyée
+            Candidature envoyée avec succès
           </h1>
 
           <p className="text-[#3F3F46] text-sm sm:text-base leading-relaxed mb-6">
@@ -284,7 +298,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <a
               href={`/f/${form.slug}`}
               onClick={() => window.location.reload()}
@@ -292,6 +306,14 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             >
               Soumettre une autre réponse
             </a>
+          </div>
+
+          <div className="pt-6 border-t border-[#E6DFD5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-[#18181B]">Restez connectés avec le Club Médical New Era</p>
+              <p className="text-[11px] text-[#71717A]">Suivez la suite du processus de recrutement sur nos réseaux</p>
+            </div>
+            <ClubSocialLinks />
           </div>
         </div>
       </div>
@@ -597,9 +619,34 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
       {/* ==================================================================== */}
       <div className="block md:hidden max-w-xl mx-auto px-4 py-6">
         <header className="mb-5 pt-1">
-          <p className="text-xs font-bold text-[#52525B] tracking-wide uppercase mb-1">
-            Club Médical New Era
-          </p>
+          <div className="relative w-full h-24 rounded-xl overflow-hidden border border-[#E6DFD5] mb-3.5 bg-[#FAF8F5]">
+            <Image
+              src="/cover.png"
+              alt="Club Médical New Era Banner"
+              fill
+              priority
+              className="object-cover"
+            />
+          </div>
+
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+              <Image
+                src="/logo_light_mode.png"
+                alt="Logo"
+                width={28}
+                height={28}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#52525B] tracking-wide uppercase">
+                Club Médical New Era
+              </p>
+              <p className="text-[10px] text-[#71717A]">Faculté de Médecine Univ. Ouargla</p>
+            </div>
+          </div>
+
           <h1 className="text-xl font-bold text-[#18181B] tracking-tight">
             {form.title}
           </h1>
@@ -657,13 +704,19 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
           </div>
         </form>
 
-        <footer className="mt-6 pt-3 border-t border-[#E6DFD5] flex items-center justify-between text-[11px] text-[#71717A]">
-          <span>{savedTime ? `Brouillon sauvegardé à ${savedTime}` : 'Sauvegarde automatique active'}</span>
-          {hasRestoredDraft && (
-            <button type="button" onClick={clearDraft} className="text-[#DC2626] hover:underline">
-              Effacer
-            </button>
-          )}
+        <footer className="mt-6 pt-3 border-t border-[#E6DFD5] space-y-3">
+          <div className="flex items-center justify-between text-[11px] text-[#71717A]">
+            <span>{savedTime ? `Brouillon sauvegardé à ${savedTime}` : 'Sauvegarde automatique active'}</span>
+            {hasRestoredDraft && (
+              <button type="button" onClick={clearDraft} className="text-[#DC2626] hover:underline">
+                Effacer
+              </button>
+            )}
+          </div>
+          <div className="pt-2 border-t border-[#E6DFD5]/70 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-[#71717A]">Réseaux du club :</span>
+            <ClubSocialLinks />
+          </div>
         </footer>
       </div>
 
@@ -676,11 +729,34 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             {/* LEFT SIDE: Sticky Header, Progress & Reassurance (~38% width) */}
             <div className="col-span-5 sticky top-8 space-y-6">
               <div className="bg-white border border-[#E6DFD5] rounded-xl p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#52525B]">
-                    Club Médical New Era
-                  </span>
+                <div className="relative w-full h-32 rounded-xl overflow-hidden border border-[#E6DFD5] mb-2 bg-[#FAF8F5]">
+                  <Image
+                    src="/cover.png"
+                    alt="Club Médical New Era Banner"
+                    fill
+                    priority
+                    className="object-cover"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+                    <Image
+                      src="/logo_light_mode.png"
+                      alt="Club Médical New Era Logo"
+                      width={36}
+                      height={36}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
+                      Club Médical New Era
+                    </span>
+                    <span className="text-[11px] text-[#71717A] block">
+                      Faculté de Médecine &bull; Univ. Ouargla
+                    </span>
+                  </div>
                 </div>
 
                 <h1 className="text-2xl font-extrabold text-[#18181B] tracking-tight leading-tight">
@@ -740,9 +816,15 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] text-xs text-[#71717A] space-y-1">
-                <p className="font-semibold text-[#18181B]">Assistance aux étudiants :</p>
-                <p>En cas de doute, écrivez à <strong>event@new-era-medical-club-univ-ouargla.dz</strong>.</p>
+              <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] text-xs text-[#71717A] space-y-3">
+                <div>
+                  <p className="font-semibold text-[#18181B]">Assistance aux étudiants :</p>
+                  <p>En cas de doute, écrivez à <strong>event@new-era-medical-club-univ-ouargla.dz</strong>.</p>
+                </div>
+                <div className="pt-2 border-t border-[#E6DFD5]/80">
+                  <p className="text-[11px] font-semibold text-[#52525B] mb-2">Rejoignez nos réseaux officiels :</p>
+                  <ClubSocialLinks />
+                </div>
               </div>
             </div>
 

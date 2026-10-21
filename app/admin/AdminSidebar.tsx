@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { AdminUserSession } from '@/lib/auth';
 import { logoutAction } from '@/app/actions/authActions';
@@ -51,11 +52,22 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     <>
       {/* Mobile Top Header */}
       <div className="lg:hidden bg-white border-b border-[#E6DFD5] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
-          <span className="text-xs font-bold uppercase tracking-wider text-[#18181B]">
-            Club Médical New Era
-          </span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#E6DFD5] bg-white p-0.5 shrink-0 flex items-center justify-center">
+            <Image
+              src="/logo_light_mode.png"
+              alt="Club Médical New Era Logo"
+              width={28}
+              height={28}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#18181B] block">
+              Club Médical New Era
+            </span>
+            <span className="text-[10px] text-[#71717A] block">Administration</span>
+          </div>
         </div>
         <button
           type="button"
@@ -85,11 +97,25 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         <div>
           {/* Brand Header */}
           <div className="p-5 border-b border-[#E6DFD5]">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#52525B]">
-                Club Médical New Era
-              </span>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+                <Image
+                  src="/logo_light_mode.png"
+                  alt="Club Médical New Era Logo"
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-contain"
+                  priority
+                />
+              </div>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
+                  Club Médical
+                </span>
+                <span className="text-sm font-extrabold text-[#18181B] tracking-tight block">
+                  New Era
+                </span>
+              </div>
             </div>
             <h2 className="text-base font-bold text-[#18181B]">Espace Superadmin</h2>
             <div className="mt-1.5 inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#3B33FF]/10 text-[#3B33FF]">
