@@ -448,6 +448,37 @@ export function DocsClient() {
         </div>
       ),
     },
+    {
+      id: 'security-storage-html-forms',
+      category: 'security',
+      badge: 'Stockage Cloud & RLS',
+      title: 'Bucket Supabase « Html_forms » & Politiques RLS',
+      summary: 'Stockage et sélection des templates : on n’insère pas de code HTML, on sélectionne un modèle ou un formulaire.',
+      content: (
+        <div className="space-y-3 text-xs sm:text-sm text-[#3F3F46] leading-relaxed">
+          <p>
+            Les modèles de courriels générés sont directement persistés dans le bucket dédié <code>Html_forms</code> de Supabase Storage. Ce système supprime tout besoin pour les administrateurs de copier-coller du code HTML brut (&quot;<em>on n&apos;insère pas de HTML, on sélectionne un modèle ou un formulaire</em>&quot;) :
+          </p>
+          <div className="p-3 bg-[#18181B] text-[#E4E4E7] rounded-lg font-mono text-[11px] space-y-1.5 overflow-x-auto">
+            <span className="text-[#A1A1AA] block">{"// Politiques de sécurité RLS actives sur storage.objects (Html_forms) :"}</span>
+            <div>1. <span className="text-[#34D399]">SELECT</span> : Allow public read access <span className="text-[#A1A1AA]">(bucket_id = &apos;Html_forms&apos;)</span></div>
+            <div>2. <span className="text-[#60A5FA]">INSERT</span> : Allow public insert access <span className="text-[#A1A1AA]">(bucket_id = &apos;Html_forms&apos;)</span></div>
+            <div>3. <span className="text-[#FBBF24]">UPDATE</span> : Allow public update access <span className="text-[#A1A1AA]">(bucket_id = &apos;Html_forms&apos;)</span></div>
+            <div>4. <span className="text-[#F87171]">DELETE</span> : Allow public delete access <span className="text-[#A1A1AA]">(bucket_id = &apos;Html_forms&apos;)</span></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs pt-1">
+            <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E6DFD5]">
+              <span className="font-semibold text-[#18181B] block mb-0.5">Insertion en 1 clic</span>
+              Depuis le Studio IA, un clic sur &quot;Insérer dans Html_forms&quot; envoie le template vers le cloud avec URL publique pérenne.
+            </div>
+            <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E6DFD5]">
+              <span className="font-semibold text-[#18181B] block mb-0.5">Sélection sans code</span>
+              Dans le constructeur de formulaires, un menu déroulant liste les fichiers de <code>Html_forms</code> pour assigner l&apos;accusé sans coder.
+            </div>
+          </div>
+        </div>
+      ),
+    },
   ];
 
   // Filtering logic

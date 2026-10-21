@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { FormRecord } from '@/types/form';
 import {
   generateAiEmailAction,
@@ -8,6 +8,14 @@ import {
   sendAiTestEmailAction,
   attachAiEmailToFormAction,
 } from '@/app/actions/aiEmailActions';
+import {
+  listHtmlTemplatesAction,
+  getHtmlTemplateContentAction,
+  insertHtmlTemplateAction,
+  deleteHtmlTemplateAction,
+  assignStorageTemplateToFormAction,
+} from '@/app/actions/htmlStorageActions';
+import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
 
 interface EmailStudioClientProps {
@@ -41,6 +49,116 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
   const [testEmailAddress, setTestEmailAddress] = useState('event@new-era-medical-club-univ-ouargla.dz');
   const [selectedFormSlug, setSelectedFormSlug] = useState<string>(forms[0]?.slug || '');
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Supabase Storage 'Html_forms' state
+  const [storageTemplates, setStorageTemplates] = useState<HtmlStorageItem[]>([]);
+  const [isLoadingStorage, setIsLoadingStorage] = useState(true);
+  const [saveFileName, setSaveFileName] = useState(
+    forms[0]?.slug ? `${forms[0].slug}.html` : 'modele.html'
+  );
+  const [isSavingToStorage, setIsSavingToStorage] = useState(false);
+  const [storageDrawerOpen, setStorageDrawerOpen] = useState(false);
+
+  const refreshStorageList = async () => {
+    setIsLoadingStorage(true);
+    const res = await listHtmlTemplatesAction();
+    if (res.success && res.templates) {
+      setStorageTemplates(res.templates);
+    }
+    setIsLoadingStorage(false);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    listHtmlTemplatesAction().then((res) => {
+      if (mounted && res.success && res.templates) {
+        setStorageTemplates(res.templates);
+      }
+      if (mounted) setIsLoadingStorage(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleInsertToStorage = async () => {
+    if (!emailResult?.html) return;
+    const name = saveFileName.trim() || `${selectedFormSlug || 'modele'}.html`;
+    setIsSavingToStorage(true);
+    setStatusMessage(null);
+    const res = await insertHtmlTemplateAction(name, emailResult.html);
+    setIsSavingToStorage(false);
+    if (res.success) {
+      setStatusMessage({
+        type: 'success',
+        text: `✓ Modèle inséré avec succès dans le bucket 'Html_forms' (${res.path}).`,
+      });
+      refreshStorageList();
+    } else {
+      setStatusMessage({
+        type: 'error',
+        text: res.error || "Erreur lors de l'insertion dans 'Html_forms'.",
+      });
+    }
+  };
+
+  const handleLoadFromStorage = async (fileName: string) => {
+    setStatusMessage(null);
+    const res = await getHtmlTemplateContentAction(fileName);
+    if (res.success && res.html) {
+      setEmailResult({
+        subject: `Modèle ${fileName}`,
+        badge: 'HTML_FORMS',
+        headline: fileName.replace('.html', ''),
+        preheader: `Modèle chargé depuis Supabase Storage Html_forms`,
+        html: res.html,
+        plainText: 'Chargé depuis le bucket Html_forms',
+      });
+      setSaveFileName(fileName);
+      setStatusMessage({
+        type: 'success',
+        text: `Modèle '${fileName}' chargé avec succès dans l'éditeur.`,
+      });
+    } else {
+      setStatusMessage({
+        type: 'error',
+        text: res.error || `Impossible de charger '${fileName}'.`,
+      });
+    }
+  };
+
+  const handleDeleteFromStorage = async (fileName: string) => {
+    if (!confirm(`Supprimer définitivement '${fileName}' du bucket Html_forms ?`)) return;
+    const res = await deleteHtmlTemplateAction(fileName);
+    if (res.success) {
+      refreshStorageList();
+      setStatusMessage({
+        type: 'success',
+        text: `Modèle '${fileName}' supprimé du bucket 'Html_forms'.`,
+      });
+    } else {
+      setStatusMessage({
+        type: 'error',
+        text: res.error || `Erreur de suppression.`,
+      });
+    }
+  };
+
+  const handleAssignStorageToForm = async (fileName: string, targetSlug: string) => {
+    if (!targetSlug) return;
+    const res = await assignStorageTemplateToFormAction(targetSlug, fileName, subject);
+    if (res.success) {
+      setStatusMessage({
+        type: 'success',
+        text: `✓ Modèle '${fileName}' lié avec succès au formulaire '${targetSlug}' !`,
+      });
+    } else {
+      setStatusMessage({
+        type: 'error',
+        text: res.error || `Erreur lors de la liaison au formulaire.`,
+      });
+    }
+  };
 
   // Quick Preset Handlers
   const applyPreset = (preset: { subject: string; context: string; key: string; notes: string }) => {
@@ -451,6 +569,113 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         {/* RIGHT COLUMN: Studio Workspace & Interactive Refinement              */}
         {/* ==================================================================== */}
         <div className="lg:col-span-7 space-y-5">
+          {/* Storage Quick Summary Header */}
+          <div className="bg-white border border-[#E6DFD5] rounded-xl p-3.5 flex items-center justify-between text-xs shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
+              <span className="font-bold text-[#18181B]">
+                Bucket Supabase <code>Html_forms</code> :
+              </span>
+              <span className="font-semibold text-[#52525B]">
+                {storageTemplates.length} modèle(s) sauvegardé(s)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStorageDrawerOpen(!storageDrawerOpen)}
+                className="px-3 py-1.5 rounded-lg border border-[#E6DFD5] bg-[#FAF8F5] hover:bg-white text-xs font-semibold text-[#18181B] transition flex items-center gap-1.5"
+              >
+                <span>📁 {storageDrawerOpen ? 'Masquer la bibliothèque' : 'Ouvrir la bibliothèque'}</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-[#3B33FF] text-white text-[10px]">
+                  {storageTemplates.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={refreshStorageList}
+                disabled={isLoadingStorage}
+                className="p-1.5 text-[#71717A] hover:text-[#18181B] rounded hover:bg-[#FAF8F5]"
+                title="Actualiser la liste"
+              >
+                🔄
+              </button>
+            </div>
+          </div>
+
+          {/* Storage Drawer / Library List */}
+          {storageDrawerOpen && (
+            <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-[#18181B] uppercase tracking-wider">
+                    Modèles disponibles dans le Bucket <code>Html_forms</code>
+                  </h4>
+                  <p className="text-[11px] text-[#71717A]">
+                    Sélectionnez un modèle pour le prévisualiser dans le studio ou le lier directement à un formulaire.
+                  </p>
+                </div>
+              </div>
+
+              {storageTemplates.length === 0 ? (
+                <div className="bg-white p-6 rounded-lg border border-[#E6DFD5] text-center text-xs text-[#71717A]">
+                  Aucun fichier HTML dans le bucket <code>Html_forms</code>. Générez un email et cliquez sur &quot;Insérer dans Html_forms&quot;.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+                  {storageTemplates.map((item) => (
+                    <div
+                      key={item.name}
+                      className="bg-white p-3 rounded-lg border border-[#E6DFD5] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <span className="text-base shrink-0">📄</span>
+                        <div className="truncate">
+                          <span className="font-bold text-[#18181B] block truncate font-mono">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-[#71717A]">
+                            {Math.round((item.size || 0) / 1024)} Ko &bull; Mis à jour{' '}
+                            {item.updated_at ? new Date(item.updated_at).toLocaleDateString('fr-FR') : 'Récemment'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleLoadFromStorage(item.name)}
+                          className="px-2.5 py-1 text-xs font-semibold text-[#3B33FF] bg-[#FAF8F5] hover:bg-[#3B33FF]/10 rounded border border-[#E6DFD5] transition"
+                        >
+                          👁️ Charger dans Studio
+                        </button>
+                        {forms.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleAssignStorageToForm(item.name, selectedFormSlug)}
+                            disabled={!selectedFormSlug}
+                            className="px-2.5 py-1 text-xs font-semibold text-[#059669] bg-[#10B981]/10 hover:bg-[#10B981]/20 rounded transition"
+                            title={`Lier au formulaire ${selectedFormSlug}`}
+                          >
+                            🔗 Lier à {selectedFormSlug}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFromStorage(item.name)}
+                          className="px-2 py-1 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded transition"
+                          title="Supprimer du bucket"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {!emailResult ? (
             /* Empty State */
             <div className="bg-white border border-[#E6DFD5] rounded-xl p-8 sm:p-12 text-center shadow-xs">
@@ -465,14 +690,25 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
               <p className="text-xs sm:text-sm text-[#52525B] max-w-md mx-auto mb-6">
                 Renseignez le sujet et les informations clés sur le panneau de gauche, puis cliquez sur &quot;Générer le template avec l’IA&quot; pour obtenir le rendu visuel Club Médical New Era.
               </p>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-[#18181B] hover:bg-[#27272A] transition"
-              >
-                Générer l&apos;exemple ECOS maintenant
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-[#18181B] hover:bg-[#27272A] transition"
+                >
+                  Générer l&apos;exemple ECOS maintenant
+                </button>
+                {storageTemplates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleLoadFromStorage(storageTemplates[0].name)}
+                    className="px-4 py-2.5 rounded-lg text-xs font-semibold text-[#18181B] bg-white border border-[#E6DFD5] hover:bg-[#FAF8F5] transition"
+                  >
+                    Ouvrir &apos;{storageTemplates[0].name}&apos; depuis le Cloud
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             /* Generated Email Studio */
@@ -648,52 +884,102 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
               </div>
 
               {/* ================================================================ */}
-              {/* ACTION BAR: Test Email & Form Attachment                         */}
+              {/* ACTION BAR: Storage Html_forms Insert & Form Selector            */}
               {/* ================================================================ */}
-              <div className="p-5 border-t border-[#E6DFD5] bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                {/* Send Test Email Form */}
-                <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="p-4 sm:p-5 border-t border-[#E6DFD5] bg-[#FAF8F5] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-[#18181B] flex items-center gap-1.5">
+                    <span>💾 Sauvegarde Cloud & Liaison Formulaire</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#3B33FF]/10 text-[#3B33FF]">
+                      Bucket Html_forms
+                    </span>
+                  </span>
+                  <span className="text-[11px] text-[#71717A]">
+                    Insérez le fichier HTML dans Supabase Storage pour le réutiliser sans jamais copier de code brut.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* Action 1: Insert to Supabase Storage Bucket Html_forms */}
+                  <div className="bg-white p-3 rounded-lg border border-[#E6DFD5] space-y-2">
+                    <label className="block text-[11px] font-semibold text-[#18181B]">
+                      1. Insérer dans le Bucket <code>Html_forms</code> :
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={saveFileName}
+                        onChange={(e) => setSaveFileName(e.target.value)}
+                        placeholder="nom-du-fichier.html"
+                        className="flex-1 px-2.5 py-1.5 text-xs font-mono border border-[#D4D4D8] rounded-md bg-[#FAF8F5]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleInsertToStorage}
+                        disabled={isSavingToStorage || !emailResult?.html}
+                        className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center gap-1"
+                      >
+                        {isSavingToStorage ? 'Insertion...' : '💾 Insérer'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Action 2: Attach to Form (We don't insert HTML, we select a form!) */}
+                  {forms.length > 0 && (
+                    <div className="bg-white p-3 rounded-lg border border-[#E6DFD5] space-y-2">
+                      <label className="block text-[11px] font-semibold text-[#18181B]">
+                        2. Sélectionner le formulaire cible :
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={selectedFormSlug}
+                          onChange={(e) => setSelectedFormSlug(e.target.value)}
+                          className="flex-1 px-2.5 py-1.5 text-xs border border-[#D4D4D8] rounded-md bg-white font-medium"
+                        >
+                          {forms.map((f) => (
+                            <option key={f.id} value={f.slug}>
+                              {f.title} ({f.slug})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleAttachToForm}
+                          disabled={isAttaching || !selectedFormSlug}
+                          className="brand-gradient-btn px-3 py-1.5 rounded-md text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0"
+                        >
+                          {isAttaching ? 'Liaison...' : 'Appliquer'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ================================================================ */}
+              {/* ACTION BAR: Send Test Email                                      */}
+              {/* ================================================================ */}
+              <div className="p-4 border-t border-[#E6DFD5] bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <span className="text-xs text-[#52525B] font-medium">
+                  Tester la délivrabilité en direct :
+                </span>
+                <div className="flex items-center gap-2 flex-1 sm:max-w-md">
                   <input
                     type="email"
                     value={testEmailAddress}
                     onChange={(e) => setTestEmailAddress(e.target.value)}
                     placeholder="email.destinataire@exemple.com"
-                    className="flex-1 px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg"
+                    className="flex-1 px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
                   />
                   <button
                     type="button"
                     onClick={handleSendTest}
                     disabled={isSendingTest || !testEmailAddress}
-                    className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0"
                   >
                     {isSendingTest ? 'Envoi...' : 'Envoyer un test'}
                   </button>
                 </div>
-
-                {/* Attach to Form Dropdown */}
-                {forms.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={selectedFormSlug}
-                      onChange={(e) => setSelectedFormSlug(e.target.value)}
-                      className="px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg bg-white"
-                    >
-                      {forms.map((f) => (
-                        <option key={f.id} value={f.slug}>
-                          {f.title} ({f.slug})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAttachToForm}
-                      disabled={isAttaching || !selectedFormSlug}
-                      className="brand-gradient-btn px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0"
-                    >
-                      {isAttaching ? 'Association...' : 'Appliquer au formulaire'}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           )}

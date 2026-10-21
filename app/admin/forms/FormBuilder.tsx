@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { FormFieldRecord, FormRecord, FieldType, FormLayout, FormStatus } from '@/types/form';
 import { saveFormAction } from '@/app/actions/formManagerActions';
+import {
+  listHtmlTemplatesAction,
+  getHtmlTemplateContentAction,
+} from '@/app/actions/htmlStorageActions';
+import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -37,6 +42,41 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   const [maxResponses, setMaxResponses] = useState<string>(
     initialForm?.max_responses ? String(initialForm.max_responses) : ''
   );
+
+  // Storage Templates from Supabase 'Html_forms' bucket
+  const [storageTemplates, setStorageTemplates] = useState<HtmlStorageItem[]>([]);
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [showRawHtmlEditor, setShowRawHtmlEditor] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    listHtmlTemplatesAction().then((res) => {
+      if (mounted && res.success && res.templates) {
+        setStorageTemplates(res.templates);
+      }
+      if (mounted) setIsLoadingTemplates(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSelectTemplate = async (templateName: string) => {
+    setSelectedTemplateName(templateName);
+    if (!templateName) {
+      setCustomEmailHtml('');
+      return;
+    }
+    const res = await getHtmlTemplateContentAction(templateName);
+    if (res.success && res.html) {
+      setCustomEmailHtml(res.html);
+      if (!customEmailSubject) {
+        setCustomEmailSubject(`Confirmation — ${title || 'Club Médical New Era'}`);
+      }
+    }
+  };
 
   // Fields State
   const [fields, setFields] = useState<Array<Partial<FormFieldRecord>>>(() => {
@@ -449,54 +489,129 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                 </div>
               </div>
 
-              {/* Custom AI Email Template Option */}
-              <div className="pt-2 border-t border-[#E6DFD5] space-y-2">
-                <div className="flex items-center justify-between">
+              {/* Custom AI Email Template Option (via Supabase Storage Html_forms) */}
+              <div className="pt-3 border-t border-[#E6DFD5] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-[#18181B]">
-                      Modèle d’email HTML personnalisé (IA Gemini)
+                    <label className="block text-xs font-bold text-[#18181B] flex items-center gap-1.5">
+                      <span>Modèle d’email officiel (Bucket Supabase <code>Html_forms</code>)</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#3B33FF]/10 text-[#3B33FF]">
+                        Sans code HTML
+                      </span>
                     </label>
                     <p className="text-[11px] text-[#71717A]">
-                      Remplace l’accusé standard par un email au design Club Médical New Era.
+                      On n’insère pas de code HTML manuellement : sélectionnez simplement un modèle prêt à l’emploi stocké dans le cloud.
                     </p>
                   </div>
                   <Link
                     href="/admin/emails"
                     target="_blank"
-                    className="text-xs font-semibold text-[#3B33FF] hover:underline inline-flex items-center gap-1"
+                    className="text-xs font-semibold text-[#3B33FF] hover:underline inline-flex items-center gap-1 shrink-0"
                   >
-                    <span>✨ Ouvrir le Studio IA</span>
+                    <span>✨ Studio IA Gemini</span>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                   </Link>
                 </div>
 
-                <input
-                  type="text"
-                  value={customEmailSubject}
-                  onChange={(e) => setCustomEmailSubject(e.target.value)}
-                  placeholder="Objet personnalisé (ex: Confirmation d'inscription — ECOS 2026)"
-                  className="w-full min-h-[38px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
-                />
+                {/* Template Selector Dropdown */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                    Choisir un modèle dans <code>Html_forms</code> :
+                  </label>
+                  <select
+                    value={selectedTemplateName}
+                    onChange={(e) => handleSelectTemplate(e.target.value)}
+                    disabled={isLoadingTemplates}
+                    className="w-full min-h-[42px] px-3 py-2 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-1 focus:ring-[#3B33FF]"
+                  >
+                    <option value="">
+                      -- Accusé de réception standard New Era Club (Par défaut) --
+                    </option>
+                    {storageTemplates.map((item) => (
+                      <option key={item.name} value={item.name}>
+                        ✉ {item.name} ({Math.round((item.size || 0) / 1024)} Ko)
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingTemplates && (
+                    <p className="text-[11px] text-[#A1A1AA] mt-1">Chargement des modèles depuis Supabase Storage...</p>
+                  )}
+                </div>
 
-                <textarea
-                  rows={3}
-                  value={customEmailHtml}
-                  onChange={(e) => setCustomEmailHtml(e.target.value)}
-                  placeholder="Collez ici le code HTML généré depuis le Studio IA (ou laissez vide pour l'accusé standard)..."
-                  className="w-full px-3 py-1.5 text-xs font-mono text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
-                />
-                {customEmailHtml && (
-                  <div className="flex items-center justify-between text-[11px] text-[#059669]">
-                    <span>✓ Template HTML personnalisé actif pour ce formulaire</span>
-                    <button
-                      type="button"
-                      onClick={() => setCustomEmailHtml('')}
-                      className="text-[#DC2626] hover:underline"
-                    >
-                      Effacer le template
-                    </button>
+                {/* Subject Line */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                    Objet de l’email envoyé au candidat :
+                  </label>
+                  <input
+                    type="text"
+                    value={customEmailSubject}
+                    onChange={(e) => setCustomEmailSubject(e.target.value)}
+                    placeholder="Ex. Confirmation d'inscription — Simulation ECOS 2026"
+                    className="w-full min-h-[38px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                  />
+                </div>
+
+                {/* Active Template Status Card */}
+                {customEmailHtml ? (
+                  <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#059669]" />
+                        <span className="text-xs font-bold text-[#18181B]">
+                          Modèle HTML actif pour ce formulaire
+                        </span>
+                        {selectedTemplateName && (
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white border border-[#E6DFD5] text-[#52525B]">
+                            {selectedTemplateName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalOpen(true)}
+                          className="px-2.5 py-1 text-xs font-semibold text-[#3B33FF] bg-white border border-[#E6DFD5] rounded-md hover:bg-[#FAF8F5] transition"
+                        >
+                          👁️ Aperçu visuel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomEmailHtml('');
+                            setSelectedTemplateName('');
+                          }}
+                          className="px-2.5 py-1 text-xs font-semibold text-[#DC2626] hover:underline"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Toggle raw HTML */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowRawHtmlEditor(!showRawHtmlEditor)}
+                        className="text-[11px] text-[#71717A] hover:text-[#18181B] underline"
+                      >
+                        {showRawHtmlEditor ? 'Masquer le code HTML brut' : 'Inspecter / modifier le code HTML brut (avancé)'}
+                      </button>
+                      {showRawHtmlEditor && (
+                        <textarea
+                          rows={4}
+                          value={customEmailHtml}
+                          onChange={(e) => setCustomEmailHtml(e.target.value)}
+                          className="w-full mt-2 px-3 py-1.5 text-[11px] font-mono text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-[#71717A] italic">
+                    Aucun template HTML sélectionné. Le candidat recevra l’email officiel standard émis par <code>event@new-era-medical-club-univ-ouargla.dz</code>.
                   </div>
                 )}
               </div>
@@ -761,6 +876,46 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
         </button>
       </div>
+
+      {/* Modal Preview for Email Template */}
+      {previewModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-[#E6DFD5] overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#E6DFD5] flex items-center justify-between bg-[#FAF8F5]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
+                <span className="text-xs font-bold text-[#18181B]">
+                  Aperçu du modèle d’email : {selectedTemplateName || 'Modèle actif'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModalOpen(false)}
+                className="text-xs font-bold text-[#71717A] hover:text-[#18181B] px-2 py-1"
+              >
+                ✕ Fermer
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-[#F0E8DB]">
+              <iframe
+                title="Aperçu email"
+                srcDoc={customEmailHtml}
+                className="w-full h-[500px] rounded-lg border border-[#E3D8C6] bg-white shadow-xs"
+                sandbox="allow-same-origin"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-[#E6DFD5] flex justify-end bg-white">
+              <button
+                type="button"
+                onClick={() => setPreviewModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#18181B] rounded-lg hover:bg-[#27272A] transition"
+              >
+                Fermer l’aperçu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
