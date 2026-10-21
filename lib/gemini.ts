@@ -8,7 +8,8 @@ export interface EmailGenerationInput {
   title?: string; // e.g. "Votre inscription est confirmée."
   eyebrow?: string; // e.g. "ECOS · Hépato-Gastro-Entérologie"
   intro?: string;
-  keyInfo?: string; // list of label: value (Date, Lieu, Candidats, À apporter, Arrivée...)
+  keyInfo?: string; // specific structured key-value notes if any
+  contentPrompt?: string; // main flexible instructions / message to communicate
   importantNote?: string; // e.g. "Tout retard entraîne l'exclusion de l'épreuve."
   buttonText?: string;
   buttonUrl?: string;
@@ -200,31 +201,36 @@ export async function generateEmailTemplate(input: EmailGenerationInput): Promis
       ? input.selectedFields.map((f) => `  - {{${f.key}}} : intitulé "${f.label}"`).join('\n')
       : '  - {{prenom}} : Prénom du candidat\n  - {{nom}} : Nom de famille\n  - {{email}} : Adresse email';
 
-  const prompt = `Génère UN courriel HTML de qualité production pour le New Era Medical Club selon ces paramètres stricts :
+  const userInstructions = (input.contentPrompt || input.keyInfo || '').trim();
 
-## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'New Era Medical Club'}" (slug: /f/${input.selectedFormSlug || 'recrutement-2026'})
+  const prompt = `Génère UN courriel HTML de qualité production pour le New Era Medical Club selon ces paramètres :
+
+## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'New Era Medical Club'}" (slug: /f/${input.selectedFormSlug || 'general'})
 
 ## VARIABLES DE PERSONNALISATION STRICTES DU FORMULAIRE :
 - Formule d'appel (Salutation) : ${greetingText}
 - Variables sélectionnées disponibles :
 ${selectedFieldsList}
-- RÈGLE FONDAMENTALE : Utilise UNIQUEMENT ces variables {{cle}} sélectionnées dans le corps du texte ou le récapitulatif. Ne JAMAIS inventer de variables aléatoires ou non sélectionnées. Si des champs comme le nom, l'email, la faculté ou le téléphone sont sélectionnés, intègre-les élégamment dans le texte ou les blocs d'information.
+- RÈGLE FONDAMENTALE : Utilise UNIQUEMENT ces variables {{cle}} sélectionnées dans le corps du texte ou le récapitulatif. Ne JAMAIS inventer de variables aléatoires non sélectionnées. Si des champs comme le nom, l'email, la faculté ou le téléphone sont sélectionnés, intègre-les élégamment dans le texte ou les blocs d'information.
 
-## CONTENT INPUT
+## CONSIGNES & CONTENU DU MESSAGE :
 - language: Français
-- type: ${input.contextType || "confirmation d'inscription"}
-- title (H1): ${input.title || input.subject || 'Votre inscription est confirmée.'}
-- eyebrow: ${input.eyebrow || input.contextType || 'ECOS · Hépato-Gastro-Entérologie'}
-- intro: ${input.intro || "Nous vous confirmons la validation de votre participation organisée par le New Era Medical Club."}
-- key info:
-${input.keyInfo || `  - Date et heure: Lundi 12 octobre 2026 · 08h00
-  - Lieu: Salle TD 4
-  - Candidats: 25 au total
-  - À apporter: Blouse blanche et carte d'étudiant
-  - Arrivée: Dès 07h45`}
-- important note: ${input.importantNote || input.extraNotes || "Tout retard entraîne l'exclusion de l'épreuve."}
-- button: ${input.buttonText ? `${input.buttonText} (${input.buttonUrl || '#'})` : 'none'}
-- sign-off: ${input.signOff || "Bonne préparation, / L'équipe New Era Club / Excellence clinique · Innovation pédagogique"}
+- subject: ${input.subject || "Confirmation — New Era Medical Club"}
+- type / contexte: ${input.contextType || "Communication officielle"}
+- title (H1): ${input.title || input.subject || 'Votre demande a bien été enregistrée'}
+- eyebrow: ${input.eyebrow || input.contextType || 'NEW ERA MEDICAL CLUB'}
+- instructions de contenu :
+${userInstructions ? userInstructions : "Remercier chaleureusement le destinataire, lui confirmer la bonne prise en compte de sa démarche et lui fournir les indications nécessaires avec professionnalisme et bienveillance."}
+${input.importantNote ? `- note importante / avertissement : ${input.importantNote}` : ''}
+${input.extraNotes ? `- consignes supplémentaires : ${input.extraNotes}` : ''}
+${input.buttonText ? `- bouton d'action (CTA) : "${input.buttonText}" pointant vers ${input.buttonUrl || '#'}` : '- bouton: none'}
+- sign-off: ${input.signOff || "L'équipe New Era Medical Club / Excellence clinique · Innovation pédagogique"}
+
+## DIRECTIVES RÉDACTIONNELLES & ADAPTABILITÉ :
+- Adapte la structure du courriel au CONTENU RÉEL demandé :
+  * Si des dates, heures ou lieux sont mentionnés dans les consignes, présente-les dans un bloc épuré (tableau ou grille).
+  * Si le courriel est une confirmation simple, un accusé de réception ou une annonce SANS date ni lieu, NE PAS inventer de fausse salle ni de fausse date d'examen. Rédige un courriel clair, valorisant et structuré.
+  * Si une note importante est demandée, mets-la en avant dans un bloc discret. Sinon, n'ajoute pas de mise en garde superflue.
 
 ## DESIGN INPUT
 - mode: ${input.designMode || 'cream'}
@@ -233,7 +239,15 @@ ${input.keyInfo || `  - Date et heure: Lundi 12 octobre 2026 · 08h00
 - heading style: ${input.headingStyle || 'bold tight sans'}
 - density: compact
 
-RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
+RÉPONDS UNIQUEMENT EN JSON VALIDE :
+{
+  "subject": "Objet précis et soigné de l'email",
+  "badge": "BADGE D'EN-TÊTE",
+  "headline": "Titre principal H1",
+  "preheader": "Texte d'aperçu boîte de réception (50-90 caractères)",
+  "html": "Code HTML complet pour clients de messagerie",
+  "plainText": "Version texte brut"
+}`;
 
   const rawJson = await callGemini(prompt);
   return parseGeminiJson<GeneratedEmailResult>(rawJson);

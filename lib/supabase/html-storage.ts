@@ -46,9 +46,16 @@ export async function listHtmlStorageTemplates(): Promise<HtmlStorageItem[]> {
 
   if (!data) return [];
 
-  // Filter out system folders or empty files if any
+  // Filter out system folders, non-html files, and virtual folders (id === null or prefixed with _ or .)
   return data
-    .filter((f) => f.name && !f.name.startsWith('.'))
+    .filter(
+      (f) =>
+        f.name &&
+        !f.name.startsWith('.') &&
+        !f.name.startsWith('_') &&
+        f.id !== null &&
+        f.name.toLowerCase().endsWith('.html')
+    )
     .map((item) => {
       const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(item.name);
       return {
@@ -123,11 +130,20 @@ export async function saveHtmlStorageTemplate(
  * Deletes an HTML file from 'Html_forms'.
  */
 export async function deleteHtmlStorageTemplate(fileName: string): Promise<boolean> {
+  const cleanName = fileName.trim();
+  if (
+    cleanName.startsWith('_') ||
+    cleanName.startsWith('.') ||
+    !cleanName.toLowerCase().endsWith('.html')
+  ) {
+    throw new Error(`Le fichier '${cleanName}' est un fichier système protégé et ne peut pas être supprimé.`);
+  }
+
   const supabase = getStorageClient();
-  const { error } = await supabase.storage.from(BUCKET_NAME).remove([fileName]);
+  const { error } = await supabase.storage.from(BUCKET_NAME).remove([cleanName]);
 
   if (error) {
-    console.error(`Error deleting ${fileName} from Html_forms:`, error);
+    console.error(`Error deleting ${cleanName} from Html_forms:`, error);
     throw new Error(`Erreur de suppression dans '${BUCKET_NAME}': ${error.message}`);
   }
 

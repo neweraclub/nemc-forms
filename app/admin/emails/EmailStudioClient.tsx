@@ -80,14 +80,20 @@ export function EmailStudioClient({
   };
 
   // 3. Message Parameters State
-  const [subject, setSubject] = useState("Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie");
-  const [contextType, setContextType] = useState('Simulation ECOS');
-  const [keyInfo, setKeyInfo] = useState('Lundi 12 octobre 2026 à 08h00 pile. Effectif total de 25 candidats. Salle TD 4.');
-  const [extraNotes, setExtraNotes] = useState("Veillez à arriver 15 minutes à l'avance munis de votre carte d'étudiant et de votre blouse blanche.");
-  const [importantNote, setImportantNote] = useState("Tout retard entraîne l'exclusion de l'épreuve.");
-  const [tone, setTone] = useState<'officiel' | 'chaleureux' | 'urgent'>('officiel');
+  const [subject, setSubject] = useState("Confirmation d'inscription — New Era Medical Club");
+  const [contextType, setContextType] = useState("Confirmation d'inscription");
+  const [contentPrompt, setContentPrompt] = useState(
+    "Remercier le candidat d'avoir complété le formulaire. Confirmer que sa participation a été enregistrée avec succès et que notre équipe reviendra vers lui avec toutes les prochaines étapes."
+  );
+  const [importantNote, setImportantNote] = useState('');
+  const [buttonText, setButtonText] = useState('');
+  const [buttonUrl, setButtonUrl] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [tone, setTone] = useState<'officiel' | 'chaleureux' | 'urgent'>('chaleureux');
   const [designMode, setDesignMode] = useState<'cream' | 'dark' | 'light'>('cream');
-  const [infoPresentation, setInfoPresentation] = useState<'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style'>('divider table');
+  const [infoPresentation, setInfoPresentation] = useState<
+    'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style'
+  >('divider table');
 
   // AI Generation State
   const [isGenerating, startGenerating] = useTransition();
@@ -260,40 +266,46 @@ export function EmailStudioClient({
 
   const PRESETS = [
     {
-      label: 'Simulation ECOS',
-      subject: "Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie",
-      context: 'Simulation ECOS',
-      key: 'Lundi 12 octobre 2026 à 08h00 pile. Effectif de 25 candidats. Hôpital / Salle TD.',
-      notes: "Arriver 15 min en avance avec carte d'étudiant et tenue médicale complète.",
+      label: 'Accusé de réception',
+      subject: 'Confirmation de réception — New Era Medical Club',
+      context: 'Accusé de réception',
+      prompt:
+        'Remercier chaleureusement le candidat. Lui confirmer que sa réponse a bien été transmise et qu’un accusé de réception officiel a été généré.',
     },
     {
-      label: 'Recrutement 2026',
-      subject: 'Confirmation de candidature — Recrutement New Era Medical Club 2026',
-      context: 'Recrutement annuel',
-      key: 'Dossier bien reçu. Phase d’évaluation en cours par le comité pédagogique.',
-      notes: 'Les convocations pour les entretiens individuels seront envoyées sous 5 jours ouvrés.',
+      label: 'Validation d’inscription',
+      subject: 'Votre inscription est validée — New Era Medical Club',
+      context: 'Validation d’inscription',
+      prompt:
+        'Confirmer au candidat que son inscription est validée avec succès. Lui donner les détails importants et lui souhaiter une excellente expérience avec le club.',
     },
     {
       label: 'Atelier / Workshop',
-      subject: 'Confirmation de participation — Workshop Urgences & Gestes Pratiques',
-      context: 'Atelier médical',
-      key: 'Samedi 18 novembre 2026 à 10h00. Amphithéâtre A, Faculté de Médecine.',
-      notes: 'Matériel de simulation fourni. Présence obligatoire dès 09h45 pour l’émargement.',
+      subject: 'Confirmation de participation — Workshop Médical',
+      context: 'Atelier pratique',
+      prompt:
+        'Confirmer la place du participant à l’atelier pratique. Lui rappeler de venir avec sa tenue médicale et d’arriver 10 minutes avant le début.',
     },
     {
-      label: 'Convocation Entretien',
-      subject: 'Convocation à votre entretien de sélection — New Era Medical Club',
-      context: 'Entretien oral',
-      key: 'Mercredi 14 octobre 2026 à 14h30. Bureau du club / Salle de réunion B.',
-      notes: 'Durée 20 minutes. Venez avec votre motivation et vos projets associatifs.',
+      label: 'Candidature & Recrutement',
+      subject: 'Candidature bien reçue — Recrutement New Era Medical Club',
+      context: 'Recrutement au club',
+      prompt:
+        'Remercier pour la candidature. Préciser que le comité examine le dossier et que les convocations pour les entretiens seront communiquées sous 5 jours ouvrés.',
+    },
+    {
+      label: 'Annonce & Informations',
+      subject: 'Information importante — New Era Medical Club',
+      context: 'Information générale',
+      prompt:
+        'Communiquer une information claire et importante aux membres inscrits concernant les prochaines étapes ou consignes.',
     },
   ];
 
   const applyPreset = (preset: (typeof PRESETS)[0]) => {
     setSubject(preset.subject);
     setContextType(preset.context);
-    setKeyInfo(preset.key);
-    setExtraNotes(preset.notes);
+    setContentPrompt(preset.prompt);
   };
 
   // Generate Email with selected form and custom chosen fields
@@ -311,9 +323,11 @@ export function EmailStudioClient({
       const res = await generateAiEmailAction({
         subject,
         contextType,
-        keyInfo,
-        extraNotes,
-        importantNote,
+        contentPrompt,
+        keyInfo: contentPrompt,
+        importantNote: importantNote.trim() || undefined,
+        buttonText: buttonText.trim() || undefined,
+        buttonUrl: buttonUrl.trim() || undefined,
         tone,
         designMode,
         infoPresentation,
@@ -714,14 +728,14 @@ export function EmailStudioClient({
                 3
               </span>
               <h3 className="text-xs font-bold text-[#18181B] uppercase tracking-wide">
-                Paramètres du message &amp; Consignes IA
+                Consignes &amp; Rédaction du courriel
               </h3>
             </div>
 
-            {/* Quick Presets */}
+            {/* Quick Presets Pills */}
             <div>
               <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
-                Modèles rapides (suggestions de départ) :
+                Type de courriel (Suggestions en 1 clic) :
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {PRESETS.map((p) => (
@@ -746,158 +760,203 @@ export function EmailStudioClient({
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Ex: Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie"
+                placeholder="Ex: Confirmation d'inscription — New Era Medical Club"
                 className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
               />
             </div>
 
-            {/* Context / Event Type */}
+            {/* Main Content & Instructions Box */}
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Contexte / Événement
-              </label>
-              <input
-                type="text"
-                value={contextType}
-                onChange={(e) => setContextType(e.target.value)}
-                placeholder="Ex: Simulation ECOS, Recrutement, Workshop Urgences..."
-                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
-              />
-            </div>
-
-            {/* Key Information Box */}
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Informations clés (Date, Heure, Lieu, Salle, Effectif) <span className="text-[#DC2626]">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-[#18181B]">
+                  Message à communiquer / Consignes pour l&apos;IA <span className="text-[#DC2626]">*</span>
+                </label>
+                <span className="text-[11px] text-[#71717A]">
+                  Langage naturel libre
+                </span>
+              </div>
               <textarea
-                rows={3}
-                value={keyInfo}
-                onChange={(e) => setKeyInfo(e.target.value)}
-                placeholder="Ex: Lundi 12 octobre 2026 à 08h00. 25 candidats. Salle TD 4."
-                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+                rows={4}
+                value={contentPrompt}
+                onChange={(e) => setContentPrompt(e.target.value)}
+                placeholder="Décrivez ce que vous souhaitez dire dans cet email : remercier le candidat, donner les détails importants (dates, lieu, matériel si applicable), prochaines étapes, etc. L'IA structure tout avec élégance."
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] leading-relaxed"
               />
             </div>
 
-            {/* Important Note */}
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Note importante / Consigne stricte (ex: exclusion en cas de retard)
-              </label>
-              <input
-                type="text"
-                value={importantNote}
-                onChange={(e) => setImportantNote(e.target.value)}
-                placeholder="Ex: Tout retard entraîne l'exclusion de l'épreuve."
-                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
-              />
-            </div>
+            {/* Collapsible Advanced Options Toggle */}
+            <div className="pt-1 border-t border-[#E6DFD5]">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full flex items-center justify-between py-2 text-xs font-semibold text-[#52525B] hover:text-[#18181B] transition"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>⚙️ Options avancées</span>
+                  <span className="text-[10px] text-[#71717A] font-normal">
+                    (Bouton CTA, Alerte importante, Thème graphique)
+                  </span>
+                </span>
+                <span className="text-xs">{showAdvanced ? '▲ Réduire' : '▼ Déplier'}</span>
+              </button>
 
-            {/* Extra Notes */}
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Consignes supplémentaires (À apporter, tenue, etc.)
-              </label>
-              <textarea
-                rows={2}
-                value={extraNotes}
-                onChange={(e) => setExtraNotes(e.target.value)}
-                placeholder="Ex: Arriver 15 min en avance avec carte d'étudiant et tenue complète."
-                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
-              />
-            </div>
+              {showAdvanced && (
+                <div className="space-y-4 pt-3 pb-1 animate-in fade-in duration-200">
+                  {/* Context Type */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Contexte / Catégorie d&apos;événement
+                    </label>
+                    <input
+                      type="text"
+                      value={contextType}
+                      onChange={(e) => setContextType(e.target.value)}
+                      placeholder="Ex: Confirmation, Atelier, Recrutement, Entretien..."
+                      className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
+                    />
+                  </div>
 
-            {/* Tone Selector */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Tonalité rédactionnelle :
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['officiel', 'chaleureux', 'urgent'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTone(t)}
-                    className={`py-2 px-3 rounded-lg text-xs font-medium border text-center capitalize transition ${tone === t
-                        ? 'bg-[#18181B] text-white border-[#18181B]'
-                        : 'bg-white text-[#52525B] border-[#D4D4D8] hover:bg-[#FAF8F5]'
-                      }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
+                  {/* Highlighted Warning Note */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Note importante / Avertissement en exergue (facultatif)
+                    </label>
+                    <input
+                      type="text"
+                      value={importantNote}
+                      onChange={(e) => setImportantNote(e.target.value)}
+                      placeholder="Ex: Présentez-vous 10 minutes en avance avec votre carte d'étudiant."
+                      className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
+                    />
+                  </div>
 
-            {/* Design Mode Selector */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Thème graphique &amp; Palette :
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDesignMode('cream')}
-                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'cream'
-                      ? 'border-[#3B33FF] bg-[#F0E8DB]/60 ring-1 ring-[#3B33FF]'
-                      : 'border-[#D4D4D8] bg-[#FAF8F5] hover:bg-white'
-                    }`}
-                >
-                  <div className="text-xs font-bold text-[#1B1740]">Crème Luxe</div>
-                  <div className="text-[10px] text-[#7A7390]">Palette chaleureuse</div>
-                </button>
+                  {/* Optional CTA Button */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-[#18181B]">
+                        Bouton d&apos;action CTA (Texte)
+                      </label>
+                      <input
+                        type="text"
+                        value={buttonText}
+                        onChange={(e) => setButtonText(e.target.value)}
+                        placeholder="Ex: Rejoindre le groupe WhatsApp"
+                        className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-[#18181B]">
+                        Bouton d&apos;action (Lien URL)
+                      </label>
+                      <input
+                        type="url"
+                        value={buttonUrl}
+                        onChange={(e) => setButtonUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
+                      />
+                    </div>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => setDesignMode('dark')}
-                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'dark'
-                      ? 'border-[#3B33FF] bg-[#161326] text-white ring-1 ring-[#3B33FF]'
-                      : 'border-[#D4D4D8] bg-[#161326]/90 text-white hover:bg-[#161326]'
-                    }`}
-                >
-                  <div className="text-xs font-bold text-white">Nuit High-Tech</div>
-                  <div className="text-[10px] text-[#A1A1AA]">Sombre officiel</div>
-                </button>
+                  {/* Tone Selector */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Tonalité rédactionnelle :
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['chaleureux', 'officiel', 'urgent'] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setTone(t)}
+                          className={`py-1.5 px-3 rounded-lg text-xs font-medium border text-center capitalize transition ${
+                            tone === t
+                              ? 'bg-[#18181B] text-white border-[#18181B]'
+                              : 'bg-white text-[#52525B] border-[#D4D4D8] hover:bg-[#FAF8F5]'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => setDesignMode('light')}
-                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'light'
-                      ? 'border-[#3B33FF] bg-white ring-1 ring-[#3B33FF]'
-                      : 'border-[#D4D4D8] bg-white hover:bg-[#FAF8F5]'
-                    }`}
-                >
-                  <div className="text-xs font-bold text-[#18181B]">Blanc Épuré</div>
-                  <div className="text-[10px] text-[#71717A]">Minimaliste</div>
-                </button>
-              </div>
-            </div>
+                  {/* Design Mode Selector */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Thème graphique &amp; Palette :
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDesignMode('cream')}
+                        className={`p-2 rounded-lg border text-left transition ${
+                          designMode === 'cream'
+                            ? 'border-[#3B33FF] bg-[#F0E8DB]/60 ring-1 ring-[#3B33FF]'
+                            : 'border-[#D4D4D8] bg-[#FAF8F5] hover:bg-white'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-[#1B1740]">Crème Luxe</div>
+                        <div className="text-[10px] text-[#7A7390]">Palette chaleureuse</div>
+                      </button>
 
-            {/* Info Presentation Style */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#18181B]">
-                Présentation des informations clés :
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'divider table', label: 'Tableau avec lignes' },
-                  { id: '2x2 grid of small blocks', label: 'Grille 2x2 en cartes' },
-                  { id: 'vertical timeline', label: 'Chronologie verticale' },
-                  { id: 'ticket style', label: 'Style Billet / Ticket' },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setInfoPresentation(st.id as typeof infoPresentation)}
-                    className={`p-2 rounded-lg text-xs font-medium border text-left transition ${infoPresentation === st.id
-                        ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF] font-semibold'
-                        : 'border-[#D4D4D8] bg-white text-[#52525B] hover:bg-[#FAF8F5]'
-                      }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
+                      <button
+                        type="button"
+                        onClick={() => setDesignMode('dark')}
+                        className={`p-2 rounded-lg border text-left transition ${
+                          designMode === 'dark'
+                            ? 'border-[#3B33FF] bg-[#161326] text-white ring-1 ring-[#3B33FF]'
+                            : 'border-[#D4D4D8] bg-[#161326]/90 text-white hover:bg-[#161326]'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-white">Nuit High-Tech</div>
+                        <div className="text-[10px] text-[#A1A1AA]">Sombre officiel</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDesignMode('light')}
+                        className={`p-2 rounded-lg border text-left transition ${
+                          designMode === 'light'
+                            ? 'border-[#3B33FF] bg-white ring-1 ring-[#3B33FF]'
+                            : 'border-[#D4D4D8] bg-white hover:bg-[#FAF8F5]'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-[#18181B]">Blanc Épuré</div>
+                        <div className="text-[10px] text-[#71717A]">Minimaliste</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Info Presentation Style */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Présentation des informations clés :
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'divider table', label: 'Tableau avec lignes' },
+                        { id: '2x2 grid of small blocks', label: 'Grille 2x2 en cartes' },
+                        { id: 'vertical timeline', label: 'Chronologie verticale' },
+                        { id: 'ticket style', label: 'Style Billet / Ticket' },
+                      ].map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setInfoPresentation(st.id as typeof infoPresentation)}
+                          className={`p-2 rounded-lg text-xs font-medium border text-left transition ${
+                            infoPresentation === st.id
+                              ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF] font-semibold'
+                              : 'border-[#D4D4D8] bg-white text-[#52525B] hover:bg-[#FAF8F5]'
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Generate Button */}
@@ -905,7 +964,7 @@ export function EmailStudioClient({
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={isGenerating || !subject.trim() || !keyInfo.trim()}
+                disabled={isGenerating || !subject.trim() || !contentPrompt.trim()}
                 className="brand-gradient-btn w-full min-h-[48px] py-3 px-4 rounded-xl text-sm font-bold text-white shadow-md focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isGenerating ? (
