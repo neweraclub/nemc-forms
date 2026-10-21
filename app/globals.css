@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #FAF6EE;
+    --surface: #FFFFFF;
+    --foreground: #18181B;
+    --muted: #52525B;
+    --border: #E6DFD5;
+    --brand-blue: #3B33FF;
+    --brand-purple: #8B3EE1;
+    --brand-pink: #E53888;
+    --brand-orange: #F97316;
+    --error: #DC2626;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Accessible high-contrast focus rings */
+  :focus-visible {
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 2px;
+  }
+}
+
+/* Brand Gradient Progress & Accent */
+.brand-gradient-bar {
+  background: linear-gradient(90deg, #3B33FF 0%, #8B3EE1 33%, #E53888 66%, #F97316 100%);
+}
+
+.brand-gradient-btn {
+  background: linear-gradient(90deg, #3B33FF 0%, #8B3EE1 40%, #E53888 75%, #F97316 100%);
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.brand-gradient-btn:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.brand-gradient-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
