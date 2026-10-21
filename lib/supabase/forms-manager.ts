@@ -4,29 +4,17 @@ import {
   StoredFormData,
   fetchCloudStoredForms,
   saveCloudStoredForms,
-  getLocalStoredForms,
-  getLocalStoredForms as getLocalCustomForms,
-  saveLocalCustomForm,
-  deleteLocalCustomForm,
-  syncLocalFormsWithCloud,
-  deleteLocalSubmissionsForForm,
+  fetchCloudSubmissions,
+  saveCloudSubmissions,
 } from './cloud-registry';
 
 export type { StoredFormData };
-export {
-  fetchCloudStoredForms,
-  saveCloudStoredForms,
-  getLocalStoredForms,
-  getLocalCustomForms,
-  saveLocalCustomForm,
-  deleteLocalCustomForm,
-  syncLocalFormsWithCloud,
-  deleteLocalSubmissionsForForm,
-};
+export { fetchCloudStoredForms, saveCloudStoredForms };
 
 /**
- * Creates or updates a form with all its fields directly from the web interface.
- * Persists to Local Disk, Supabase Cloud Storage (Html_forms), and Supabase PostgreSQL.
+ * Creates or updates a form with all its fields directly in Supabase.
+ * Persists 100% to Supabase (Supabase Cloud Storage registry + Supabase PostgreSQL).
+ * Zero local storage / zero disk dependency.
  */
 export async function persistFormWithFields(
   formData: Omit<FormRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string },
@@ -50,14 +38,11 @@ export async function persistFormWithFields(
     created_at: now,
   }));
 
-  // 1. Save in local storage
-  saveLocalCustomForm(fullForm, fullFields);
-
-  // 2. Persist to Supabase Cloud Storage (Html_forms registry)
+  // 1. Persist to Supabase Cloud Storage (Html_forms registry)
   try {
-    const cloudForms = (await fetchCloudStoredForms()) ?? getLocalCustomForms();
+    const cloudForms = (await fetchCloudStoredForms()) || [];
     const existingIdx = cloudForms.findIndex(
-      (item) => item.form.slug === fullForm.slug || item.form.id === fullForm.id
+      (item) => item.form.slug?.toLowerCase() === fullForm.slug?.toLowerCase() || item.form.id === fullForm.id
     );
     if (existingIdx >= 0) {
       cloudForms[existingIdx] = { form: fullForm, fields: fullFields };
@@ -66,10 +51,10 @@ export async function persistFormWithFields(
     }
     await saveCloudStoredForms(cloudForms);
   } catch (cloudErr) {
-    console.warn('Cloud storage sync notice:', cloudErr);
+    console.warn('Supabase Cloud Storage form registry sync notice:', cloudErr);
   }
 
-  // 3. Persist to Supabase PostgreSQL if tables exist
+  // 2. Persist to Supabase PostgreSQL
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   if (serviceClient) {
     try {
@@ -131,7 +116,7 @@ export async function persistFormWithFields(
         );
       }
     } catch {
-      // PostgreSQL tables may not yet be migrated
+      // PostgreSQL tables notice
     }
   }
 
@@ -139,7 +124,7 @@ export async function persistFormWithFields(
 }
 
 /**
- * Updates only the custom AI email template and subject for a form.
+ * Updates the custom AI email template and subject for a form directly in Supabase.
  */
 export async function updateFormCustomEmail(
   slug: string,
@@ -147,20 +132,13 @@ export async function updateFormCustomEmail(
   custom_email_html: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const all = getLocalCustomForms();
-    const item = all.find((f) => f.form.slug === slug);
-    if (item) {
-      item.form.custom_email_subject = custom_email_subject;
-      item.form.custom_email_html = custom_email_html;
-      item.form.updated_at = new Date().toISOString();
-      saveLocalCustomForm(item.form, item.fields);
-    }
-
-    // Update in Cloud Storage
+    // 1. Update in Supabase Cloud Storage
     try {
       const cloudForms = await fetchCloudStoredForms();
       if (cloudForms) {
-        const cItem = cloudForms.find((f) => f.form.slug === slug);
+        const cItem = cloudForms.find(
+          (f) => f.form.slug?.toLowerCase() === slug.toLowerCase() || f.form.id === slug
+        );
         if (cItem) {
           cItem.form.custom_email_subject = custom_email_subject;
           cItem.form.custom_email_html = custom_email_html;
@@ -172,6 +150,7 @@ export async function updateFormCustomEmail(
       // ignore
     }
 
+    // 2. Update in Supabase PostgreSQL
     const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
     if (serviceClient) {
       try {
@@ -196,36 +175,45 @@ export async function updateFormCustomEmail(
 }
 
 /**
- * Deletes a form and all associated submissions/fields.
+ * Deletes a form and all associated submissions/fields from Supabase.
  */
 export async function removeFormBySlug(slug: string): Promise<{ success: boolean; error?: string }> {
   const cleanSlug = (slug || '').trim().toLowerCase();
 
-  // 1. Delete from local custom forms & submissions
-  deleteLocalCustomForm(cleanSlug);
-  deleteLocalSubmissionsForForm(cleanSlug);
-
-  // 2. Remove from Cloud Storage and synchronize
+  // 1. Remove from Supabase Cloud Storage forms and submissions
   try {
     const cloudForms = await fetchCloudStoredForms();
+    let targetFormId: string | null = null;
+
     if (cloudForms !== null) {
       const filtered = cloudForms.filter((item) => {
         const s = (item.form?.slug || '').trim().toLowerCase();
         const id = (item.form?.id || '').trim().toLowerCase();
-        return s !== cleanSlug && id !== cleanSlug;
+        if (s === cleanSlug || id === cleanSlug) {
+          targetFormId = item.form.id;
+          return false;
+        }
+        return true;
       });
       await saveCloudStoredForms(filtered);
-      syncLocalFormsWithCloud(filtered);
+    }
+
+    // Remove form's submissions from cloud storage
+    if (targetFormId) {
+      const cloudSubs = await fetchCloudSubmissions();
+      if (cloudSubs) {
+        const filteredSubs = cloudSubs.filter((s) => s.form_id !== targetFormId);
+        await saveCloudSubmissions(filteredSubs);
+      }
     }
   } catch (cloudErr) {
-    console.warn('removeFormBySlug Cloud storage delete notice:', cloudErr);
+    console.warn('removeFormBySlug Supabase storage delete notice:', cloudErr);
   }
 
-  // 3. PostgreSQL cleanup if tables exist
+  // 2. Supabase PostgreSQL cleanup
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   if (serviceClient) {
     try {
-      // Find form id first if needed to cascade delete
       const { data: formRow } = await serviceClient
         .from('forms')
         .select('id')

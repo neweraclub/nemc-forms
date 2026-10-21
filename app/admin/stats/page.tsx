@@ -1,5 +1,4 @@
-import { getAdminForms } from '@/lib/supabase/admin';
-import { getLocalSubmissions } from '@/lib/supabase/server';
+import { getAdminForms, getAllAdminSubmissions } from '@/lib/supabase/admin';
 import Link from 'next/link';
 
 export const metadata = {
@@ -10,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminStatsPage() {
   const formsSummary = await getAdminForms();
-  const allSubs = getLocalSubmissions();
+  const allSubs = await getAllAdminSubmissions();
 
   const totalForms = formsSummary.length;
   const totalSubmissions = formsSummary.reduce((acc, curr) => acc + curr.submissionsCount, 0);

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AdminFormSummary } from '@/lib/supabase/admin';
 import { FormRowActions } from './FormRowActions';
 
@@ -10,11 +11,19 @@ interface AdminFormsClientProps {
 }
 
 export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
+  const router = useRouter();
   const [deletedSlugs, setDeletedSlugs] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleDeleted = (deletedSlug: string) => {
     const target = deletedSlug.trim().toLowerCase();
     setDeletedSlugs((prev) => (prev.includes(target) ? prev : [...prev, target]));
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    router.refresh();
+    setTimeout(() => setIsRefreshing(false), 800);
   };
 
   const forms = initialForms.filter((item) => {
@@ -26,7 +35,7 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
   return (
     <div className="bg-white border border-[#E6DFD5] rounded-xl overflow-hidden shadow-xs">
       {/* Table Header */}
-      <div className="p-4 sm:p-5 border-b border-[#E6DFD5] bg-[#FAF8F5] flex items-center justify-between">
+      <div className="p-4 sm:p-5 border-b border-[#E6DFD5] bg-[#FAF8F5] flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-[#18181B] transition-all duration-200">
             Formulaires disponibles ({forms.length})
@@ -35,6 +44,28 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
             Cliquez sur &quot;Modifier&quot; pour éditer les questions ou &quot;Consulter&quot; pour voir les réponses.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#52525B] hover:text-[#18181B] bg-white border border-[#E6DFD5] rounded-lg shadow-2xs hover:bg-[#FAF8F5] transition shrink-0"
+          title="Actualiser la liste depuis Supabase"
+        >
+          <svg
+            className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#3B33FF]' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span className="hidden sm:inline">{isRefreshing ? 'Actualisation...' : 'Actualiser'}</span>
+        </button>
       </div>
 
       {/* Forms List or Empty State */}

@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { FormFieldRecord, FormRecord, FormStateEvaluation, SubmissionRecord } from '@/types/form';
-import fs from 'fs';
+import {
+  StoredFormData,
+  getLocalStoredForms,
+  fetchCloudStoredForms,
+  fetchCloudSubmissions,
+  saveCloudSubmissions,
+} from './cloud-registry';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -11,11 +17,11 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  'sb_publishable_ykDYxnsHMXN58NOlvq9Lnw_v9Pv6V--';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5c3lzeXJqcWhxcmNxb2luYmd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NTQ4NjEsImV4cCI6MjEwNDAzMDg2MX0.BYCjCewjcfGMm-fTtuZf2NNiQkfx3n8SD1bhg_MoRJ0';
 
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Standard public client respecting RLS
+// Standard client respecting RLS
 export function createAnonServerClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
@@ -36,68 +42,135 @@ export function createServiceRoleServerClient() {
   });
 }
 
-import {
-  StoredFormData,
-  getLocalStoredForms,
-  fetchCloudStoredForms,
-  ensureLocalStorage,
-  getLocalSubmissionsFilePath,
-  syncLocalFormsWithCloud,
-  fetchCloudSubmissions,
-  saveCloudSubmissions,
-} from './cloud-registry';
-
 export type { StoredFormData };
 export { getLocalStoredForms, fetchCloudSubmissions, saveCloudSubmissions };
 
-export function getLocalSubmissions(): SubmissionRecord[] {
+// In-memory hot cache for zero-disk, ultra-fast responses
+let memorySubmissionsCache: SubmissionRecord[] = [];
+
+/**
+ * Fetch all submissions directly from Supabase (PostgreSQL or Supabase Storage).
+ */
+export async function getSubmissionsFromSupabase(): Promise<SubmissionRecord[]> {
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
+
   try {
-    ensureLocalStorage();
-    const file = getLocalSubmissionsFilePath();
-    if (!fs.existsSync(file)) {
-      return [];
+    const { data, error } = await serviceClient
+      .from('submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      memorySubmissionsCache = data as SubmissionRecord[];
+      return memorySubmissionsCache;
     }
-    const raw = fs.readFileSync(file, 'utf-8');
-    return JSON.parse(raw);
   } catch {
-    return [];
+    // DB query notice
   }
+
+  try {
+    const cloudSubs = await fetchCloudSubmissions();
+    if (cloudSubs && cloudSubs.length > 0) {
+      memorySubmissionsCache = cloudSubs;
+      return cloudSubs;
+    }
+  } catch {
+    // Cloud storage notice
+  }
+
+  return memorySubmissionsCache;
 }
 
-export function saveLocalSubmission(sub: SubmissionRecord): void {
-  try {
-    ensureLocalStorage();
-    const all = getLocalSubmissions();
-    // Check idempotency in local store
-    const existing = all.find((s) => s.idempotency_key && s.idempotency_key === sub.idempotency_key);
-    if (!existing) {
-      all.push(sub);
-      fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
-      // Sync to Supabase Cloud Storage
-      saveCloudSubmissions(all).catch((e) => console.warn('Cloud submission sync notice:', e));
-    }
-  } catch (err) {
-    console.error('Failed to save local submission:', err);
-  }
-}
+/**
+ * Persists a submission directly to Supabase.
+ * Zero local disk writes.
+ */
+export async function saveSubmissionToSupabase(sub: SubmissionRecord): Promise<void> {
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
 
-export function updateLocalSubmissionEmailStatus(id: string, status: SubmissionRecord['email_status']) {
+  // 1. Try PostgreSQL insertion
   try {
-    ensureLocalStorage();
-    const all = getLocalSubmissions();
-    const target = all.find((s) => s.id === id);
-    if (target) {
-      target.email_status = status;
-      fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
-      saveCloudSubmissions(all).catch(() => {});
+    await serviceClient.from('submissions').insert({
+      id: sub.id,
+      form_id: sub.form_id,
+      answers: sub.answers,
+      submitter_email: sub.submitter_email,
+      created_at: sub.created_at,
+      email_status: sub.email_status,
+      ip_hash: sub.ip_hash,
+      user_agent: sub.user_agent,
+      idempotency_key: sub.idempotency_key,
+    });
+  } catch (err) {
+    console.warn('Supabase DB submission insert note:', err);
+  }
+
+  // 2. Also persist to Supabase Cloud Storage
+  try {
+    const current = (await fetchCloudSubmissions()) || memorySubmissionsCache;
+    const exists = current.some(
+      (s) => s.id === sub.id || (s.idempotency_key && s.idempotency_key === sub.idempotency_key)
+    );
+    if (!exists) {
+      current.unshift(sub);
+      memorySubmissionsCache = current;
+      await saveCloudSubmissions(current);
     }
   } catch (err) {
-    console.error('Failed to update local email status:', err);
+    console.warn('Supabase Cloud Storage submission sync note:', err);
   }
 }
 
 /**
- * Fetch form by slug and its associated fields in correct position order.
+ * Updates submission email status in Supabase.
+ * Zero local disk writes.
+ */
+export async function updateSubmissionEmailStatusInSupabase(
+  id: string,
+  status: SubmissionRecord['email_status']
+): Promise<void> {
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
+
+  try {
+    await serviceClient.from('submissions').update({ email_status: status }).eq('id', id);
+  } catch {
+    // ignore
+  }
+
+  try {
+    const current = (await fetchCloudSubmissions()) || memorySubmissionsCache;
+    const target = current.find((s) => s.id === id);
+    if (target) {
+      target.email_status = status;
+      memorySubmissionsCache = current;
+      await saveCloudSubmissions(current);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Backward-compatible shims for legacy callers (100% in-memory / Supabase, NO disk access)
+export function getLocalSubmissions(): SubmissionRecord[] {
+  return memorySubmissionsCache;
+}
+
+export function saveLocalSubmission(sub: SubmissionRecord): void {
+  saveSubmissionToSupabase(sub).catch((e) => console.warn('saveLocalSubmission async err:', e));
+}
+
+export function updateLocalSubmissionEmailStatus(
+  id: string,
+  status: SubmissionRecord['email_status']
+): void {
+  updateSubmissionEmailStatusInSupabase(id, status).catch((e) =>
+    console.warn('updateLocalSubmissionEmailStatus async err:', e)
+  );
+}
+
+/**
+ * Fetch form by slug and its associated fields directly from Supabase.
+ * 100% cloud-hosted on Supabase.
  */
 export async function getFormBySlug(slug: string): Promise<{
   form: FormRecord | null;
@@ -109,6 +182,7 @@ export async function getFormBySlug(slug: string): Promise<{
   let form: FormRecord | null = null;
   let fields: FormFieldRecord[] = [];
 
+  // 1. Try Supabase PostgreSQL
   try {
     const { data: formData, error: formError } = await client
       .from('forms')
@@ -129,16 +203,17 @@ export async function getFormBySlug(slug: string): Promise<{
       }
     }
   } catch (e) {
-    console.warn('Supabase query error, falling back to seed if matched:', e);
+    console.warn('Supabase DB query notice:', e);
   }
 
-  // Graceful fallback for custom forms: Cloud Storage is authoritative
+  // 2. Authoritative Supabase Cloud Storage Registry
   if (!form) {
     try {
       const cloud = await fetchCloudStoredForms();
       if (cloud !== null) {
-        syncLocalFormsWithCloud(cloud);
-        const found = cloud.find((item) => item.form.slug === slug);
+        const found = cloud.find(
+          (item) => item.form.slug?.toLowerCase() === slug.toLowerCase() || item.form.id === slug
+        );
         if (found) {
           form = found.form;
           fields = found.fields;
@@ -146,14 +221,6 @@ export async function getFormBySlug(slug: string): Promise<{
       }
     } catch {
       // ignore
-    }
-
-    if (!form) {
-      const local = getLocalStoredForms().find((item) => item.form.slug === slug);
-      if (local) {
-        form = local.form;
-        fields = local.fields;
-      }
     }
   }
 
@@ -239,7 +306,18 @@ export async function getFormBySlug(slug: string): Promise<{
         .eq('form_id', form.id);
       count = dbCount || 0;
     } catch {
-      count = getLocalSubmissions().filter((s) => s.form_id === form?.id).length;
+      count = 0;
+    }
+
+    if (count === 0) {
+      try {
+        const cloudSubs = await fetchCloudSubmissions();
+        if (cloudSubs) {
+          count = cloudSubs.filter((s) => s.form_id === form?.id).length;
+        }
+      } catch {
+        // ignore
+      }
     }
 
     if (count >= form.max_responses) {

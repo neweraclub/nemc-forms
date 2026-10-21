@@ -1,12 +1,9 @@
 import {
   createAnonServerClient,
   createServiceRoleServerClient,
-  getLocalSubmissions,
-  getLocalStoredForms,
-  StoredFormData,
   fetchCloudSubmissions,
 } from './server';
-import { fetchCloudStoredForms, syncLocalFormsWithCloud } from './forms-manager';
+import { fetchCloudStoredForms, StoredFormData } from './forms-manager';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
 
 export interface AdminFormSummary {
@@ -28,14 +25,14 @@ interface RawFormWithNested extends FormRecord {
 
 /**
  * Retrieves all forms with their full list of questions/fields and submissions count.
- * Seamlessly integrates Supabase PostgreSQL, Supabase Cloud Storage (Html_forms registry),
- * and local storage fallback.
+ * 100% cloud-hosted on Supabase (PostgreSQL tables + Supabase Cloud Storage bucket).
+ * Zero local disk reliance.
  */
 export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> {
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   const formsMap = new Map<string, AdminFormWithFields>();
 
-  // 1. Try PostgreSQL if available
+  // 1. Try Supabase PostgreSQL if available
   try {
     const { data: dbForms, error } = await serviceClient
       .from('forms')
@@ -54,10 +51,10 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
       }
     }
   } catch (e) {
-    console.warn('PostgreSQL getAdminFormsWithFields query notice:', e);
+    console.warn('Supabase DB getAdminFormsWithFields query notice:', e);
   }
 
-  // 2. Cloud Storage 'Html_forms' Registry & Local Fallback
+  // 2. Supabase Cloud Storage 'Html_forms' Registry
   let cloudItems: StoredFormData[] | null = null;
   try {
     cloudItems = await fetchCloudStoredForms();
@@ -65,14 +62,15 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
     // ignore
   }
 
-  const storageItems = cloudItems !== null ? cloudItems : getLocalStoredForms();
+  const storageItems = cloudItems || [];
 
   let cloudSubs: SubmissionRecord[] | null = null;
   try {
     cloudSubs = await fetchCloudSubmissions();
-  } catch {}
-  const localSubs = getLocalSubmissions();
-  const allSubs = cloudSubs !== null && cloudSubs.length > 0 ? cloudSubs : localSubs;
+  } catch {
+    // ignore
+  }
+  const allSubs = cloudSubs || [];
 
   for (const item of storageItems) {
     if (item.form?.slug && !formsMap.has(item.form.slug)) {
@@ -104,6 +102,40 @@ export async function getAdminForms(): Promise<AdminFormSummary[]> {
   }));
 }
 
+/**
+ * Get all submissions across all forms directly from Supabase (for Statistics & Global Dashboard).
+ */
+export async function getAllAdminSubmissions(): Promise<SubmissionRecord[]> {
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
+
+  try {
+    const { data: dbSubs, error } = await serviceClient
+      .from('submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && dbSubs && dbSubs.length > 0) {
+      return dbSubs as SubmissionRecord[];
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const cloudSubs = await fetchCloudSubmissions();
+    if (cloudSubs) {
+      return cloudSubs;
+    }
+  } catch {
+    // ignore
+  }
+
+  return [];
+}
+
+/**
+ * Retrieves submissions for a single form by slug directly from Supabase.
+ */
 export async function getAdminSubmissions(slug: string): Promise<{
   form: FormRecord | null;
   fields: FormFieldRecord[];
@@ -141,13 +173,13 @@ export async function getAdminSubmissions(slug: string): Promise<{
       if (subData) submissions = subData as SubmissionRecord[];
     }
   } catch (e) {
-    console.warn('Admin getAdminSubmissions query fallback:', e);
+    console.warn('Admin getAdminSubmissions query notice:', e);
   }
 
-  // Fallback to unified cloud & local registry
+  // Fallback to unified Supabase cloud storage registry
   if (!form) {
     const all = await getAdminFormsWithFields();
-    const found = all.find((item) => item.form.slug === slug);
+    const found = all.find((item) => item.form.slug?.toLowerCase() === slug.toLowerCase());
     if (found) {
       form = found.form;
       fields = found.fields;
@@ -159,8 +191,7 @@ export async function getAdminSubmissions(slug: string): Promise<{
     try {
       cloudSubs = await fetchCloudSubmissions();
     } catch {}
-    const localSubs = getLocalSubmissions();
-    const allSubs = cloudSubs !== null && cloudSubs.length > 0 ? cloudSubs : localSubs;
+    const allSubs = cloudSubs || [];
     submissions = allSubs.filter((s) => s.form_id === form?.id);
   }
 

@@ -1,7 +1,5 @@
 import { FormFieldRecord, FormRecord, SubmissionRecord } from '@/types/form';
 import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
-import path from 'path';
 
 export interface StoredFormData {
   form: FormRecord;
@@ -20,7 +18,7 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  'sb_publishable_ykDYxnsHMXN58NOlvq9Lnw_v9Pv6V--';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5c3lzeXJqcWhxcmNxb2luYmd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NTQ4NjEsImV4cCI6MjEwNDAzMDg2MX0.BYCjCewjcfGMm-fTtuZf2NNiQkfx3n8SD1bhg_MoRJ0';
 
 function createAnonClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -28,43 +26,9 @@ function createAnonClient() {
   });
 }
 
-export function getStorageDir() {
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    return path.join('/tmp', '.local_data');
-  }
-  return path.join(process.cwd(), '.local_data');
-}
-
-export function getLocalFormsFilePath() {
-  return path.join(getStorageDir(), 'custom_forms.json');
-}
-
-export function getLocalSubmissionsFilePath() {
-  return path.join(getStorageDir(), 'submissions.json');
-}
-
-export function ensureLocalStorage() {
-  try {
-    const dir = getStorageDir();
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    const formsFile = getLocalFormsFilePath();
-    if (!fs.existsSync(formsFile)) {
-      fs.writeFileSync(formsFile, JSON.stringify([], null, 2), 'utf-8');
-    }
-    const subsFile = getLocalSubmissionsFilePath();
-    if (!fs.existsSync(subsFile)) {
-      fs.writeFileSync(subsFile, JSON.stringify([]), 'utf-8');
-    }
-  } catch (err) {
-    console.warn('ensureLocalStorage notice:', err);
-  }
-}
-
 /**
  * Fetch forms registry directly from Supabase Storage bucket 'Html_forms'.
- * Guarantees cross-instance and cross-deployment persistence in serverless environments.
+ * 100% cloud-hosted on Supabase.
  */
 export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> {
   const client = createAnonClient();
@@ -88,6 +52,7 @@ export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> 
 
 /**
  * Upload forms registry to Supabase Storage bucket 'Html_forms'.
+ * 100% cloud-hosted on Supabase.
  */
 export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boolean> {
   const client = createAnonClient();
@@ -113,6 +78,7 @@ export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boo
 
 /**
  * Fetch submissions registry directly from Supabase Storage bucket 'Html_forms'.
+ * 100% cloud-hosted on Supabase.
  */
 export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null> {
   const client = createAnonClient();
@@ -136,6 +102,7 @@ export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null
 
 /**
  * Upload submissions registry to Supabase Storage bucket 'Html_forms'.
+ * 100% cloud-hosted on Supabase.
  */
 export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<boolean> {
   const client = createAnonClient();
@@ -159,84 +126,11 @@ export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<bo
   }
 }
 
+// Deprecated local storage shims (retained as in-memory / no-op for backward compatibility)
 export function getLocalStoredForms(): StoredFormData[] {
-  try {
-    ensureLocalStorage();
-    const file = getLocalFormsFilePath();
-    if (!fs.existsSync(file)) {
-      return [];
-    }
-    const raw = fs.readFileSync(file, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [];
 }
-
-export function saveLocalCustomForm(form: FormRecord, fields: FormFieldRecord[]) {
-  try {
-    ensureLocalStorage();
-    const all = getLocalStoredForms();
-    const existingIndex = all.findIndex(
-      (item) => item.form.slug === form.slug || item.form.id === form.id
-    );
-    if (existingIndex >= 0) {
-      all[existingIndex] = { form, fields };
-    } else {
-      all.push({ form, fields });
-    }
-    const file = getLocalFormsFilePath();
-    fs.writeFileSync(file, JSON.stringify(all, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('saveLocalCustomForm fallback warning:', err);
-  }
-}
-
-export function syncLocalFormsWithCloud(forms: StoredFormData[]) {
-  try {
-    ensureLocalStorage();
-    const file = getLocalFormsFilePath();
-    fs.writeFileSync(file, JSON.stringify(forms, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('syncLocalFormsWithCloud warning:', err);
-  }
-}
-
-export function deleteLocalCustomForm(slugOrId: string) {
-  try {
-    ensureLocalStorage();
-    const target = (slugOrId || '').trim().toLowerCase();
-    const all = getLocalStoredForms().filter((item) => {
-      const s = (item.form?.slug || '').trim().toLowerCase();
-      const id = (item.form?.id || '').trim().toLowerCase();
-      return s !== target && id !== target;
-    });
-    const file = getLocalFormsFilePath();
-    fs.writeFileSync(file, JSON.stringify(all, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('deleteLocalCustomForm warning:', err);
-  }
-}
-
-export function deleteLocalSubmissionsForForm(slugOrId: string) {
-  try {
-    ensureLocalStorage();
-    const target = (slugOrId || '').trim().toLowerCase();
-    const subsFile = getLocalSubmissionsFilePath();
-    if (fs.existsSync(subsFile)) {
-      const raw = fs.readFileSync(subsFile, 'utf-8');
-      const subs = JSON.parse(raw);
-      if (Array.isArray(subs)) {
-        const filtered = subs.filter((s) => {
-          const fid = (s.form_id || '').trim().toLowerCase();
-          return fid !== target;
-        });
-        fs.writeFileSync(subsFile, JSON.stringify(filtered, null, 2), 'utf-8');
-      }
-    }
-  } catch (err) {
-    console.warn('deleteLocalSubmissionsForForm warning:', err);
-  }
-}
-
+export function saveLocalCustomForm(_form: FormRecord, _fields: FormFieldRecord[]) {}
+export function syncLocalFormsWithCloud(_forms: StoredFormData[]) {}
+export function deleteLocalCustomForm(_slugOrId: string) {}
+export function deleteLocalSubmissionsForForm(_slugOrId: string) {}

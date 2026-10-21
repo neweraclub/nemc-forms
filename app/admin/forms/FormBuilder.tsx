@@ -302,9 +302,10 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         showAdminToast({
           type: 'success',
           title: isEditing ? 'Formulaire mis à jour' : 'Formulaire créé',
-          message: `Le formulaire "${title}" a été enregistré avec succès.`,
+          message: `Le formulaire "${title}" a été enregistré avec succès dans Supabase.`,
         });
-        window.location.href = '/admin';
+        router.push('/admin');
+        router.refresh();
       } else {
         setError(res.error || 'Erreur lors de l’enregistrement.');
       }
@@ -386,9 +387,21 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           <button
             type="submit"
             disabled={isPending || isDeleting}
-            className="brand-gradient-btn min-h-[44px] px-6 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50"
+            className="brand-gradient-btn min-h-[44px] px-6 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-60 flex items-center gap-2 cursor-pointer transition-all"
           >
-            {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder' : 'Publier le formulaire'}
+            {isPending && (
+              <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            )}
+            <span>
+              {isPending
+                ? 'Publication en cours...'
+                : isEditing
+                ? 'Sauvegarder'
+                : 'Publier le formulaire'}
+            </span>
           </button>
         </div>
       </div>
@@ -914,10 +927,22 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         </Link>
         <button
           type="submit"
-          disabled={isPending}
-          className="brand-gradient-btn min-h-[48px] px-8 py-3 rounded-lg text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50"
+          disabled={isPending || isDeleting}
+          className="brand-gradient-btn min-h-[48px] px-8 py-3 rounded-lg text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-60 flex items-center gap-2 cursor-pointer transition-all"
         >
-          {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
+          {isPending && (
+            <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          )}
+          <span>
+            {isPending
+              ? 'Enregistrement dans Supabase...'
+              : isEditing
+              ? 'Sauvegarder les modifications'
+              : 'Publier le formulaire'}
+          </span>
         </button>
       </div>
 
@@ -1084,6 +1109,36 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
               >
                 Fermer l’aperçu
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Full-Screen Loading Overlay for Form Creation/Update (Instant visual feedback) */}
+      {isPending && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl border border-[#E6DFD5] space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-[#3B33FF]/20" />
+              <div className="w-16 h-16 rounded-full border-4 border-transparent border-t-[#3B33FF] border-r-[#7000FF] animate-spin" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#3B33FF] animate-pulse" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-[#18181B]">
+                {isEditing ? 'Mise à jour dans Supabase...' : 'Publication dans Supabase...'}
+              </h3>
+              <p className="text-xs text-[#71717A] leading-relaxed">
+                Vos champs et questions sont en cours de synchronisation en direct avec la base de données.
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#3B33FF] bg-[#EEF2FF] py-1.5 px-3.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-[#3B33FF] animate-ping" />
+              Connexion Supabase directe
             </div>
           </div>
         </div>

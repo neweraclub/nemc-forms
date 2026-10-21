@@ -14,6 +14,11 @@ interface AdminSidebarProps {
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setNavigatingHref(null);
+  }, [pathname]);
 
   const navItems = [
     {
@@ -150,20 +155,37 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
           {/* Navigation Links */}
           <nav className="p-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition ${item.active
-                    ? 'bg-[#18181B] text-white'
-                    : 'text-[#3F3F46] hover:bg-[#FAF8F5] hover:text-[#18181B]'
+            {navItems.map((item) => {
+              const isNavigating = navigatingHref === item.href;
+              const isSelected = isNavigating || (!navigatingHref && item.active);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={true}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    if (pathname !== item.href) {
+                      setNavigatingHref(item.href);
+                    }
+                  }}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition duration-150 ${
+                    isSelected
+                      ? 'bg-[#18181B] text-white shadow-xs'
+                      : 'text-[#3F3F46] hover:bg-[#FAF8F5] hover:text-[#18181B]'
                   }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            ))}
+                >
+                  <span className="flex items-center">
+                    {item.icon}
+                    {item.label}
+                  </span>
+                  {isNavigating && (
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 

@@ -1,7 +1,13 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { getFormBySlug, createServiceRoleServerClient, saveLocalSubmission, updateLocalSubmissionEmailStatus, getLocalSubmissions } from '@/lib/supabase/server';
+import {
+  getFormBySlug,
+  createServiceRoleServerClient,
+  saveSubmissionToSupabase,
+  updateSubmissionEmailStatusInSupabase,
+  fetchCloudSubmissions,
+} from '@/lib/supabase/server';
 import { buildFormZodSchema } from '@/lib/schema-builder';
 import { hashClientIp, checkRateLimit } from '@/lib/rate-limit';
 import { sendSubmissionEmails } from '@/lib/mailer';
@@ -49,7 +55,7 @@ export async function submitFormAction(
       };
     }
 
-    // 3. Fetch form & fields from database / seed
+    // 3. Fetch form & fields from database / cloud registry
     const { form, fields, state } = await getFormBySlug(slug);
 
     if (!form || !state.isAvailable) {
@@ -59,30 +65,28 @@ export async function submitFormAction(
       };
     }
 
-    // 4. Build runtime dynamic Zod schema and strictly validate
-    const zodSchema = buildFormZodSchema(fields, rawAnswers);
-    const parseResult = zodSchema.safeParse(rawAnswers);
+    // 4. Server-side validation using dynamic Zod schema
+    const schema = buildFormZodSchema(fields, rawAnswers);
+    const parseResult = schema.safeParse(rawAnswers);
 
     if (!parseResult.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of parseResult.error.issues) {
-        const key = issue.path[0];
-        if (typeof key === 'string' && !fieldErrors[key]) {
-          fieldErrors[key] = issue.message;
+        const fieldKey = issue.path[0];
+        if (fieldKey && typeof fieldKey === 'string') {
+          fieldErrors[fieldKey] = issue.message;
         }
       }
       return {
         success: false,
         errors: fieldErrors,
-        generalError: 'Veuillez corriger les champs indiqués ci-dessous.',
+        generalError: 'Certains champs comportent des erreurs. Veuillez les corriger.',
       };
     }
 
-    // Cleaned validated answers (excluding internal honeypot)
-    const validatedData = { ...parseResult.data };
-    delete validatedData['_hp'];
+    const validatedData = parseResult.data;
 
-    // 5. Idempotency Check (double-click protection)
+    // 5. Idempotency Check in Supabase
     const effectiveIdempotencyKey = idempotencyKey || crypto.randomUUID();
     const serviceClient = createServiceRoleServerClient();
 
@@ -102,15 +106,14 @@ export async function submitFormAction(
         };
       }
     } else {
-      const existingLocal = getLocalSubmissions().find(
-        (s) => s.idempotency_key === effectiveIdempotencyKey
-      );
-      if (existingLocal) {
+      const cloudSubs = (await fetchCloudSubmissions()) || [];
+      const existingCloud = cloudSubs.find((s) => s.idempotency_key === effectiveIdempotencyKey);
+      if (existingCloud) {
         return {
           success: true,
-          submissionId: existingLocal.id,
+          submissionId: existingCloud.id,
           message: form.confirmation_message || 'Votre candidature a bien été enregistrée.',
-          emailStatus: existingLocal.email_status,
+          emailStatus: existingCloud.email_status,
         };
       }
     }
@@ -141,34 +144,8 @@ export async function submitFormAction(
       idempotency_key: effectiveIdempotencyKey,
     };
 
-    // 7. Store Submission First (Data Safety: never lost due to SMTP failure)
-    let savedToDb = false;
-    if (serviceClient) {
-      try {
-        const { error: insertErr } = await serviceClient.from('submissions').insert({
-          id: newSubmission.id,
-          form_id: newSubmission.form_id,
-          answers: newSubmission.answers,
-          submitter_email: newSubmission.submitter_email,
-          created_at: newSubmission.created_at,
-          email_status: newSubmission.email_status,
-          ip_hash: newSubmission.ip_hash,
-          user_agent: newSubmission.user_agent,
-          idempotency_key: newSubmission.idempotency_key,
-        });
-        if (!insertErr) {
-          savedToDb = true;
-        } else {
-          console.warn('DB insert error, persisting locally:', insertErr);
-        }
-      } catch (err) {
-        console.warn('DB insert exception, persisting locally:', err);
-      }
-    }
-
-    if (!savedToDb) {
-      saveLocalSubmission(newSubmission);
-    }
+    // 7. Store Submission to Supabase (Zero local disk writes)
+    await saveSubmissionToSupabase(newSubmission);
 
     // 8. Send Emails (Resilient: failure updates status, does not crash response)
     const officialEmail = 'event@new-era-medical-club-univ-ouargla.dz';
@@ -188,19 +165,8 @@ export async function submitFormAction(
       createdAt,
     });
 
-    // Update email status
-    if (savedToDb && serviceClient) {
-      try {
-        await serviceClient
-          .from('submissions')
-          .update({ email_status: emailStatus })
-          .eq('id', submissionId);
-      } catch (err) {
-        console.error('Failed to update email status in DB:', err);
-      }
-    } else {
-      updateLocalSubmissionEmailStatus(submissionId, emailStatus);
-    }
+    // Update email status in Supabase
+    await updateSubmissionEmailStatusInSupabase(submissionId, emailStatus);
 
     return {
       success: true,
