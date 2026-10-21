@@ -46,6 +46,8 @@ export function EmailStudioClient({
   const [selectedFormSlug, setSelectedFormSlug] = useState<string>(() => defaultSlug);
 
   const activeFormWithFields = formsWithFields?.find((f) => f.form.slug === selectedFormSlug);
+  const currentForm: FormRecord | undefined =
+    activeFormWithFields?.form || formsList.find((f) => f.slug === selectedFormSlug);
   const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
 
   // 2. Greeting & Variable Selection State
