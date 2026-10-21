@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { FormRecord } from '@/types/form';
+import { FormRecord, FormFieldRecord } from '@/types/form';
+import { AdminFormWithFields } from '@/lib/supabase/admin';
 import {
   generateAiEmailAction,
   refineAiEmailAction,
@@ -13,18 +14,60 @@ import {
   getHtmlTemplateContentAction,
   insertHtmlTemplateAction,
   deleteHtmlTemplateAction,
-  assignStorageTemplateToFormAction,
 } from '@/app/actions/htmlStorageActions';
 import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
 import { showAdminToast } from '../AdminToast';
 
-interface EmailStudioClientProps {
-  forms: FormRecord[];
+export interface EmailStudioClientProps {
+  formsWithFields?: AdminFormWithFields[];
+  forms?: FormRecord[];
 }
 
-export function EmailStudioClient({ forms }: EmailStudioClientProps) {
-  // Input parameters
+export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientProps) {
+  // Normalize forms list
+  const formsList: FormRecord[] = formsWithFields
+    ? formsWithFields.map((f) => f.form)
+    : forms || [];
+
+  // 1. Target Form Selection State (Always first)
+  const [selectedFormSlug, setSelectedFormSlug] = useState<string>(() => formsList[0]?.slug || '');
+
+  const activeFormWithFields = formsWithFields?.find((f) => f.form.slug === selectedFormSlug);
+  const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
+
+  // 2. Greeting & Variable Selection State
+  const [greetingFormat, setGreetingFormat] = useState<'fname' | 'both' | 'formal'>('fname');
+  const [selectedFieldKeys, setSelectedFieldKeys] = useState<string[]>(() => {
+    if (currentFields.length > 0) {
+      const initial = currentFields
+        .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
+        .map((f) => f.key);
+      return initial.length > 0 ? initial : currentFields.slice(0, 3).map((f) => f.key);
+    }
+    return ['full_name', 'email'];
+  });
+
+  // When selected form changes, update active fields and default filename
+  const handleFormChange = (slug: string) => {
+    setSelectedFormSlug(slug);
+    setSaveFileName(`${slug}.html`);
+    const target = formsWithFields?.find((f) => f.form.slug === slug);
+    if (target && target.fields.length > 0) {
+      const keys = target.fields
+        .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
+        .map((f) => f.key);
+      setSelectedFieldKeys(keys.length > 0 ? keys : target.fields.slice(0, 3).map((f) => f.key));
+    }
+  };
+
+  const toggleFieldKey = (key: string) => {
+    setSelectedFieldKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  // 3. Message Parameters State
   const [subject, setSubject] = useState("Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie");
   const [contextType, setContextType] = useState('Simulation ECOS');
   const [keyInfo, setKeyInfo] = useState('Lundi 12 octobre 2026 à 08h00 pile. Effectif total de 25 candidats. Salle TD 4.');
@@ -46,19 +89,32 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
   const [userSuggestion, setUserSuggestion] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Test Email & Form Attachment State
+  // Test Email & File Name State
   const [testEmailAddress, setTestEmailAddress] = useState('event@new-era-medical-club-univ-ouargla.dz');
-  const [selectedFormSlug, setSelectedFormSlug] = useState<string>(forms[0]?.slug || '');
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Supabase Storage 'Html_forms' state
   const [storageTemplates, setStorageTemplates] = useState<HtmlStorageItem[]>([]);
   const [isLoadingStorage, setIsLoadingStorage] = useState(true);
   const [saveFileName, setSaveFileName] = useState(
-    forms[0]?.slug ? `${forms[0].slug}.html` : 'modele.html'
+    formsList[0]?.slug ? `${formsList[0].slug}.html` : 'recrutement-2026.html'
   );
   const [isSavingToStorage, setIsSavingToStorage] = useState(false);
   const [storageDrawerOpen, setStorageDrawerOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [isDeletingFile, setIsDeletingFile] = useState(false);
+
+  // Close delete modal on Escape key
+  useEffect(() => {
+    if (!fileToDelete) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeletingFile) {
+        setFileToDelete(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fileToDelete, isDeletingFile]);
 
   const refreshStorageList = async () => {
     setIsLoadingStorage(true);
@@ -90,6 +146,11 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     const res = await insertHtmlTemplateAction(name, emailResult.html);
     setIsSavingToStorage(false);
     if (res.success) {
+      showAdminToast({
+        type: 'success',
+        title: 'Modèle inséré dans le Bucket',
+        message: `Le fichier "${name}" est désormais persisté dans le bucket Supabase "Html_forms".`,
+      });
       setStatusMessage({
         type: 'success',
         text: `✓ Modèle inséré avec succès dans le bucket 'Html_forms' (${res.path}).`,
@@ -116,32 +177,23 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         plainText: 'Chargé depuis le bucket Html_forms',
       });
       setSaveFileName(fileName);
+      showAdminToast({
+        type: 'info',
+        title: 'Modèle chargé',
+        message: `Le modèle "${fileName}" a été injecté dans le studio.`,
+      });
       setStatusMessage({
         type: 'success',
-        text: `Modèle '${fileName}' chargé avec succès dans l'éditeur.`,
+        text: `✓ Modèle '${fileName}' chargé avec succès depuis le bucket 'Html_forms'.`,
       });
+      setStorageDrawerOpen(false);
     } else {
       setStatusMessage({
         type: 'error',
-        text: res.error || `Impossible de charger '${fileName}'.`,
+        text: res.error || "Erreur lors du chargement du fichier.",
       });
     }
   };
-
-  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-  const [isDeletingFile, setIsDeletingFile] = useState(false);
-
-  // Close delete modal on Escape key
-  useEffect(() => {
-    if (!fileToDelete) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isDeletingFile) {
-        setFileToDelete(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fileToDelete, isDeletingFile]);
 
   const handleConfirmDeleteFromStorage = async () => {
     if (!fileToDelete) return;
@@ -167,35 +219,6 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         text: res.error || `Erreur lors de la suppression de '${deletedName}'.`,
       });
     }
-  };
-
-  const handleAssignStorageToForm = async (fileName: string, targetSlug: string) => {
-    if (!targetSlug) return;
-    const res = await assignStorageTemplateToFormAction(targetSlug, fileName, subject);
-    if (res.success) {
-      showAdminToast({
-        type: 'success',
-        title: 'Modèle lié au formulaire',
-        message: `Le modèle "${fileName}" a été lié avec succès au formulaire "${targetSlug}".`,
-      });
-      setStatusMessage({
-        type: 'success',
-        text: `✓ Modèle '${fileName}' lié avec succès au formulaire '${targetSlug}' !`,
-      });
-    } else {
-      setStatusMessage({
-        type: 'error',
-        text: res.error || `Erreur lors de la liaison au formulaire.`,
-      });
-    }
-  };
-
-  // Quick Preset Handlers
-  const applyPreset = (preset: { subject: string; context: string; key: string; notes: string }) => {
-    setSubject(preset.subject);
-    setContextType(preset.context);
-    setKeyInfo(preset.key);
-    setExtraNotes(preset.notes);
   };
 
   const PRESETS = [
@@ -229,10 +252,25 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     },
   ];
 
-  // Generate Email
+  const applyPreset = (preset: (typeof PRESETS)[0]) => {
+    setSubject(preset.subject);
+    setContextType(preset.context);
+    setKeyInfo(preset.key);
+    setExtraNotes(preset.notes);
+  };
+
+  // Generate Email with selected form and custom chosen fields
   const handleGenerate = () => {
     setStatusMessage(null);
     startGenerating(async () => {
+      const selectedFieldsData = currentFields
+        .filter((f) => selectedFieldKeys.includes(f.key))
+        .map((f) => ({
+          key: f.key,
+          label: f.label,
+          placeholder: f.placeholder || undefined,
+        }));
+
       const res = await generateAiEmailAction({
         subject,
         contextType,
@@ -242,10 +280,19 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         tone,
         designMode,
         infoPresentation,
+        selectedFormTitle: activeFormWithFields?.form.title || 'Formulaire New Era Club',
+        selectedFormSlug,
+        greetingFormat,
+        selectedFields: selectedFieldsData,
       });
 
       if (res.success && res.result) {
         setEmailResult(res.result);
+        showAdminToast({
+          type: 'success',
+          title: 'Courriel IA généré',
+          message: `Le modèle a été généré avec les variables sélectionnées pour "${activeFormWithFields?.form.title || selectedFormSlug}".`,
+        });
         setStatusMessage({ type: 'success', text: `Email généré avec succès en mode ${designMode} !` });
       } else {
         setStatusMessage({ type: 'error', text: res.error || 'Erreur lors de la génération avec l’IA.' });
@@ -276,6 +323,11 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     if (!emailResult) return;
     navigator.clipboard.writeText(emailResult.html);
     setCopiedCode(true);
+    showAdminToast({
+      type: 'info',
+      title: 'Code copié',
+      message: 'Le code HTML complet a été copié dans votre presse-papier.',
+    });
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -286,6 +338,11 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     startSendingTest(async () => {
       const res = await sendAiTestEmailAction(testEmailAddress, emailResult.subject, emailResult.html);
       if (res.success) {
+        showAdminToast({
+          type: 'success',
+          title: 'Email de test envoyé',
+          message: `Test transmis avec succès à ${testEmailAddress}.`,
+        });
         setStatusMessage({ type: 'success', text: `Email de test envoyé avec succès à ${testEmailAddress} !` });
       } else {
         setStatusMessage({ type: 'error', text: res.error || 'Échec de l’envoi de l’email de test.' });
@@ -300,6 +357,11 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     startAttaching(async () => {
       const res = await attachAiEmailToFormAction(selectedFormSlug, emailResult.subject, emailResult.html);
       if (res.success) {
+        showAdminToast({
+          type: 'success',
+          title: 'Modèle associé au formulaire',
+          message: `Le modèle est désormais configuré pour le formulaire "${selectedFormSlug}".`,
+        });
         setStatusMessage({
           type: 'success',
           text: `Ce template officiel a été associé au formulaire "${selectedFormSlug}". Les futurs candidats recevront ce mail !`,
@@ -318,23 +380,34 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2.5 h-2.5 rounded-full bg-[#E53888] animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-wider text-[#3B33FF]">
-              Gemini 3.8 Flash &bull; Intelligence Artificielle
+              Gemini 3.8 Flash &bull; Studio d&apos;Emails Officiel
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#18181B]">
             Studio de Modèles d’Emails IA
           </h1>
           <p className="text-xs sm:text-sm text-[#52525B] mt-0.5 max-w-2xl">
-            Générez automatiquement des emails d’accusé de réception et de convocation au design sombre officiel du Club Médical New Era, testez-les en direct et personnalisez-les par de simples suggestions.
+            Sélectionnez un formulaire, choisissez les variables exactes à injecter, et laissez Gemini rédiger un courriel HTML prêt pour la production.
           </p>
         </div>
 
-        {emailResult && (
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setStorageDrawerOpen(true)}
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5] transition flex items-center gap-1.5 shadow-2xs"
+          >
+            <span>📁 Modèles du Bucket</span>
+            <span className="px-1.5 py-0.2 bg-[#FAF6EE] text-[#3B33FF] rounded text-[10px] font-bold border border-[#E6DFD5]">
+              {storageTemplates.length}
+            </span>
+          </button>
+
+          {emailResult && (
             <button
               type="button"
               onClick={handleCopyHtml}
-              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5] transition flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5] transition flex items-center gap-1.5 shadow-2xs"
             >
               {copiedCode ? (
                 <>
@@ -352,8 +425,8 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Status Alert Toast */}
@@ -376,536 +449,571 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         </div>
       )}
 
-      {/* Main Grid: Left Controls (40%) & Right Studio Preview (60%) */}
+      {/* Main Grid: Left Controls (42%) & Right Studio Preview (58%) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ==================================================================== */}
         {/* LEFT COLUMN: Input Form & Prompt Parameters                          */}
         {/* ==================================================================== */}
         <div className="lg:col-span-5 bg-white border border-[#E6DFD5] rounded-xl p-5 sm:p-6 shadow-xs space-y-5">
-          <div>
-            <h2 className="text-sm font-bold text-[#18181B] mb-1">
-              Paramètres du message
-            </h2>
-            <p className="text-xs text-[#52525B]">
-              Choisissez un modèle type ou décrivez vos consignes pour que l’IA rédige le contenu exact.
-            </p>
-          </div>
-
-          {/* Quick Presets */}
-          <div>
-            <label className="block text-xs font-semibold text-[#18181B] mb-2">
-              Modèles rapides (suggestions de départ) :
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => applyPreset(p)}
-                  className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-[#E6DFD5] bg-[#FAF8F5] hover:bg-[#F4F0EA] text-[#18181B] transition"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Subject Field */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Sujet de l’email <span className="text-[#E53888]">*</span>
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Ex: Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie"
-              className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
-          </div>
-
-          {/* Context / Event Type */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Contexte / Événement
-            </label>
-            <input
-              type="text"
-              value={contextType}
-              onChange={(e) => setContextType(e.target.value)}
-              placeholder="Ex: Simulation ECOS, Recrutement, Workshop Urgences..."
-              className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
-          </div>
-
-          {/* Key Information Box */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Informations clés (Date, Heure, Lieu, Salle, Effectif) <span className="text-[#E53888]">*</span>
-            </label>
-            <textarea
-              rows={3}
-              value={keyInfo}
-              onChange={(e) => setKeyInfo(e.target.value)}
-              placeholder="Ex: Lundi 12 octobre 2026 à 08h00. 25 candidats. Salle TD 4."
-              className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
-            <p className="text-[11px] text-[#71717A]">
-              Ces informations seront insérées dans l’encadré sombre officiel &quot;INFORMATIONS CLÉS&quot;.
-            </p>
-          </div>
-
-          {/* Extra Notes / Optional Instructions */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Consignes & Détails optionnels
-            </label>
-            <textarea
-              rows={2}
-              value={extraNotes}
-              onChange={(e) => setExtraNotes(e.target.value)}
-              placeholder="Ex: Venir 15 min en avance avec carte d'étudiant et blouse blanche..."
-              className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
-          </div>
-
-          {/* Design Mode Palette */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Mode visuel & Thème
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'cream', label: 'Crème (Chaud)', dot: 'bg-[#F0E8DB] border-[#E3D8C6]' },
-                { id: 'dark', label: 'Sombre (Nocturne)', dot: 'bg-[#0B0A11] border-[#3B2E58]' },
-                { id: 'light', label: 'Clair (Minimal)', dot: 'bg-white border-[#E6DFD5]' },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setDesignMode(m.id as 'cream' | 'dark' | 'light')}
-                  className={`py-2 px-2 text-xs font-semibold rounded-lg border flex items-center justify-center gap-1.5 transition ${
-                    designMode === m.id
-                      ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF]'
-                      : 'border-[#E6DFD5] bg-[#FAF8F5] text-[#52525B] hover:text-[#18181B]'
-                  }`}
-                >
-                  <span className={`w-3 h-3 rounded-full border ${m.dot}`} />
-                  <span>{m.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Info Presentation Style */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Présentation des informations clés
-            </label>
-            <select
-              value={infoPresentation}
-              onChange={(e) => setInfoPresentation(e.target.value as 'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style')}
-              className="w-full px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg bg-white"
-            >
-              <option value="divider table">Tableau épuré avec séparateurs (divider table)</option>
-              <option value="2x2 grid of small blocks">Grille 2x2 de cartes compactes</option>
-              <option value="vertical timeline">Frise chronologique verticale (timeline)</option>
-              <option value="ticket style">Style Billet / Ticket d&apos;accès découpé</option>
-            </select>
-          </div>
-
-          {/* Important Note Callout */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Avertissement important (encadré d&apos;alerte)
-            </label>
-            <input
-              type="text"
-              value={importantNote}
-              onChange={(e) => setImportantNote(e.target.value)}
-              placeholder="Ex: Tout retard entraîne l'exclusion de l'épreuve."
-              className="w-full px-3.5 py-2 text-xs border border-[#D4D4D8] rounded-lg"
-            />
-          </div>
-
-          {/* Tone Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-[#18181B]">
-              Ton du courriel
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'officiel', label: 'Académique' },
-                { id: 'chaleureux', label: 'Bienveillant' },
-                { id: 'urgent', label: 'Rappel urgent' },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTone(t.id as 'officiel' | 'chaleureux' | 'urgent')}
-                  className={`py-2 px-2 text-xs font-semibold rounded-lg border text-center transition ${
-                    tone === t.id
-                      ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF]'
-                      : 'border-[#E6DFD5] bg-[#FAF8F5] text-[#52525B] hover:text-[#18181B]'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Personalization tokens helper */}
-          <div className="p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-lg">
-            <p className="text-[11px] font-semibold text-[#18181B] mb-1">
-              Variables de personnalisation automatiques :
-            </p>
-            <div className="flex flex-wrap gap-1 text-[10px] font-mono text-[#52525B]">
-              <span className="bg-white px-1.5 py-0.5 rounded border border-[#E6DFD5]">&#123;&#123;nom&#125;&#125;</span>
-              <span className="bg-white px-1.5 py-0.5 rounded border border-[#E6DFD5]">&#123;&#123;prenom&#125;&#125;</span>
-              <span className="bg-white px-1.5 py-0.5 rounded border border-[#E6DFD5]">&#123;&#123;email&#125;&#125;</span>
-              <span className="bg-white px-1.5 py-0.5 rounded border border-[#E6DFD5]">&#123;&#123;confirmation_id&#125;&#125;</span>
-              <span className="bg-white px-1.5 py-0.5 rounded border border-[#E6DFD5]">&#123;&#123;reponses&#125;&#125;</span>
-            </div>
-            <p className="text-[10px] text-[#71717A] mt-1.5">
-              Ces balises sont automatiquement remplacées lors de l&apos;envoi réel au candidat.
-            </p>
-          </div>
-
-          {/* Generate Button */}
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating || !subject.trim()}
-            className="brand-gradient-btn w-full min-h-[46px] px-6 py-3 rounded-lg text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isGenerating ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Génération par Gemini 3.8 Flash...</span>
-              </>
-            ) : (
-              <>
-                <span>✨ Générer le template avec l’IA</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* ==================================================================== */}
-        {/* RIGHT COLUMN: Studio Workspace & Interactive Refinement              */}
-        {/* ==================================================================== */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Storage Quick Summary Header */}
-          <div className="bg-white border border-[#E6DFD5] rounded-xl p-3.5 flex items-center justify-between text-xs shadow-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
-              <span className="font-bold text-[#18181B]">
-                Bucket Supabase <code>Html_forms</code> :
-              </span>
-              <span className="font-semibold text-[#52525B]">
-                {storageTemplates.length} modèle(s) sauvegardé(s)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStorageDrawerOpen(!storageDrawerOpen)}
-                className="px-3 py-1.5 rounded-lg border border-[#E6DFD5] bg-[#FAF8F5] hover:bg-white text-xs font-semibold text-[#18181B] transition flex items-center gap-1.5"
-              >
-                <span>📁 {storageDrawerOpen ? 'Masquer la bibliothèque' : 'Ouvrir la bibliothèque'}</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-[#3B33FF] text-white text-[10px]">
-                  {storageTemplates.length}
+          {/* STEP 1: TARGET FORM SELECTION (Always First) */}
+          <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#18181B] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  1
                 </span>
-              </button>
-              <button
-                type="button"
-                onClick={refreshStorageList}
-                disabled={isLoadingStorage}
-                className="p-1.5 text-[#71717A] hover:text-[#18181B] rounded hover:bg-[#FAF8F5]"
-                title="Actualiser la liste"
-              >
-                🔄
-              </button>
-            </div>
-          </div>
-
-          {/* Storage Drawer / Library List */}
-          {storageDrawerOpen && (
-            <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-[#18181B] uppercase tracking-wider">
-                    Modèles disponibles dans le Bucket <code>Html_forms</code>
-                  </h4>
-                  <p className="text-[11px] text-[#71717A]">
-                    Sélectionnez un modèle pour le prévisualiser dans le studio ou le lier directement à un formulaire.
-                  </p>
-                </div>
+                <label htmlFor="target-form-select" className="text-xs font-bold text-[#18181B] uppercase tracking-wide">
+                  Formulaire cible associé <span className="text-[#DC2626]">*</span>
+                </label>
               </div>
 
-              {storageTemplates.length === 0 ? (
-                <div className="bg-white p-6 rounded-lg border border-[#E6DFD5] text-center text-xs text-[#71717A]">
-                  Aucun fichier HTML dans le bucket <code>Html_forms</code>. Générez un email et cliquez sur &quot;Insérer dans Html_forms&quot;.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
-                  {storageTemplates.map((item) => (
-                    <div
-                      key={item.name}
-                      className="bg-white p-3 rounded-lg border border-[#E6DFD5] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5 overflow-hidden">
-                        <span className="text-base shrink-0">📄</span>
-                        <div className="truncate">
-                          <span className="font-bold text-[#18181B] block truncate font-mono">
-                            {item.name}
-                          </span>
-                          <span className="text-[10px] text-[#71717A]">
-                            {Math.round((item.size || 0) / 1024)} Ko &bull; Mis à jour{' '}
-                            {item.updated_at ? new Date(item.updated_at).toLocaleDateString('fr-FR') : 'Récemment'}
-                          </span>
-                        </div>
-                      </div>
+              {activeFormWithFields && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                  activeFormWithFields.form.status === 'open'
+                    ? 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'
+                    : 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'
+                }`}>
+                  {activeFormWithFields.form.status.toUpperCase()}
+                </span>
+              )}
+            </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleLoadFromStorage(item.name)}
-                          className="px-2.5 py-1 text-xs font-semibold text-[#3B33FF] bg-[#FAF8F5] hover:bg-[#3B33FF]/10 rounded border border-[#E6DFD5] transition"
-                        >
-                          👁️ Charger dans Studio
-                        </button>
-                        {forms.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => handleAssignStorageToForm(item.name, selectedFormSlug)}
-                            disabled={!selectedFormSlug}
-                            className="px-2.5 py-1 text-xs font-semibold text-[#059669] bg-[#10B981]/10 hover:bg-[#10B981]/20 rounded transition"
-                            title={`Lier au formulaire ${selectedFormSlug}`}
-                          >
-                            🔗 Lier à {selectedFormSlug}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setFileToDelete(item.name)}
-                          className="px-2 py-1 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded transition"
-                          title="Supprimer du bucket"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+            <div className="space-y-1.5">
+              <select
+                id="target-form-select"
+                value={selectedFormSlug}
+                onChange={(e) => handleFormChange(e.target.value)}
+                className="w-full min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] shadow-2xs"
+              >
+                {formsList.map((f) => (
+                  <option key={f.id} value={f.slug}>
+                    {f.title} ({f.slug})
+                  </option>
+                ))}
+              </select>
+
+              {activeFormWithFields && (
+                <div className="text-[11px] text-[#71717A] flex items-center gap-2 flex-wrap pt-0.5">
+                  <span>URL publique : <code className="font-mono text-[#18181B]">/f/{selectedFormSlug}</code></span>
+                  <span>&bull;</span>
+                  <span>{currentFields.length} question(s) configurée(s)</span>
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {!emailResult ? (
-            /* Empty State */
-            <div className="bg-white border border-[#E6DFD5] rounded-xl p-8 sm:p-12 text-center shadow-xs">
-              <div className="w-14 h-14 rounded-2xl bg-[#3B33FF]/10 text-[#3B33FF] flex items-center justify-center mx-auto mb-4">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+          {/* STEP 2: FIELD SELECTION & SALUTATION (Strict Non-Random Variables) */}
+          <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#3B33FF] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  2
+                </span>
+                <h3 className="text-xs font-bold text-[#18181B] uppercase tracking-wide">
+                  Variables &amp; Salutation
+                </h3>
               </div>
-              <h3 className="text-base font-bold text-[#18181B] mb-1">
-                Aucun email généré pour l&apos;instant
-              </h3>
-              <p className="text-xs sm:text-sm text-[#52525B] max-w-md mx-auto mb-6">
-                Renseignez le sujet et les informations clés sur le panneau de gauche, puis cliquez sur &quot;Générer le template avec l’IA&quot; pour obtenir le rendu visuel Club Médical New Era.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="text-[11px] font-semibold text-[#3B33FF] bg-[#3B33FF]/10 px-2 py-0.5 rounded-full shrink-0">
+                {selectedFieldKeys.length} sélectionnée(s)
+              </span>
+            </div>
+
+            {/* Salutation format selection */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-[#52525B]">
+                Formule de salutation du candidat :
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                  className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-[#18181B] hover:bg-[#27272A] transition"
+                  onClick={() => setGreetingFormat('fname')}
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
+                    greetingFormat === 'fname'
+                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
+                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
+                  }`}
                 >
-                  Générer l&apos;exemple ECOS maintenant
+                  <div className="font-bold">Prénom seul</div>
+                  <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125;,</div>
                 </button>
-                {storageTemplates.length > 0 && (
+
+                <button
+                  type="button"
+                  onClick={() => setGreetingFormat('both')}
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
+                    greetingFormat === 'both'
+                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
+                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
+                  }`}
+                >
+                  <div className="font-bold">Prénom &amp; Nom</div>
+                  <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125; &#123;&#123;nom&#125;&#125;,</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGreetingFormat('formal')}
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
+                    greetingFormat === 'formal'
+                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
+                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
+                  }`}
+                >
+                  <div className="font-bold">Formel / Nom</div>
+                  <div className="text-[10px] opacity-75 font-mono">Cher(&egrave;re) &#123;&#123;nom&#125;&#125;,</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Questions / Fields Selector */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-semibold text-[#52525B]">
+                  Champs du formulaire à injecter dans le courriel :
+                </label>
+                {currentFields.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => handleLoadFromStorage(storageTemplates[0].name)}
-                    className="px-4 py-2.5 rounded-lg text-xs font-semibold text-[#18181B] bg-white border border-[#E6DFD5] hover:bg-[#FAF8F5] transition"
+                    onClick={() => {
+                      if (selectedFieldKeys.length === currentFields.length) {
+                        setSelectedFieldKeys(['full_name', 'email']);
+                      } else {
+                        setSelectedFieldKeys(currentFields.map((f) => f.key));
+                      }
+                    }}
+                    className="text-[10px] font-semibold text-[#3B33FF] hover:underline"
                   >
-                    Ouvrir &apos;{storageTemplates[0].name}&apos; depuis le Cloud
+                    {selectedFieldKeys.length === currentFields.length ? 'Sélection min.' : 'Tout sélectionner'}
                   </button>
                 )}
               </div>
+
+              {currentFields.length === 0 ? (
+                <p className="text-xs text-[#71717A] italic p-3 bg-white rounded-lg border border-[#E6DFD5]">
+                  Aucune question personnalisée trouvée pour ce formulaire. Les variables par défaut &#123;&#123;prenom&#125;&#125; et &#123;&#123;email&#125;&#125; seront utilisées.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 p-2.5 bg-white rounded-lg border border-[#E6DFD5] max-h-48 overflow-y-auto">
+                  {currentFields.map((f) => {
+                    const isChecked = selectedFieldKeys.includes(f.key);
+                    return (
+                      <button
+                        key={f.id || f.key}
+                        type="button"
+                        onClick={() => toggleFieldKey(f.key)}
+                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition ${
+                          isChecked
+                            ? 'bg-[#3B33FF]/10 border-[#3B33FF] text-[#18181B] font-semibold shadow-2xs'
+                            : 'bg-[#FAF8F5] border-[#E6DFD5] text-[#71717A] hover:border-[#D4D4D8]'
+                        }`}
+                        title={`Champ: ${f.label} (clé: ${f.key})`}
+                      >
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
+                          isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
+                        }`}>
+                          {isChecked ? '✓' : ''}
+                        </span>
+                        <span>{f.label}</span>
+                        <code className="text-[10px] text-[#71717A] font-mono">&#123;&#123;{f.key}&#125;&#125;</code>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className="text-[11px] text-[#71717A] pt-0.5">
+                💡 Seules ces variables réelles sélectionnées seront transmises à Gemini pour être insérées précisément dans le template.
+              </p>
+            </div>
+          </div>
+
+          {/* STEP 3: MESSAGE PARAMETERS */}
+          <div className="space-y-4 pt-1">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#18181B] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                3
+              </span>
+              <h3 className="text-xs font-bold text-[#18181B] uppercase tracking-wide">
+                Paramètres du message &amp; Consignes IA
+              </h3>
+            </div>
+
+            {/* Quick Presets */}
+            <div>
+              <label className="block text-xs font-semibold text-[#52525B] mb-1.5">
+                Modèles rapides (suggestions de départ) :
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-[#E6DFD5] bg-[#FAF8F5] hover:bg-[#F4F0EA] text-[#18181B] transition"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subject Field */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Sujet de l’email <span className="text-[#DC2626]">*</span>
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Ex: Confirmation d'inscription — ECOS Hépato-Gastro-Entérologie"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              />
+            </div>
+
+            {/* Context / Event Type */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Contexte / Événement
+              </label>
+              <input
+                type="text"
+                value={contextType}
+                onChange={(e) => setContextType(e.target.value)}
+                placeholder="Ex: Simulation ECOS, Recrutement, Workshop Urgences..."
+                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              />
+            </div>
+
+            {/* Key Information Box */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Informations clés (Date, Heure, Lieu, Salle, Effectif) <span className="text-[#DC2626]">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={keyInfo}
+                onChange={(e) => setKeyInfo(e.target.value)}
+                placeholder="Ex: Lundi 12 octobre 2026 à 08h00. 25 candidats. Salle TD 4."
+                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              />
+            </div>
+
+            {/* Important Note */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Note importante / Consigne stricte (ex: exclusion en cas de retard)
+              </label>
+              <input
+                type="text"
+                value={importantNote}
+                onChange={(e) => setImportantNote(e.target.value)}
+                placeholder="Ex: Tout retard entraîne l'exclusion de l'épreuve."
+                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              />
+            </div>
+
+            {/* Extra Notes */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Consignes supplémentaires (À apporter, tenue, etc.)
+              </label>
+              <textarea
+                rows={2}
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                placeholder="Ex: Arriver 15 min en avance avec carte d'étudiant et tenue complète."
+                className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              />
+            </div>
+
+            {/* Tone Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Tonalité rédactionnelle :
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['officiel', 'chaleureux', 'urgent'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTone(t)}
+                    className={`py-2 px-3 rounded-lg text-xs font-medium border text-center capitalize transition ${
+                      tone === t
+                        ? 'bg-[#18181B] text-white border-[#18181B]'
+                        : 'bg-white text-[#52525B] border-[#D4D4D8] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Design Mode Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Thème graphique &amp; Palette :
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDesignMode('cream')}
+                  className={`p-2.5 rounded-lg border text-left transition ${
+                    designMode === 'cream'
+                      ? 'border-[#3B33FF] bg-[#F0E8DB]/60 ring-1 ring-[#3B33FF]'
+                      : 'border-[#D4D4D8] bg-[#FAF8F5] hover:bg-white'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-[#1B1740]">Crème Luxe</div>
+                  <div className="text-[10px] text-[#7A7390]">Palette chaleureuse</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDesignMode('dark')}
+                  className={`p-2.5 rounded-lg border text-left transition ${
+                    designMode === 'dark'
+                      ? 'border-[#3B33FF] bg-[#161326] text-white ring-1 ring-[#3B33FF]'
+                      : 'border-[#D4D4D8] bg-[#161326]/90 text-white hover:bg-[#161326]'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-white">Nuit High-Tech</div>
+                  <div className="text-[10px] text-[#A1A1AA]">Sombre officiel</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDesignMode('light')}
+                  className={`p-2.5 rounded-lg border text-left transition ${
+                    designMode === 'light'
+                      ? 'border-[#3B33FF] bg-white ring-1 ring-[#3B33FF]'
+                      : 'border-[#D4D4D8] bg-white hover:bg-[#FAF8F5]'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-[#18181B]">Blanc Épuré</div>
+                  <div className="text-[10px] text-[#71717A]">Minimaliste</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Info Presentation Style */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#18181B]">
+                Présentation des informations clés :
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'divider table', label: 'Tableau avec lignes' },
+                  { id: '2x2 grid of small blocks', label: 'Grille 2x2 en cartes' },
+                  { id: 'vertical timeline', label: 'Chronologie verticale' },
+                  { id: 'ticket style', label: 'Style Billet / Ticket' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setInfoPresentation(st.id as typeof infoPresentation)}
+                    className={`p-2 rounded-lg text-xs font-medium border text-left transition ${
+                      infoPresentation === st.id
+                        ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF] font-semibold'
+                        : 'border-[#D4D4D8] bg-white text-[#52525B] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isGenerating || !subject.trim() || !keyInfo.trim()}
+                className="brand-gradient-btn w-full min-h-[48px] py-3 px-4 rounded-xl text-sm font-bold text-white shadow-md focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span>Génération en cours par Gemini...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    <span>Générer l&apos;email avec Gemini AI</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================================================================== */}
+        {/* RIGHT COLUMN: Studio Live Preview & Clean Actions                    */}
+        {/* ==================================================================== */}
+        <div className="lg:col-span-7 space-y-4">
+          {!emailResult ? (
+            <div className="bg-white border-2 border-dashed border-[#D4D4D8] rounded-2xl p-10 sm:p-14 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-[#3B33FF]/10 text-[#3B33FF] mx-auto flex items-center justify-center text-2xl shadow-inner">
+                ✉️
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-bold text-[#18181B]">
+                  Aucun email généré pour l’instant
+                </h3>
+                <p className="text-xs sm:text-sm text-[#71717A] max-w-md mx-auto">
+                  Sélectionnez votre formulaire à gauche, choisissez les variables de personnalisation souhaitées, puis cliquez sur <strong>&quot;Générer avec Gemini AI&quot;</strong>.
+                </p>
+              </div>
             </div>
           ) : (
-            /* Generated Email Studio */
-            <div className="bg-white border border-[#E6DFD5] rounded-xl overflow-hidden shadow-xs">
-              {/* Studio Toolbar */}
+            <div className="bg-white border border-[#E6DFD5] rounded-2xl overflow-hidden shadow-xs space-y-0">
+              {/* Studio Header Bar */}
               <div className="p-4 border-b border-[#E6DFD5] bg-[#FAF8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#18181B]">Aperçu de l&apos;email</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#10B981]/10 text-[#059669]">
-                    {emailResult.badge || 'New Era Club'}
-                  </span>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#3B33FF]/10 text-[#3B33FF]">
+                      {emailResult.badge || 'OFFICIEL'}
+                    </span>
+                    <span className="text-xs font-bold text-[#18181B] truncate">
+                      {emailResult.subject}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#71717A] truncate">
+                    Pré-en-tête : {emailResult.preheader}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Tabs: Preview vs Code */}
-                  <div className="flex items-center border border-[#E6DFD5] rounded-lg bg-white p-0.5 text-xs font-semibold">
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Tab Preview vs Code */}
+                  <div className="bg-white border border-[#E6DFD5] rounded-lg p-0.5 flex">
                     <button
                       type="button"
                       onClick={() => setActiveTab('preview')}
-                      className={`px-3 py-1 rounded-md transition ${
-                        activeTab === 'preview' ? 'bg-[#18181B] text-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                        activeTab === 'preview'
+                          ? 'bg-[#18181B] text-white'
+                          : 'text-[#71717A] hover:text-[#18181B]'
                       }`}
                     >
-                      Aperçu Visuel
+                      Aperçu
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('code')}
-                      className={`px-3 py-1 rounded-md transition ${
-                        activeTab === 'code' ? 'bg-[#18181B] text-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                        activeTab === 'code'
+                          ? 'bg-[#18181B] text-white'
+                          : 'text-[#71717A] hover:text-[#18181B]'
                       }`}
                     >
                       Code HTML
                     </button>
                   </div>
 
-                  {/* Device Switcher (in preview mode) */}
+                  {/* Device Toggle */}
                   {activeTab === 'preview' && (
-                    <div className="flex items-center border border-[#E6DFD5] rounded-lg bg-white p-0.5 text-xs font-semibold">
+                    <div className="bg-white border border-[#E6DFD5] rounded-lg p-0.5 flex">
                       <button
                         type="button"
                         onClick={() => setPreviewDevice('desktop')}
-                        title="Vue Ordinateur"
-                        className={`p-1 rounded-md transition ${
-                          previewDevice === 'desktop' ? 'bg-[#3B33FF]/15 text-[#3B33FF]' : 'text-[#71717A]'
+                        className={`p-1 rounded text-xs transition ${
+                          previewDevice === 'desktop' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
                         }`}
+                        title="Vue Ordinateur"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
+                        🖥️
                       </button>
                       <button
                         type="button"
                         onClick={() => setPreviewDevice('mobile')}
-                        title="Vue Mobile"
-                        className={`p-1 rounded-md transition ${
-                          previewDevice === 'mobile' ? 'bg-[#3B33FF]/15 text-[#3B33FF]' : 'text-[#71717A]'
+                        className={`p-1 rounded text-xs transition ${
+                          previewDevice === 'mobile' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
                         }`}
+                        title="Vue Mobile"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
+                        📱
                       </button>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Email Envelope Header Bar */}
-              <div className="px-5 py-3 border-b border-[#E6DFD5] text-xs bg-white space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[#71717A] w-12 shrink-0">De :</span>
-                  <span className="font-semibold text-[#18181B]">
-                    Club Médical New Era &lt;event@new-era-medical-club-univ-ouargla.dz&gt;
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[#71717A] w-12 shrink-0">Objet :</span>
-                  <span className="font-bold text-[#18181B]">{emailResult.subject}</span>
-                </div>
-                {emailResult.preheader && (
-                  <div className="flex items-center gap-2 text-[11px] text-[#71717A]">
-                    <span className="w-12 shrink-0">Aperçu :</span>
-                    <span className="truncate italic">{emailResult.preheader}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Viewport Content */}
-              <div className="p-4 bg-[#27272A]/10 flex items-center justify-center min-h-[500px]">
+              {/* Preview Body */}
+              <div
+                className={`p-4 sm:p-6 transition-all ${
+                  designMode === 'dark' ? 'bg-[#0B0A11]' : designMode === 'cream' ? 'bg-[#F0E8DB]' : 'bg-[#F4F4F5]'
+                }`}
+              >
                 {activeTab === 'preview' ? (
                   <div
-                    className={`transition-all duration-300 w-full overflow-hidden rounded-xl border border-[#D4D4D8] shadow-md bg-[#0F0D1B] ${
-                      previewDevice === 'mobile' ? 'max-w-[400px]' : 'max-w-full'
+                    className={`mx-auto transition-all duration-300 ${
+                      previewDevice === 'mobile'
+                        ? 'max-w-[375px] shadow-2xl rounded-2xl overflow-hidden border-4 border-[#27272A]'
+                        : 'max-w-[620px]'
                     }`}
                   >
                     <iframe
-                      title="Aperçu Email"
+                      title="Aperçu email"
                       srcDoc={emailResult.html}
-                      className="w-full h-[620px] border-none bg-transparent"
+                      className="w-full min-h-[580px] bg-white rounded-xl shadow-md border-0"
+                      sandbox="allow-same-origin"
                     />
                   </div>
                 ) : (
-                  <div className="w-full">
-                    <textarea
-                      readOnly
-                      rows={24}
-                      value={emailResult.html}
-                      className="w-full font-mono text-xs p-4 bg-[#18181B] text-[#A1A1AA] rounded-xl border border-[#3F3F46] focus:outline-none"
-                    />
+                  <div className="max-w-3xl mx-auto bg-[#18181B] rounded-xl p-4 overflow-x-auto text-white">
+                    <pre className="text-xs font-mono text-[#A1A1AA] whitespace-pre-wrap break-all leading-relaxed">
+                      {emailResult.html}
+                    </pre>
                   </div>
                 )}
               </div>
 
-              {/* ================================================================ */}
-              {/* INTERACTIVE REFINEMENT / SUGGESTIONS ASSISTANT                   */}
-              {/* ================================================================ */}
-              <div className="p-5 border-t border-[#E6DFD5] bg-[#FAF8F5] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#3B33FF]" />
-                    <span className="text-xs font-bold text-[#18181B]">
-                      Suggérer des modifications à l’IA
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-[#71717A]">
-                    Gemini ajustera le contenu en préservant le design
-                  </span>
-                </div>
-
-                <div className="flex gap-2">
+              {/* Suggestion Bar for Gemini AI Refinements */}
+              <div className="p-4 border-t border-[#E6DFD5] bg-white space-y-2">
+                <label className="block text-xs font-bold text-[#18181B]">
+                  Demander une modification ou un ajustement à l&apos;IA :
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={userSuggestion}
                     onChange={(e) => setUserSuggestion(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleRefine();
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleRefine();
+                      }
                     }}
-                    placeholder="Ex: Rends le texte plus court, change la date au 15 octobre, ajoute un avertissement..."
-                    className="flex-1 px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg bg-white focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
+                    placeholder="Ex: Rends le ton plus chaleureux, ajoute un rappel sur la blouse blanche, change le bouton..."
+                    className="min-w-0 flex-1 px-3.5 py-2 text-xs border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
                   />
                   <button
                     type="button"
                     onClick={() => handleRefine()}
                     disabled={isRefining || !userSuggestion.trim()}
-                    className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-[#3B33FF] hover:bg-[#322BE0] transition disabled:opacity-50 shrink-0 flex items-center gap-1.5"
+                    className="min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
                   >
-                    {isRefining ? 'Ajustement...' : 'Appliquer'}
+                    {isRefining ? 'Ajustement...' : 'Appliquer l’ajustement ✨'}
                   </button>
                 </div>
 
-                {/* Quick Refine Chips */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-[#71717A]">Suggestions rapides :</span>
+                <div className="flex flex-wrap gap-1.5 pt-1">
                   {[
-                    'Rendre plus court et direct',
-                    'Ajouter consigne de ponctualité 15 min',
-                    'Insérer tableau de récapitulatif {{reponses}}',
-                    'Ton plus chaleureux et motivant',
-                    'Changer pour une variante alternative',
+                    'Ajoute un bouton de confirmation',
+                    'Mets en valeur la consigne de retard',
+                    'Passe en style sombre high-tech',
+                    'Ajoute une mention pour la carte d’étudiant',
                   ].map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => handleRefine(s)}
-                      disabled={isRefining}
-                      className="px-2 py-0.5 rounded text-[11px] bg-white border border-[#E6DFD5] text-[#52525B] hover:text-[#18181B] hover:border-[#3B33FF] transition"
+                      className="text-[11px] px-2 py-0.5 rounded bg-[#FAF8F5] border border-[#E6DFD5] text-[#52525B] hover:text-[#18181B] hover:border-[#D4D4D8]"
                     >
                       + {s}
                     </button>
@@ -914,98 +1022,94 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
               </div>
 
               {/* ================================================================ */}
-              {/* ACTION BAR: Storage Html_forms Insert & Form Selector            */}
+              {/* ACTION BAR: Storage Html_forms Insert & Form Selector (FIXED)   */}
               {/* ================================================================ */}
-              <div className="p-4 sm:p-5 border-t border-[#E6DFD5] bg-[#FAF8F5] space-y-3">
+              <div className="p-4 sm:p-5 border-t border-[#E6DFD5] bg-[#FAF8F5] space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="text-xs font-bold text-[#18181B] flex items-center gap-1.5">
-                    <span>💾 Sauvegarde Cloud & Liaison Formulaire</span>
+                    <span>💾 Sauvegarde Cloud &amp; Liaison Formulaire</span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#3B33FF]/10 text-[#3B33FF]">
                       Bucket Html_forms
                     </span>
                   </span>
                   <span className="text-[11px] text-[#71717A]">
-                    Insérez le fichier HTML dans Supabase Storage pour le réutiliser sans jamais copier de code brut.
+                    Enregistrez dans le bucket Supabase pour une réutilisation 100% cloud sans copier de code brut.
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                  {/* Action 1: Insert to Supabase Storage Bucket Html_forms */}
-                  <div className="bg-white p-3 rounded-lg border border-[#E6DFD5] space-y-2">
-                    <label className="block text-[11px] font-semibold text-[#18181B]">
-                      1. Insérer dans le Bucket <code>Html_forms</code> :
+                {/* Grid with 2 distinct cards, min-w-0 to avoid ANY overlap */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Card 1: Insert to Supabase Storage Bucket Html_forms */}
+                  <div className="bg-white p-3.5 rounded-xl border border-[#E6DFD5] space-y-2 shadow-2xs">
+                    <label className="block text-xs font-bold text-[#18181B]">
+                      1. Sauvegarder dans le Bucket <code>Html_forms</code> :
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         value={saveFileName}
                         onChange={(e) => setSaveFileName(e.target.value)}
                         placeholder="nom-du-fichier.html"
-                        className="flex-1 px-2.5 py-1.5 text-xs font-mono border border-[#D4D4D8] rounded-md bg-[#FAF8F5]"
+                        className="min-w-0 flex-1 px-3 py-2 text-xs font-mono border border-[#D4D4D8] rounded-lg bg-[#FAF8F5]"
                       />
                       <button
                         type="button"
                         onClick={handleInsertToStorage}
                         disabled={isSavingToStorage || !emailResult?.html}
-                        className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center gap-1"
+                        className="min-h-[38px] px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
                       >
                         {isSavingToStorage ? 'Insertion...' : '💾 Insérer'}
                       </button>
                     </div>
                   </div>
 
-                  {/* Action 2: Attach to Form (We don't insert HTML, we select a form!) */}
-                  {forms.length > 0 && (
-                    <div className="bg-white p-3 rounded-lg border border-[#E6DFD5] space-y-2">
-                      <label className="block text-[11px] font-semibold text-[#18181B]">
-                        2. Sélectionner le formulaire cible :
+                  {/* Card 2: Link Directly to Selected Form */}
+                  <div className="bg-white p-3.5 rounded-xl border border-[#E6DFD5] space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-[#18181B]">
+                        2. Lier au formulaire sélectionné :
                       </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={selectedFormSlug}
-                          onChange={(e) => setSelectedFormSlug(e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 text-xs border border-[#D4D4D8] rounded-md bg-white font-medium"
-                        >
-                          {forms.map((f) => (
-                            <option key={f.id} value={f.slug}>
-                              {f.title} ({f.slug})
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={handleAttachToForm}
-                          disabled={isAttaching || !selectedFormSlug}
-                          className="brand-gradient-btn px-3 py-1.5 rounded-md text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0"
-                        >
-                          {isAttaching ? 'Liaison...' : 'Appliquer'}
-                        </button>
-                      </div>
+                      <span className="text-[11px] font-mono text-[#3B33FF] font-semibold">
+                        /f/{selectedFormSlug}
+                      </span>
                     </div>
-                  )}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#E6DFD5] rounded-lg bg-[#FAF8F5] truncate text-[#18181B] font-semibold flex items-center">
+                        {activeFormWithFields?.form.title || selectedFormSlug}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAttachToForm}
+                        disabled={isAttaching || !selectedFormSlug}
+                        className="brand-gradient-btn min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
+                      >
+                        {isAttaching ? 'Liaison en cours...' : '🔗 Appliquer'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* ================================================================ */}
-              {/* ACTION BAR: Send Test Email                                      */}
+              {/* ACTION BAR: Send Test Email (Clean Responsive)                   */}
               {/* ================================================================ */}
               <div className="p-4 border-t border-[#E6DFD5] bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <span className="text-xs text-[#52525B] font-medium">
+                <span className="text-xs text-[#52525B] font-medium shrink-0">
                   Tester la délivrabilité en direct :
                 </span>
-                <div className="flex items-center gap-2 flex-1 sm:max-w-md">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 sm:max-w-md">
                   <input
                     type="email"
                     value={testEmailAddress}
                     onChange={(e) => setTestEmailAddress(e.target.value)}
                     placeholder="email.destinataire@exemple.com"
-                    className="flex-1 px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
+                    className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg"
                   />
                   <button
                     type="button"
                     onClick={handleSendTest}
                     disabled={isSendingTest || !testEmailAddress}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0"
+                    className="min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center"
                   >
                     {isSendingTest ? 'Envoi...' : 'Envoyer un test'}
                   </button>
@@ -1015,6 +1119,104 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
           )}
         </div>
       </div>
+
+      {/* Storage Drawer Modal: View all files in Html_forms bucket */}
+      {storageDrawerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setStorageDrawerOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl bg-white rounded-2xl border border-[#E6DFD5] shadow-2xl p-6 space-y-4 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD5]">
+              <div>
+                <h3 className="text-base font-bold text-[#18181B] flex items-center gap-2">
+                  <span>📁 Modèles enregistrés dans Supabase Storage</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-mono bg-[#3B33FF]/10 text-[#3B33FF]">
+                    bucket: Html_forms
+                  </span>
+                </h3>
+                <p className="text-xs text-[#71717A]">
+                  Chargez directement n’importe quel modèle HTML sauvegardé ou associez-le à un formulaire.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStorageDrawerOpen(false)}
+                className="text-xs font-bold text-[#71717A] hover:text-[#18181B] p-1.5"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-[#E6DFD5]">
+              {isLoadingStorage ? (
+                <div className="p-8 text-center text-xs text-[#71717A]">Chargement des fichiers...</div>
+              ) : storageTemplates.length === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <p className="text-xs font-medium text-[#71717A]">
+                    Aucun fichier HTML dans le bucket Supabase <code>Html_forms</code>.
+                  </p>
+                  <p className="text-[11px] text-[#A1A1AA]">
+                    Générez un email puis cliquez sur &quot;Insérer dans le Bucket&quot; pour le stocker dans le cloud.
+                  </p>
+                </div>
+              ) : (
+                storageTemplates.map((t) => (
+                  <div key={t.name} className="py-3 px-2 flex items-center justify-between gap-3 hover:bg-[#FAF8F5] rounded-lg transition">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold font-mono text-[#18181B] truncate">{t.name}</p>
+                      <p className="text-[11px] text-[#71717A]">
+                        Taille : {((t.size || 0) / 1024).toFixed(1)} Ko &bull; Mis à jour : {t.updated_at ? new Date(t.updated_at).toLocaleDateString('fr-FR') : 'Récemment'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleLoadFromStorage(t.name)}
+                        className="px-3 py-1.5 text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] rounded-lg transition"
+                      >
+                        Charger
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFileToDelete(t.name)}
+                        className="px-2.5 py-1.5 text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition"
+                        title="Supprimer du bucket"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-[#E6DFD5] flex items-center justify-between">
+              <button
+                type="button"
+                onClick={refreshStorageList}
+                className="text-xs font-semibold text-[#3B33FF] hover:underline flex items-center gap-1"
+              >
+                <span>↻</span>
+                <span>Actualiser la liste</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStorageDrawerOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-[#18181B] bg-[#FAF8F5] hover:bg-[#E6DFD5] rounded-lg transition"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modern Delete Template Confirmation Modal */}
       {fileToDelete && (

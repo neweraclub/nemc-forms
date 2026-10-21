@@ -1,4 +1,4 @@
-import { getAdminForms } from '@/lib/supabase/admin';
+import { getAdminFormsWithFields } from '@/lib/supabase/admin';
 import { EmailStudioClient } from './EmailStudioClient';
 
 export const metadata = {
@@ -9,8 +9,7 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminEmailsPage() {
-  const formsSummary = await getAdminForms();
-  const forms = formsSummary.map((f) => f.form);
+  const formsWithFields = await getAdminFormsWithFields();
 
-  return <EmailStudioClient forms={forms} />;
+  return <EmailStudioClient formsWithFields={formsWithFields} />;
 }

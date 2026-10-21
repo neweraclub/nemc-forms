@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { FormFieldRecord, FormRecord, FormStateEvaluation, SubmissionRecord } from '@/types/form';
 import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
 import fs from 'fs';
-import path from 'path';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -34,42 +33,25 @@ export function createServiceRoleServerClient() {
   });
 }
 
-// Local persistent fallback directory for submissions & custom forms when DB tables are pending
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), '.local_data');
-const LOCAL_SUBMISSIONS_FILE = path.join(LOCAL_STORAGE_DIR, 'submissions.json');
-const LOCAL_FORMS_FILE = path.join(LOCAL_STORAGE_DIR, 'custom_forms.json');
+import {
+  StoredFormData,
+  getLocalStoredForms,
+  fetchCloudStoredForms,
+  ensureLocalStorage,
+  getLocalSubmissionsFilePath,
+} from './cloud-registry';
 
-export interface StoredFormData {
-  form: FormRecord;
-  fields: FormFieldRecord[];
-}
-
-function ensureLocalStorage() {
-  if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
-    fs.mkdirSync(LOCAL_STORAGE_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(LOCAL_SUBMISSIONS_FILE)) {
-    fs.writeFileSync(LOCAL_SUBMISSIONS_FILE, JSON.stringify([]), 'utf-8');
-  }
-}
-
-export function getLocalStoredForms(): StoredFormData[] {
-  try {
-    ensureLocalStorage();
-    if (!fs.existsSync(LOCAL_FORMS_FILE)) {
-      return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
-    }
-    const raw = fs.readFileSync(LOCAL_FORMS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
-  }
-}
+export type { StoredFormData };
+export { getLocalStoredForms };
 
 export function getLocalSubmissions(): SubmissionRecord[] {
   try {
     ensureLocalStorage();
-    const raw = fs.readFileSync(LOCAL_SUBMISSIONS_FILE, 'utf-8');
+    const file = getLocalSubmissionsFilePath();
+    if (!fs.existsSync(file)) {
+      return [];
+    }
+    const raw = fs.readFileSync(file, 'utf-8');
     return JSON.parse(raw);
   } catch {
     return [];
@@ -84,7 +66,7 @@ export function saveLocalSubmission(sub: SubmissionRecord): void {
     const existing = all.find((s) => s.idempotency_key && s.idempotency_key === sub.idempotency_key);
     if (!existing) {
       all.push(sub);
-      fs.writeFileSync(LOCAL_SUBMISSIONS_FILE, JSON.stringify(all, null, 2), 'utf-8');
+      fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
     }
   } catch (err) {
     console.error('Failed to save local submission:', err);
@@ -98,7 +80,7 @@ export function updateLocalSubmissionEmailStatus(id: string, status: SubmissionR
     const target = all.find((s) => s.id === id);
     if (target) {
       target.email_status = status;
-      fs.writeFileSync(LOCAL_SUBMISSIONS_FILE, JSON.stringify(all, null, 2), 'utf-8');
+      fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
     }
   } catch (err) {
     console.error('Failed to update local email status:', err);
@@ -147,7 +129,20 @@ export async function getFormBySlug(slug: string): Promise<{
     if (local) {
       form = local.form;
       fields = local.fields;
-    } else if (slug === 'recrutement-2026') {
+    } else {
+      try {
+        const cloud = await fetchCloudStoredForms();
+        const found = cloud?.find((item) => item.form.slug === slug);
+        if (found) {
+          form = found.form;
+          fields = found.fields;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!form && slug === 'recrutement-2026') {
       form = SAMPLE_RECRUITMENT_FORM;
       fields = SAMPLE_RECRUITMENT_FIELDS;
     }

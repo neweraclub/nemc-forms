@@ -22,6 +22,8 @@ create table if not exists public.forms (
     send_receipt boolean not null default false,
     receipt_email_field text,
     layout text not null default 'stepped' check (layout in ('single', 'stepped')),
+    custom_email_subject text,
+    custom_email_html text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

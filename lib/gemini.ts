@@ -19,6 +19,10 @@ export interface EmailGenerationInput {
   headingStyle?: 'bold tight sans' | 'light large sans' | 'serif editorial';
   extraNotes?: string;
   tone?: 'officiel' | 'chaleureux' | 'urgent';
+  selectedFormTitle?: string;
+  selectedFormSlug?: string;
+  greetingFormat?: 'fname' | 'both' | 'formal';
+  selectedFields?: Array<{ key: string; label: string; placeholder?: string }>;
 }
 
 export interface GeneratedEmailResult {
@@ -184,14 +188,33 @@ function parseGeminiJson<T>(raw: string): T {
  * Generates an email template according to the Senior Email Designer specification.
  */
 export async function generateEmailTemplate(input: EmailGenerationInput): Promise<GeneratedEmailResult> {
+  const greetingText =
+    input.greetingFormat === 'both'
+      ? '{{prenom}} {{nom}} (keep literal, e.g. "Bonjour {{prenom}} {{nom}},")'
+      : input.greetingFormat === 'formal'
+      ? '{{nom}} (keep literal, e.g. "Cher(ère) {{nom}},")'
+      : '{{prenom}} (keep literal, e.g. "Bonjour {{prenom}},")';
+
+  const selectedFieldsList =
+    input.selectedFields && input.selectedFields.length > 0
+      ? input.selectedFields.map((f) => `  - {{${f.key}}} : intitulé "${f.label}"`).join('\n')
+      : '  - {{prenom}} : Prénom du candidat\n  - {{nom}} : Nom de famille\n  - {{email}} : Adresse email';
+
   const prompt = `Génère UN courriel HTML de qualité production pour le Club Médical New Era selon ces paramètres stricts :
+
+## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'Club Médical New Era'}" (slug: /f/${input.selectedFormSlug || 'recrutement-2026'})
+
+## VARIABLES DE PERSONNALISATION STRICTES DU FORMULAIRE :
+- Formule d'appel (Salutation) : ${greetingText}
+- Variables sélectionnées disponibles :
+${selectedFieldsList}
+- RÈGLE FONDAMENTALE : Utilise UNIQUEMENT ces variables {{cle}} sélectionnées dans le corps du texte ou le récapitulatif. Ne JAMAIS inventer de variables aléatoires ou non sélectionnées. Si des champs comme le nom, l'email, la faculté ou le téléphone sont sélectionnés, intègre-les élégamment dans le texte ou les blocs d'information.
 
 ## CONTENT INPUT
 - language: Français
 - type: ${input.contextType || "confirmation d'inscription"}
 - title (H1): ${input.title || input.subject || 'Votre inscription est confirmée.'}
 - eyebrow: ${input.eyebrow || input.contextType || 'ECOS · Hépato-Gastro-Entérologie'}
-- greeting variable: {{prenom}} (keep literal)
 - intro: ${input.intro || "Nous vous confirmons la validation de votre participation organisée par le Club Médical New Era."}
 - key info:
 ${input.keyInfo || `  - Date et heure: Lundi 12 octobre 2026 · 08h00

@@ -1,76 +1,26 @@
 import { FormFieldRecord, FormRecord } from '@/types/form';
-import { createServiceRoleServerClient } from './server';
-import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
-import fs from 'fs';
-import path from 'path';
+import { createAnonServerClient, createServiceRoleServerClient } from './server';
+import {
+  StoredFormData,
+  fetchCloudStoredForms,
+  saveCloudStoredForms,
+  getLocalStoredForms,
+  getLocalStoredForms as getLocalCustomForms,
+  saveLocalCustomForm,
+  deleteLocalCustomForm,
+} from './cloud-registry';
 
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), '.local_data');
-const LOCAL_FORMS_FILE = path.join(LOCAL_STORAGE_DIR, 'custom_forms.json');
-
-export interface StoredFormData {
-  form: FormRecord;
-  fields: FormFieldRecord[];
-}
-
-function ensureLocalFormsStorage() {
-  if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
-    fs.mkdirSync(LOCAL_STORAGE_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(LOCAL_FORMS_FILE)) {
-    const initial: StoredFormData[] = [
-      {
-        form: SAMPLE_RECRUITMENT_FORM,
-        fields: SAMPLE_RECRUITMENT_FIELDS,
-      },
-    ];
-    fs.writeFileSync(LOCAL_FORMS_FILE, JSON.stringify(initial, null, 2), 'utf-8');
-  }
-}
-
-export function getLocalCustomForms(): StoredFormData[] {
-  try {
-    ensureLocalFormsStorage();
-    const raw = fs.readFileSync(LOCAL_FORMS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
-  }
-}
-
-export function saveLocalCustomForm(form: FormRecord, fields: FormFieldRecord[]) {
-  try {
-    ensureLocalFormsStorage();
-    const all = getLocalCustomForms();
-    const existingIndex = all.findIndex((item) => item.form.slug === form.slug || item.form.id === form.id);
-    if (existingIndex >= 0) {
-      all[existingIndex] = { form, fields };
-    } else {
-      all.push({ form, fields });
-    }
-    fs.writeFileSync(LOCAL_FORMS_FILE, JSON.stringify(all, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to save custom form locally:', err);
-  }
-}
-
-export function deleteLocalCustomForm(slug: string) {
-  try {
-    ensureLocalFormsStorage();
-    const all = getLocalCustomForms().filter((item) => item.form.slug !== slug);
-    fs.writeFileSync(LOCAL_FORMS_FILE, JSON.stringify(all, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to delete custom form locally:', err);
-  }
-}
+export type { StoredFormData };
+export { fetchCloudStoredForms, saveCloudStoredForms, getLocalStoredForms, getLocalCustomForms, saveLocalCustomForm, deleteLocalCustomForm };
 
 /**
  * Creates or updates a form with all its fields directly from the web interface.
+ * Persists to Local Disk, Supabase Cloud Storage (Html_forms), and Supabase PostgreSQL.
  */
 export async function persistFormWithFields(
   formData: Omit<FormRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string },
   fieldsData: Array<Omit<FormFieldRecord, 'id' | 'form_id' | 'created_at'> & { id?: string }>
 ): Promise<{ success: boolean; slug: string; error?: string }> {
-  const serviceClient = createServiceRoleServerClient();
   const formId = formData.id || crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -89,39 +39,70 @@ export async function persistFormWithFields(
     created_at: now,
   }));
 
-  // 1. Always save in local fallback storage
+  // 1. Save in local storage
   saveLocalCustomForm(fullForm, fullFields);
 
-  // 2. Persist to Supabase if available
+  // 2. Persist to Supabase Cloud Storage (Html_forms registry)
+  try {
+    const cloudForms = (await fetchCloudStoredForms()) || getLocalCustomForms();
+    const existingIdx = cloudForms.findIndex(
+      (item) => item.form.slug === fullForm.slug || item.form.id === fullForm.id
+    );
+    if (existingIdx >= 0) {
+      cloudForms[existingIdx] = { form: fullForm, fields: fullFields };
+    } else {
+      cloudForms.unshift({ form: fullForm, fields: fullFields });
+    }
+    await saveCloudStoredForms(cloudForms);
+  } catch (cloudErr) {
+    console.warn('Cloud storage sync notice:', cloudErr);
+  }
+
+  // 3. Persist to Supabase PostgreSQL if tables exist
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   if (serviceClient) {
     try {
-      const { error: formErr } = await serviceClient.from('forms').upsert(
-        {
-          id: fullForm.id,
-          slug: fullForm.slug,
-          title: fullForm.title,
-          description: fullForm.description,
-          status: fullForm.status,
-          opens_at: fullForm.opens_at,
-          closes_at: fullForm.closes_at,
-          max_responses: fullForm.max_responses,
-          confirmation_message: fullForm.confirmation_message,
-          notify_emails: fullForm.notify_emails,
-          send_receipt: fullForm.send_receipt,
-          receipt_email_field: fullForm.receipt_email_field,
-          custom_email_subject: fullForm.custom_email_subject || null,
-          custom_email_html: fullForm.custom_email_html || null,
-          layout: fullForm.layout,
-          updated_at: now,
-        },
-        { onConflict: 'slug' }
-      );
+      const formPayload: Record<string, unknown> = {
+        id: fullForm.id,
+        slug: fullForm.slug,
+        title: fullForm.title,
+        description: fullForm.description,
+        status: fullForm.status,
+        opens_at: fullForm.opens_at,
+        closes_at: fullForm.closes_at,
+        max_responses: fullForm.max_responses,
+        confirmation_message: fullForm.confirmation_message,
+        notify_emails: fullForm.notify_emails,
+        send_receipt: fullForm.send_receipt,
+        receipt_email_field: fullForm.receipt_email_field,
+        layout: fullForm.layout,
+        updated_at: now,
+      };
+
+      if (fullForm.custom_email_subject) {
+        formPayload.custom_email_subject = fullForm.custom_email_subject;
+      }
+      if (fullForm.custom_email_html) {
+        formPayload.custom_email_html = fullForm.custom_email_html;
+      }
+
+      let { error: formErr } = await serviceClient
+        .from('forms')
+        .upsert(formPayload, { onConflict: 'slug' });
+
+      // If failed due to unknown columns, strip email columns and retry
+      if (formErr && (formErr.message?.includes('column') || formErr.code === 'PGRST204')) {
+        delete formPayload.custom_email_subject;
+        delete formPayload.custom_email_html;
+        const retry = await serviceClient
+          .from('forms')
+          .upsert(formPayload, { onConflict: 'slug' });
+        formErr = retry.error;
+      }
 
       if (!formErr) {
-        // Delete previous fields and re-insert to keep positions clean
         await serviceClient.from('form_fields').delete().eq('form_id', fullForm.id);
-
-        const { error: fieldsErr } = await serviceClient.from('form_fields').insert(
+        await serviceClient.from('form_fields').insert(
           fullFields.map((f) => ({
             id: f.id,
             form_id: f.form_id,
@@ -137,15 +118,9 @@ export async function persistFormWithFields(
             show_if: f.show_if || null,
           }))
         );
-
-        if (fieldsErr) {
-          console.warn('Error saving fields to Supabase:', fieldsErr);
-        }
-      } else {
-        console.warn('Error saving form to Supabase:', formErr);
       }
-    } catch (e) {
-      console.warn('Supabase persist exception (saved locally):', e);
+    } catch {
+      // PostgreSQL tables may not yet be migrated
     }
   }
 
@@ -170,7 +145,23 @@ export async function updateFormCustomEmail(
       saveLocalCustomForm(item.form, item.fields);
     }
 
-    const serviceClient = createServiceRoleServerClient();
+    // Update in Cloud Storage
+    try {
+      const cloudForms = await fetchCloudStoredForms();
+      if (cloudForms) {
+        const cItem = cloudForms.find((f) => f.form.slug === slug);
+        if (cItem) {
+          cItem.form.custom_email_subject = custom_email_subject;
+          cItem.form.custom_email_html = custom_email_html;
+          cItem.form.updated_at = new Date().toISOString();
+          await saveCloudStoredForms(cloudForms);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
     if (serviceClient) {
       try {
         await serviceClient
@@ -181,8 +172,8 @@ export async function updateFormCustomEmail(
             updated_at: new Date().toISOString(),
           })
           .eq('slug', slug);
-      } catch (err) {
-        console.warn('Supabase updateFormCustomEmail warning:', err);
+      } catch {
+        // ignore if column doesn't exist in DB
       }
     }
 
@@ -199,12 +190,23 @@ export async function updateFormCustomEmail(
 export async function removeFormBySlug(slug: string): Promise<{ success: boolean; error?: string }> {
   deleteLocalCustomForm(slug);
 
-  const serviceClient = createServiceRoleServerClient();
+  // Remove from Cloud Storage
+  try {
+    const cloudForms = await fetchCloudStoredForms();
+    if (cloudForms) {
+      const filtered = cloudForms.filter((item) => item.form.slug !== slug);
+      await saveCloudStoredForms(filtered);
+    }
+  } catch {
+    // ignore
+  }
+
+  const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   if (serviceClient) {
     try {
       await serviceClient.from('forms').delete().eq('slug', slug);
-    } catch (e) {
-      console.warn('Failed to delete form from Supabase:', e);
+    } catch {
+      // ignore
     }
   }
 
