@@ -144,13 +144,50 @@ export function saveLocalCustomForm(form: FormRecord, fields: FormFieldRecord[])
   }
 }
 
-export function deleteLocalCustomForm(slug: string) {
+export function syncLocalFormsWithCloud(forms: StoredFormData[]) {
   try {
     ensureLocalStorage();
-    const all = getLocalStoredForms().filter((item) => item.form.slug !== slug);
+    const file = getLocalFormsFilePath();
+    fs.writeFileSync(file, JSON.stringify(forms, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('syncLocalFormsWithCloud warning:', err);
+  }
+}
+
+export function deleteLocalCustomForm(slugOrId: string) {
+  try {
+    ensureLocalStorage();
+    const target = (slugOrId || '').trim().toLowerCase();
+    const all = getLocalStoredForms().filter((item) => {
+      const s = (item.form?.slug || '').trim().toLowerCase();
+      const id = (item.form?.id || '').trim().toLowerCase();
+      return s !== target && id !== target;
+    });
     const file = getLocalFormsFilePath();
     fs.writeFileSync(file, JSON.stringify(all, null, 2), 'utf-8');
   } catch (err) {
     console.warn('deleteLocalCustomForm warning:', err);
   }
 }
+
+export function deleteLocalSubmissionsForForm(slugOrId: string) {
+  try {
+    ensureLocalStorage();
+    const target = (slugOrId || '').trim().toLowerCase();
+    const subsFile = getLocalSubmissionsFilePath();
+    if (fs.existsSync(subsFile)) {
+      const raw = fs.readFileSync(subsFile, 'utf-8');
+      const subs = JSON.parse(raw);
+      if (Array.isArray(subs)) {
+        const filtered = subs.filter((s) => {
+          const fid = (s.form_id || '').trim().toLowerCase();
+          return fid !== target;
+        });
+        fs.writeFileSync(subsFile, JSON.stringify(filtered, null, 2), 'utf-8');
+      }
+    }
+  } catch (err) {
+    console.warn('deleteLocalSubmissionsForForm warning:', err);
+  }
+}
+

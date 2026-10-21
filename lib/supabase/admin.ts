@@ -5,7 +5,7 @@ import {
   getLocalStoredForms,
   StoredFormData,
 } from './server';
-import { fetchCloudStoredForms } from './forms-manager';
+import { fetchCloudStoredForms, syncLocalFormsWithCloud } from './forms-manager';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
 
 export interface AdminFormSummary {
@@ -63,6 +63,7 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
 
   if (cloudItems !== null) {
     // Cloud Storage is authoritative
+    syncLocalFormsWithCloud(cloudItems);
     for (const item of cloudItems) {
       if (item.form?.slug) {
         map.set(item.form.slug, item);

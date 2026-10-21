@@ -8,10 +8,21 @@ import {
   getLocalStoredForms as getLocalCustomForms,
   saveLocalCustomForm,
   deleteLocalCustomForm,
+  syncLocalFormsWithCloud,
+  deleteLocalSubmissionsForForm,
 } from './cloud-registry';
 
 export type { StoredFormData };
-export { fetchCloudStoredForms, saveCloudStoredForms, getLocalStoredForms, getLocalCustomForms, saveLocalCustomForm, deleteLocalCustomForm };
+export {
+  fetchCloudStoredForms,
+  saveCloudStoredForms,
+  getLocalStoredForms,
+  getLocalCustomForms,
+  saveLocalCustomForm,
+  deleteLocalCustomForm,
+  syncLocalFormsWithCloud,
+  deleteLocalSubmissionsForForm,
+};
 
 /**
  * Creates or updates a form with all its fields directly from the web interface.
@@ -188,23 +199,44 @@ export async function updateFormCustomEmail(
  * Deletes a form and all associated submissions/fields.
  */
 export async function removeFormBySlug(slug: string): Promise<{ success: boolean; error?: string }> {
-  deleteLocalCustomForm(slug);
+  const cleanSlug = (slug || '').trim().toLowerCase();
 
-  // Remove from Cloud Storage
+  // 1. Delete from local custom forms & submissions
+  deleteLocalCustomForm(cleanSlug);
+  deleteLocalSubmissionsForForm(cleanSlug);
+
+  // 2. Remove from Cloud Storage and synchronize
   try {
     const cloudForms = await fetchCloudStoredForms();
     if (cloudForms !== null) {
-      const filtered = cloudForms.filter((item) => item.form.slug !== slug);
+      const filtered = cloudForms.filter((item) => {
+        const s = (item.form?.slug || '').trim().toLowerCase();
+        const id = (item.form?.id || '').trim().toLowerCase();
+        return s !== cleanSlug && id !== cleanSlug;
+      });
       await saveCloudStoredForms(filtered);
+      syncLocalFormsWithCloud(filtered);
     }
-  } catch {
-    // ignore
+  } catch (cloudErr) {
+    console.warn('removeFormBySlug Cloud storage delete notice:', cloudErr);
   }
 
+  // 3. PostgreSQL cleanup if tables exist
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
   if (serviceClient) {
     try {
-      await serviceClient.from('forms').delete().eq('slug', slug);
+      // Find form id first if needed to cascade delete
+      const { data: formRow } = await serviceClient
+        .from('forms')
+        .select('id')
+        .eq('slug', cleanSlug)
+        .maybeSingle();
+
+      if (formRow?.id) {
+        await serviceClient.from('submissions').delete().eq('form_id', formRow.id);
+        await serviceClient.from('form_fields').delete().eq('form_id', formRow.id);
+      }
+      await serviceClient.from('forms').delete().eq('slug', cleanSlug);
     } catch {
       // ignore
     }

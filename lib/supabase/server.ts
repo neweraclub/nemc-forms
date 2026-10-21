@@ -38,6 +38,7 @@ import {
   fetchCloudStoredForms,
   ensureLocalStorage,
   getLocalSubmissionsFilePath,
+  syncLocalFormsWithCloud,
 } from './cloud-registry';
 
 export type { StoredFormData };
@@ -122,22 +123,27 @@ export async function getFormBySlug(slug: string): Promise<{
     console.warn('Supabase query error, falling back to seed if matched:', e);
   }
 
-  // Graceful fallback for custom forms or seed if DB tables not yet migrated
+  // Graceful fallback for custom forms: Cloud Storage is authoritative
   if (!form) {
-    const local = getLocalStoredForms().find((item) => item.form.slug === slug);
-    if (local) {
-      form = local.form;
-      fields = local.fields;
-    } else {
-      try {
-        const cloud = await fetchCloudStoredForms();
-        const found = cloud?.find((item) => item.form.slug === slug);
+    try {
+      const cloud = await fetchCloudStoredForms();
+      if (cloud !== null) {
+        syncLocalFormsWithCloud(cloud);
+        const found = cloud.find((item) => item.form.slug === slug);
         if (found) {
           form = found.form;
           fields = found.fields;
         }
-      } catch {
-        // ignore
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!form) {
+      const local = getLocalStoredForms().find((item) => item.form.slug === slug);
+      if (local) {
+        form = local.form;
+        fields = local.fields;
       }
     }
   }

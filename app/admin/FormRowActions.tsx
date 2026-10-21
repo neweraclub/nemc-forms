@@ -11,9 +11,16 @@ interface FormRowActionsProps {
   title: string;
   submissionsCount: number;
   hasAiEmail?: boolean;
+  onDeleted?: (slug: string) => void;
 }
 
-export function FormRowActions({ slug, title, submissionsCount, hasAiEmail }: FormRowActionsProps) {
+export function FormRowActions({
+  slug,
+  title,
+  submissionsCount,
+  hasAiEmail,
+  onDeleted,
+}: FormRowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -37,6 +44,8 @@ export function FormRowActions({ slug, title, submissionsCount, hasAiEmail }: Fo
       const res = await deleteFormAction(slug);
       if (res.success) {
         setShowConfirmModal(false);
+        // Instant removal in client UI so the row never lingers behind the toast
+        onDeleted?.(slug);
         showAdminToast({
           type: 'success',
           title: 'Formulaire supprimé',
