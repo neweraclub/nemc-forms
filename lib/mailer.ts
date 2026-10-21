@@ -32,12 +32,13 @@ export function getSenderAddress(): { fromAddress: string; replyTo: string } {
   const rawFrom = process.env.SMTP_FROM?.trim();
   const clubName = 'Club Médical New Era';
   const eventEmail = 'event@new-era-medical-club-univ-ouargla.dz';
+  const contactEmail = 'contact@new-era-medical-club-univ-ouargla.dz';
 
   // 1. Prioritize explicitly configured SMTP_FROM
   if (rawFrom) {
     return {
       fromAddress: rawFrom,
-      replyTo: `${clubName} <${eventEmail}>`,
+      replyTo: `${clubName} <${contactEmail}>`,
     };
   }
 
@@ -45,13 +46,13 @@ export function getSenderAddress(): { fromAddress: string; replyTo: string } {
   if (user) {
     return {
       fromAddress: `${clubName} <${user}>`,
-      replyTo: `${clubName} <${eventEmail}>`,
+      replyTo: `${clubName} <${contactEmail}>`,
     };
   }
 
   return {
     fromAddress: `${clubName} <${eventEmail}>`,
-    replyTo: `${clubName} <${eventEmail}>`,
+    replyTo: `${clubName} <${contactEmail}>`,
   };
 }
 
@@ -276,7 +277,7 @@ export function buildReceiptEmailHtml(
           </tr>
           <tr>
             <td style="padding: 16px 28px; background-color: #FAF8F5; border-top: 1px solid #E6DFD5; font-size: 12px; color: #71717A;">
-              New Era Medical Club &bull; event@new-era-medical-club-univ-ouargla.dz &bull; Cet email confirme la bonne transmission de vos données.
+              New Era Medical Club &bull; contact@new-era-medical-club-univ-ouargla.dz &bull; Cet email confirme la bonne transmission de vos données.
             </td>
           </tr>
         </table>
@@ -506,7 +507,7 @@ export function buildPlainTextSummary(
     `--------------------------------------------------`,
     ...summary.map((item) => `${item.label}:\n${item.value}\n`),
     `--------------------------------------------------`,
-    `New Era Medical Club - event@new-era-medical-club-univ-ouargla.dz`,
+    `New Era Medical Club - contact@new-era-medical-club-univ-ouargla.dz`,
   ];
   return lines.join('\n');
 }

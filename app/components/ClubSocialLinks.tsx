@@ -42,7 +42,7 @@ const SOCIAL_NETWORKS: SocialLink[] = [
 
 export function ClubSocialLinks({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-2.5 flex-wrap ${className}`}>
+    <div className={`flex items-center gap-2.5 flex-wrap ${className}`} suppressHydrationWarning>
       {SOCIAL_NETWORKS.map((social) => (
         <a
           key={social.name}

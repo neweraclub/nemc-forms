@@ -270,6 +270,7 @@ export async function getFormBySlug(slug: string): Promise<{
       month: 'long',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'Africa/Algiers',
     });
     return {
       form,

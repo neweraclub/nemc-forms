@@ -884,7 +884,7 @@ export function DocsClient() {
                 Secrétariat & Permanence Plateforme
               </span>
               <div className="font-mono text-[#3F3F46] text-xs">
-                event@new-era-medical-club-univ-ouargla.dz
+                contact@new-era-medical-club-univ-ouargla.dz
               </div>
               <div className="text-[11px] text-[#71717A]">
                 Ouargla 30000, Algérie &bull; Tous droits réservés &copy; 2026

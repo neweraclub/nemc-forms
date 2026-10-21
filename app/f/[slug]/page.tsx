@@ -56,7 +56,7 @@ export default async function FormPage({ params }: PageProps) {
                 New Era Medical Club
               </span>
               <span className="text-[11px] text-[#71717A] block">
-                Faculté de Médecine &bull; Univ. Ouargla
+                Faculté de Médecine • Univ. Ouargla
               </span>
             </div>
           </div>
@@ -65,7 +65,7 @@ export default async function FormPage({ params }: PageProps) {
             {form.title}
           </h1>
 
-          <div className="my-6 p-4 rounded-lg bg-[#FAF8F5] border border-[#E6DFD5]">
+          <div className="my-6 p-4 rounded-lg bg-[#FAF8F5] border border-[#E6DFD5]" suppressHydrationWarning>
             <p className="text-sm font-semibold text-[#18181B] mb-1">{state.message}</p>
             {state.detail && (
               <p className="text-xs sm:text-sm text-[#52525B] leading-relaxed">
@@ -74,15 +74,14 @@ export default async function FormPage({ params }: PageProps) {
             )}
           </div>
 
-          <p className="text-xs text-[#71717A] leading-relaxed mb-6">
+          <p className="text-xs text-[#71717A] leading-relaxed mb-6" suppressHydrationWarning>
             Pour toute question ou demande particulière, vous pouvez contacter le bureau du club à{' '}
             <a
-              href="mailto:event@new-era-medical-club-univ-ouargla.dz"
+              href="mailto:contact@new-era-medical-club-univ-ouargla.dz"
               className="text-[#3B33FF] underline underline-offset-2 font-medium"
             >
-              event@new-era-medical-club-univ-ouargla.dz
-            </a>
-            .
+              contact@new-era-medical-club-univ-ouargla.dz
+            </a>.
           </p>
 
           <div className="pt-4 border-t border-[#E6DFD5] flex items-center justify-between flex-wrap gap-2">

@@ -797,7 +797,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
               <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] text-xs text-[#71717A] space-y-3">
                 <div>
                   <p className="font-semibold text-[#18181B]">Assistance aux étudiants :</p>
-                  <p>En cas de doute, écrivez à <strong>event@new-era-medical-club-univ-ouargla.dz</strong>.</p>
+                  <p>En cas de doute, écrivez à <strong>contact@new-era-medical-club-univ-ouargla.dz</strong>.</p>
                 </div>
                 <div className="pt-2 border-t border-[#E6DFD5]/80">
                   <p className="text-[11px] font-semibold text-[#52525B] mb-2">Rejoignez nos réseaux officiels :</p>
