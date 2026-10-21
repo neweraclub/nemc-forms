@@ -24,7 +24,11 @@ export function createAnonServerClient() {
 
 // Elevated service role client for Server Actions (RLS bypass)
 export function createServiceRoleServerClient() {
-  if (!supabaseServiceRoleKey) {
+  if (
+    !supabaseServiceRoleKey ||
+    supabaseServiceRoleKey.includes('...') ||
+    supabaseServiceRoleKey.trim().length < 50
+  ) {
     return null;
   }
   return createClient(supabaseUrl, supabaseServiceRoleKey, {
