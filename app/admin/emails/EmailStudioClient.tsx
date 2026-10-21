@@ -49,6 +49,7 @@ export function EmailStudioClient({
   const currentForm: FormRecord | undefined =
     activeFormWithFields?.form || formsList.find((f) => f.slug === selectedFormSlug);
   const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
+  const hasEmailField = currentFields.some((f) => f.type === 'email');
 
   // 2. Variable Selection State (100% dynamic, strict form questions only)
   const [selectedFieldKeys, setSelectedFieldKeys] = useState<string[]>(() => {
@@ -444,6 +445,18 @@ export function EmailStudioClient({
   // Attach to Form
   const handleAttachToForm = () => {
     if (!emailResult || !selectedFormSlug) return;
+    if (!hasEmailField) {
+      showAdminToast({
+        type: 'error',
+        title: 'Champ Email Manquant',
+        message: "Inutile d'associer un modèle : ce formulaire ne contient aucun champ de type « Adresse email ». Ajoutez d'abord ce champ.",
+      });
+      setStatusMessage({
+        type: 'error',
+        text: "Association impossible : ce formulaire ne comporte aucun champ « Adresse email ». Les candidats ne pourraient pas recevoir ce courriel. Ajoutez d'abord le champ email dans le formulaire.",
+      });
+      return;
+    }
     setStatusMessage(null);
     startAttaching(async () => {
       let cleanSubject = emailResult.subject || subject;
@@ -597,6 +610,38 @@ export function EmailStudioClient({
                   <span>URL publique : <code className="font-mono text-[#18181B]">/f/{selectedFormSlug}</code></span>
                   <span>&bull;</span>
                   <span>{currentFields.length} question(s) configurée(s)</span>
+                  <span>&bull;</span>
+                  {hasEmailField ? (
+                    <span className="text-[#15803D] font-semibold flex items-center gap-1">
+                      <span>✓</span> Champ email détecté
+                    </span>
+                  ) : (
+                    <span className="text-[#DC2626] font-bold flex items-center gap-1 bg-[#FEF2F2] px-1.5 py-0.5 rounded border border-[#FECACA]">
+                      <span>⚠️</span> Aucun champ email
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {!hasEmailField && (
+                <div className="p-3.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <div>
+                      <p className="font-bold text-[#78350F]">
+                        Aucun champ &laquo; Adresse email &raquo; dans ce formulaire
+                      </p>
+                      <p className="text-[11px] text-[#92400E] mt-0.5 leading-relaxed">
+                        Il est <strong>inutile d&apos;y associer un modèle de courriel</strong> tant qu&apos;il ne collecte pas l&apos;adresse des candidats. Ajoutez d&apos;abord une question avec le type <strong>Adresse email</strong> dans le constructeur de formulaire pour que les candidats puissent recevoir leur confirmation.
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={`/admin/forms/${selectedFormSlug}/edit`}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-lg text-xs transition shrink-0 shadow-xs cursor-pointer whitespace-nowrap"
+                  >
+                    <span>✏️ Ajouter l&apos;email au formulaire</span>
+                  </a>
                 </div>
               )}
 
@@ -718,6 +763,23 @@ export function EmailStudioClient({
               <p className="text-[11px] text-[#71717A] pt-0.5">
                 💡 Seules ces variables réelles sélectionnées seront transmises à Gemini. Aucune variable fictive par défaut n&apos;est injectée.
               </p>
+
+              {!hasEmailField && currentFields.length > 0 && (
+                <div className="p-2.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-lg text-xs text-[#92400E] flex items-center justify-between gap-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <span>💡</span>
+                    <span className="text-[11px]">
+                      Ce formulaire ne collecte pas l&apos;adresse email du candidat. Ajoutez une question de type <strong>Adresse email</strong> pour que les candidats puissent recevoir l&apos;accusé.
+                    </span>
+                  </div>
+                  <a
+                    href={`/admin/forms/${selectedFormSlug}/edit`}
+                    className="text-[11px] font-bold text-[#B45309] hover:underline shrink-0"
+                  >
+                    + Ajouter l&apos;email
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1201,19 +1263,44 @@ export function EmailStudioClient({
                         /f/{selectedFormSlug}
                       </span>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#E6DFD5] rounded-lg bg-[#FAF8F5] truncate text-[#18181B] font-semibold flex items-center">
-                        {activeFormWithFields?.form.title || selectedFormSlug}
+
+                    {!hasEmailField ? (
+                      <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-lg text-xs space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-base shrink-0">🚫</span>
+                          <div>
+                            <p className="font-bold text-[#7F1D1D]">
+                              Inutile d&apos;associer ce formulaire : aucun champ &laquo; Adresse email &raquo;
+                            </p>
+                            <p className="text-[11px] text-[#991B1B] mt-0.5 leading-relaxed">
+                              Ce formulaire ne collecte pas l&apos;adresse email des candidats (Type de réponse : Adresse email). L&apos;accusé de réception ne pourra donc jamais leur être délivré. Ajoutez d&apos;abord le champ email dans le formulaire.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pt-0.5">
+                          <a
+                            href={`/admin/forms/${selectedFormSlug}/edit`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-xs rounded-md shadow-xs transition"
+                          >
+                            ✏️ Modifier le formulaire et ajouter l&apos;email
+                          </a>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleAttachToForm}
-                        disabled={isAttaching || !selectedFormSlug}
-                        className="brand-gradient-btn min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
-                      >
-                        {isAttaching ? 'Liaison en cours...' : '🔗 Appliquer'}
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#E6DFD5] rounded-lg bg-[#FAF8F5] truncate text-[#18181B] font-semibold flex items-center">
+                          {activeFormWithFields?.form.title || selectedFormSlug}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAttachToForm}
+                          disabled={isAttaching || !selectedFormSlug}
+                          className="brand-gradient-btn min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          {isAttaching ? 'Liaison en cours...' : '🔗 Appliquer'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -547,6 +547,11 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                     />
                     <span className="ml-2 text-xs text-[#18181B]">Envoyer un accusé au candidat</span>
                   </label>
+                  {sendReceipt && !fields.some((f) => f.type === 'email') && (
+                    <p className="text-[11px] text-[#DC2626] font-semibold mt-1 flex items-center gap-1">
+                      <span>⚠️</span> Aucun champ &laquo; Adresse email &raquo; dans vos questions ci-dessous. Le candidat ne pourra pas recevoir d&apos;accusé.
+                    </p>
+                  )}
                 </div>
               </div>
 
