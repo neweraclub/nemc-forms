@@ -49,7 +49,7 @@ export function ClubSocialLinks({ className = '' }: { className?: string }) {
           href={social.url}
           target="_blank"
           rel="noopener noreferrer"
-          title={`Suivez Club Médical New Era sur ${social.name}`}
+          title={`Suivez New Era Medical Club sur ${social.name}`}
           className="w-7 h-7 rounded-lg border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] flex items-center justify-center p-1.5 transition opacity-80 hover:opacity-100 hover:scale-105"
         >
           <Image

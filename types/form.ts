@@ -1,5 +1,5 @@
 // ==============================================================================
-// NEW ERA CLUB (Club Médical New Era) — Data Types
+// NEW ERA CLUB (New Era Medical Club) — Data Types
 // ==============================================================================
 
 export type FormStatus = 'draft' | 'open' | 'closed';

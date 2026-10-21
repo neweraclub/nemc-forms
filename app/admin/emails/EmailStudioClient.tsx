@@ -268,7 +268,7 @@ export function EmailStudioClient({
     },
     {
       label: 'Recrutement 2026',
-      subject: 'Confirmation de candidature — Recrutement Club Médical New Era 2026',
+      subject: 'Confirmation de candidature — Recrutement New Era Medical Club 2026',
       context: 'Recrutement annuel',
       key: 'Dossier bien reçu. Phase d’évaluation en cours par le comité pédagogique.',
       notes: 'Les convocations pour les entretiens individuels seront envoyées sous 5 jours ouvrés.',
@@ -282,7 +282,7 @@ export function EmailStudioClient({
     },
     {
       label: 'Convocation Entretien',
-      subject: 'Convocation à votre entretien de sélection — Club Médical New Era',
+      subject: 'Convocation à votre entretien de sélection — New Era Medical Club',
       context: 'Entretien oral',
       key: 'Mercredi 14 octobre 2026 à 14h30. Bureau du club / Salle de réunion B.',
       notes: 'Durée 20 minutes. Venez avec votre motivation et vos projets associatifs.',
@@ -484,11 +484,10 @@ export function EmailStudioClient({
       {/* Status Alert Toast */}
       {statusMessage && (
         <div
-          className={`p-4 rounded-xl text-xs sm:text-sm font-medium border flex items-center justify-between transition ${
-            statusMessage.type === 'success'
+          className={`p-4 rounded-xl text-xs sm:text-sm font-medium border flex items-center justify-between transition ${statusMessage.type === 'success'
               ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]'
               : 'bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]'
-          }`}
+            }`}
         >
           <span>{statusMessage.text}</span>
           <button
@@ -520,11 +519,10 @@ export function EmailStudioClient({
               </div>
 
               {activeFormWithFields && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                  activeFormWithFields.form.status === 'open'
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${activeFormWithFields.form.status === 'open'
                     ? 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'
                     : 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'
-                }`}>
+                  }`}>
                   {activeFormWithFields.form.status.toUpperCase()}
                 </span>
               )}
@@ -614,11 +612,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setGreetingFormat('fname')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
-                    greetingFormat === 'fname'
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'fname'
                       ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
                       : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="font-bold">Prénom seul</div>
                   <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125;,</div>
@@ -627,11 +624,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setGreetingFormat('both')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
-                    greetingFormat === 'both'
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'both'
                       ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
                       : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="font-bold">Prénom &amp; Nom</div>
                   <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125; &#123;&#123;nom&#125;&#125;,</div>
@@ -640,11 +636,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setGreetingFormat('formal')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${
-                    greetingFormat === 'formal'
+                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'formal'
                       ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
                       : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="font-bold">Formel / Nom</div>
                   <div className="text-[10px] opacity-75 font-mono">Cher(&egrave;re) &#123;&#123;nom&#125;&#125;,</div>
@@ -688,16 +683,14 @@ export function EmailStudioClient({
                         key={f.id || f.key}
                         type="button"
                         onClick={() => toggleFieldKey(f.key)}
-                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition ${
-                          isChecked
+                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition ${isChecked
                             ? 'bg-[#3B33FF]/10 border-[#3B33FF] text-[#18181B] font-semibold shadow-2xs'
                             : 'bg-[#FAF8F5] border-[#E6DFD5] text-[#71717A] hover:border-[#D4D4D8]'
-                        }`}
+                          }`}
                         title={`Champ: ${f.label} (clé: ${f.key})`}
                       >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
-                          isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
-                        }`}>
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
+                          }`}>
                           {isChecked ? '✓' : ''}
                         </span>
                         <span>{f.label}</span>
@@ -825,11 +818,10 @@ export function EmailStudioClient({
                     key={t}
                     type="button"
                     onClick={() => setTone(t)}
-                    className={`py-2 px-3 rounded-lg text-xs font-medium border text-center capitalize transition ${
-                      tone === t
+                    className={`py-2 px-3 rounded-lg text-xs font-medium border text-center capitalize transition ${tone === t
                         ? 'bg-[#18181B] text-white border-[#18181B]'
                         : 'bg-white text-[#52525B] border-[#D4D4D8] hover:bg-[#FAF8F5]'
-                    }`}
+                      }`}
                   >
                     {t}
                   </button>
@@ -846,11 +838,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setDesignMode('cream')}
-                  className={`p-2.5 rounded-lg border text-left transition ${
-                    designMode === 'cream'
+                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'cream'
                       ? 'border-[#3B33FF] bg-[#F0E8DB]/60 ring-1 ring-[#3B33FF]'
                       : 'border-[#D4D4D8] bg-[#FAF8F5] hover:bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold text-[#1B1740]">Crème Luxe</div>
                   <div className="text-[10px] text-[#7A7390]">Palette chaleureuse</div>
@@ -859,11 +850,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setDesignMode('dark')}
-                  className={`p-2.5 rounded-lg border text-left transition ${
-                    designMode === 'dark'
+                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'dark'
                       ? 'border-[#3B33FF] bg-[#161326] text-white ring-1 ring-[#3B33FF]'
                       : 'border-[#D4D4D8] bg-[#161326]/90 text-white hover:bg-[#161326]'
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold text-white">Nuit High-Tech</div>
                   <div className="text-[10px] text-[#A1A1AA]">Sombre officiel</div>
@@ -872,11 +862,10 @@ export function EmailStudioClient({
                 <button
                   type="button"
                   onClick={() => setDesignMode('light')}
-                  className={`p-2.5 rounded-lg border text-left transition ${
-                    designMode === 'light'
+                  className={`p-2.5 rounded-lg border text-left transition ${designMode === 'light'
                       ? 'border-[#3B33FF] bg-white ring-1 ring-[#3B33FF]'
                       : 'border-[#D4D4D8] bg-white hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold text-[#18181B]">Blanc Épuré</div>
                   <div className="text-[10px] text-[#71717A]">Minimaliste</div>
@@ -900,11 +889,10 @@ export function EmailStudioClient({
                     key={st.id}
                     type="button"
                     onClick={() => setInfoPresentation(st.id as typeof infoPresentation)}
-                    className={`p-2 rounded-lg text-xs font-medium border text-left transition ${
-                      infoPresentation === st.id
+                    className={`p-2 rounded-lg text-xs font-medium border text-left transition ${infoPresentation === st.id
                         ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF] font-semibold'
                         : 'border-[#D4D4D8] bg-white text-[#52525B] hover:bg-[#FAF8F5]'
-                    }`}
+                      }`}
                   >
                     {st.label}
                   </button>
@@ -981,22 +969,20 @@ export function EmailStudioClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab('preview')}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                        activeTab === 'preview'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${activeTab === 'preview'
                           ? 'bg-[#18181B] text-white'
                           : 'text-[#71717A] hover:text-[#18181B]'
-                      }`}
+                        }`}
                     >
                       Aperçu
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('code')}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                        activeTab === 'code'
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${activeTab === 'code'
                           ? 'bg-[#18181B] text-white'
                           : 'text-[#71717A] hover:text-[#18181B]'
-                      }`}
+                        }`}
                     >
                       Code HTML
                     </button>
@@ -1008,9 +994,8 @@ export function EmailStudioClient({
                       <button
                         type="button"
                         onClick={() => setPreviewDevice('desktop')}
-                        className={`p-1 rounded text-xs transition ${
-                          previewDevice === 'desktop' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
-                        }`}
+                        className={`p-1 rounded text-xs transition ${previewDevice === 'desktop' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
+                          }`}
                         title="Vue Ordinateur"
                       >
                         🖥️
@@ -1018,9 +1003,8 @@ export function EmailStudioClient({
                       <button
                         type="button"
                         onClick={() => setPreviewDevice('mobile')}
-                        className={`p-1 rounded text-xs transition ${
-                          previewDevice === 'mobile' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
-                        }`}
+                        className={`p-1 rounded text-xs transition ${previewDevice === 'mobile' ? 'bg-[#FAF8F5] text-[#3B33FF]' : 'text-[#71717A]'
+                          }`}
                         title="Vue Mobile"
                       >
                         📱
@@ -1032,17 +1016,15 @@ export function EmailStudioClient({
 
               {/* Preview Body */}
               <div
-                className={`p-4 sm:p-6 transition-all ${
-                  designMode === 'dark' ? 'bg-[#0B0A11]' : designMode === 'cream' ? 'bg-[#F0E8DB]' : 'bg-[#F4F4F5]'
-                }`}
+                className={`p-4 sm:p-6 transition-all ${designMode === 'dark' ? 'bg-[#0B0A11]' : designMode === 'cream' ? 'bg-[#F0E8DB]' : 'bg-[#F4F4F5]'
+                  }`}
               >
                 {activeTab === 'preview' ? (
                   <div
-                    className={`mx-auto transition-all duration-300 ${
-                      previewDevice === 'mobile'
+                    className={`mx-auto transition-all duration-300 ${previewDevice === 'mobile'
                         ? 'max-w-[375px] shadow-2xl rounded-2xl overflow-hidden border-4 border-[#27272A]'
                         : 'max-w-[620px]'
-                    }`}
+                      }`}
                   >
                     <iframe
                       title="Aperçu email"
@@ -1189,11 +1171,10 @@ export function EmailStudioClient({
                     <button
                       type="button"
                       onClick={() => setShowDebugConsole(!showDebugConsole)}
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded border transition flex items-center gap-1 ${
-                        showDebugConsole
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded border transition flex items-center gap-1 ${showDebugConsole
                           ? 'bg-[#18181B] text-white border-[#18181B]'
                           : 'bg-[#FAF8F5] text-[#52525B] border-[#E6DFD5] hover:bg-[#F4F4F5]'
-                      }`}
+                        }`}
                     >
                       <span>🛠️ Mode Debug SMTP</span>
                       <span>{showDebugConsole ? '▲' : '▼'}</span>
@@ -1222,11 +1203,10 @@ export function EmailStudioClient({
                 {/* Delivery Quick Feedback */}
                 {testDeliveryStatus && (
                   <div
-                    className={`p-3 rounded-lg text-xs border ${
-                      testDeliveryStatus.success
+                    className={`p-3 rounded-lg text-xs border ${testDeliveryStatus.success
                         ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#166534]'
                         : 'bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-2 font-semibold">
                       <span>

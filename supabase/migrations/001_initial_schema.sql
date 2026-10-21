@@ -1,5 +1,5 @@
 -- ==============================================================================
--- NEW ERA CLUB (Club Médical New Era) — Form Engine Schema
+-- NEW ERA CLUB (New Era Medical Club) — Form Engine Schema
 -- Migration: 001_initial_schema.sql
 -- ==============================================================================
 

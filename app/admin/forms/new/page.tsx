@@ -1,7 +1,7 @@
 import { FormBuilder } from '../FormBuilder';
 
 export const metadata = {
-  title: 'Créer un formulaire — Administration Club Médical New Era',
+  title: 'Créer un formulaire — Administration New Era Medical Club',
 };
 
 export const dynamic = 'force-dynamic';

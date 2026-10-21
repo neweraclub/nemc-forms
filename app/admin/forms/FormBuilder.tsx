@@ -37,7 +37,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   const [status, setStatus] = useState<FormStatus>(initialForm?.status || 'open');
   const confirmationMessage =
     initialForm?.confirmation_message ||
-    'Votre candidature a bien été enregistrée par le Club Médical New Era.';
+    'Votre candidature a bien été enregistrée par le New Era Medical Club.';
   const [sendReceipt, setSendReceipt] = useState(initialForm?.send_receipt ?? true);
   const receiptEmailField = initialForm?.receipt_email_field || 'email';
   const [customEmailSubject, setCustomEmailSubject] = useState(initialForm?.custom_email_subject || '');
@@ -76,7 +76,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     if (res.success && res.html) {
       setCustomEmailHtml(res.html);
       if (!customEmailSubject) {
-        setCustomEmailSubject(`Confirmation — ${title || 'Club Médical New Era'}`);
+        setCustomEmailSubject(`Confirmation — ${title || 'New Era Medical Club'}`);
       }
     }
   };
@@ -126,7 +126,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         id: 'f_5',
         type: 'consent',
         key: 'consent',
-        label: 'J’accepte le traitement de mes données par le Club Médical New Era.',
+        label: 'J’accepte le traitement de mes données par le New Era Medical Club.',
         required: true,
       },
     ];

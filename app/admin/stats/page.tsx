@@ -3,7 +3,7 @@ import { getLocalSubmissions } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Statistiques — Administration Club Médical New Era',
+  title: 'Statistiques — Administration New Era Medical Club',
 };
 
 export const dynamic = 'force-dynamic';

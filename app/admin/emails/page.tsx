@@ -2,7 +2,7 @@ import { getAdminFormsWithFields } from '@/lib/supabase/admin';
 import { EmailStudioClient } from './EmailStudioClient';
 
 export const metadata = {
-  title: 'Emails IA — Administration Club Médical New Era',
+  title: 'Emails IA — Administration New Era Medical Club',
   description: 'Générateur et studio de templates d’emails propulsé par Gemini AI.',
 };
 

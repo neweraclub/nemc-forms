@@ -11,7 +11,7 @@ export default function HomePage() {
           <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
             <Image
               src="/logo_light_mode.png"
-              alt="Club Médical New Era Logo"
+              alt="New Era Medical Club Logo"
               width={36}
               height={36}
               className="w-full h-full object-contain"
@@ -20,7 +20,7 @@ export default function HomePage() {
           </div>
           <div>
             <span className="text-xs sm:text-sm font-bold tracking-tight text-[#18181B] block">
-              CLUB MÉDICAL NEW ERA
+              New Era Medical Club
             </span>
             <span className="text-[10px] sm:text-[11px] text-[#71717A] block">
               Faculté de Médecine &bull; Univ. Ouargla
@@ -40,7 +40,7 @@ export default function HomePage() {
         <div className="relative w-full h-44 sm:h-64 md:h-72 rounded-2xl overflow-hidden border border-[#E6DFD5] shadow-xs mb-8 bg-[#FAF8F5]">
           <Image
             src="/cover.png"
-            alt="Club Médical New Era Banner"
+            alt="New Era Medical Club Banner"
             fill
             priority
             className="object-cover"
@@ -78,7 +78,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="pt-6 border-t border-[#E6DFD5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-[#71717A]">
         <div>
-          <div>Club Médical New Era &bull; Université Kasdi Merbah Ouargla</div>
+          <div>New Era Medical Club &bull; Université Kasdi Merbah Ouargla</div>
           <div className="text-[11px] text-[#A1A1AA] mt-0.5">Tous droits réservés.</div>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">

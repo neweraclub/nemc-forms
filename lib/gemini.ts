@@ -1,5 +1,5 @@
 /**
- * Google Gemini AI Integration for Club Médical New Era
+ * Google Gemini AI Integration for New Era Medical Club
  * Supports gemini-3.8-flash, gemini-2.5-flash, and automatic model fallback.
  */
 export interface EmailGenerationInput {
@@ -40,7 +40,7 @@ const API_KEY = process.env.GEMINI_API_KEY || '';
 /**
  * Senior Email Designer System Prompt according to the official New Era Club guidelines.
  */
-const EMAIL_DESIGN_SYSTEM_PROMPT = `You are a senior email designer and front-end developer. Generate ONE production-ready HTML email for the New Era Club (Club Médical New Era, Faculté de Médecine d'Ouargla). Follow the CONTENT and DESIGN inputs exactly.
+const EMAIL_DESIGN_SYSTEM_PROMPT = `You are a senior email designer and front-end developer. Generate ONE production-ready HTML email for the New Era Club (New Era Medical Club, Faculté de Médecine d'Ouargla). Follow the CONTENT and DESIGN inputs exactly.
 
 ## CONTENT GUIDELINES
 - language: Français
@@ -192,17 +192,17 @@ export async function generateEmailTemplate(input: EmailGenerationInput): Promis
     input.greetingFormat === 'both'
       ? '{{prenom}} {{nom}} (keep literal, e.g. "Bonjour {{prenom}} {{nom}},")'
       : input.greetingFormat === 'formal'
-      ? '{{nom}} (keep literal, e.g. "Cher(ère) {{nom}},")'
-      : '{{prenom}} (keep literal, e.g. "Bonjour {{prenom}},")';
+        ? '{{nom}} (keep literal, e.g. "Cher(ère) {{nom}},")'
+        : '{{prenom}} (keep literal, e.g. "Bonjour {{prenom}},")';
 
   const selectedFieldsList =
     input.selectedFields && input.selectedFields.length > 0
       ? input.selectedFields.map((f) => `  - {{${f.key}}} : intitulé "${f.label}"`).join('\n')
       : '  - {{prenom}} : Prénom du candidat\n  - {{nom}} : Nom de famille\n  - {{email}} : Adresse email';
 
-  const prompt = `Génère UN courriel HTML de qualité production pour le Club Médical New Era selon ces paramètres stricts :
+  const prompt = `Génère UN courriel HTML de qualité production pour le New Era Medical Club selon ces paramètres stricts :
 
-## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'Club Médical New Era'}" (slug: /f/${input.selectedFormSlug || 'recrutement-2026'})
+## FORMULAIRE ASSOCIÉ : "${input.selectedFormTitle || 'New Era Medical Club'}" (slug: /f/${input.selectedFormSlug || 'recrutement-2026'})
 
 ## VARIABLES DE PERSONNALISATION STRICTES DU FORMULAIRE :
 - Formule d'appel (Salutation) : ${greetingText}
@@ -215,7 +215,7 @@ ${selectedFieldsList}
 - type: ${input.contextType || "confirmation d'inscription"}
 - title (H1): ${input.title || input.subject || 'Votre inscription est confirmée.'}
 - eyebrow: ${input.eyebrow || input.contextType || 'ECOS · Hépato-Gastro-Entérologie'}
-- intro: ${input.intro || "Nous vous confirmons la validation de votre participation organisée par le Club Médical New Era."}
+- intro: ${input.intro || "Nous vous confirmons la validation de votre participation organisée par le New Era Medical Club."}
 - key info:
 ${input.keyInfo || `  - Date et heure: Lundi 12 octobre 2026 · 08h00
   - Lieu: Salle TD 4
@@ -246,7 +246,7 @@ export async function refineEmailTemplate(
   currentResult: GeneratedEmailResult,
   suggestion: string
 ): Promise<GeneratedEmailResult> {
-  const prompt = `Voici un modèle d'email HTML du Club Médical New Era :
+  const prompt = `Voici un modèle d'email HTML du New Era Medical Club :
 
 SUJET ACTUEL : ${currentResult.subject}
 BADGE : ${currentResult.badge}

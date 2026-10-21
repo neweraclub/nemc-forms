@@ -17,13 +17,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!form) {
     return {
-      title: 'Formulaire introuvable — Club Médical New Era',
+      title: 'Formulaire introuvable — New Era Medical Club',
     };
   }
 
   return {
-    title: `${form.title} — Club Médical New Era`,
-    description: form.description || 'Formulaire officiel du Club Médical New Era.',
+    title: `${form.title} — New Era Medical Club`,
+    description: form.description || 'Formulaire officiel du New Era Medical Club.',
   };
 }
 
@@ -44,7 +44,7 @@ export default async function FormPage({ params }: PageProps) {
             <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
               <Image
                 src="/logo_light_mode.png"
-                alt="Club Médical New Era Logo"
+                alt="New Era Medical Club Logo"
                 width={40}
                 height={40}
                 className="w-full h-full object-contain"
@@ -53,7 +53,7 @@ export default async function FormPage({ params }: PageProps) {
             </div>
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
-                Club Médical New Era
+                New Era Medical Club
               </span>
               <span className="text-[11px] text-[#71717A] block">
                 Faculté de Médecine &bull; Univ. Ouargla

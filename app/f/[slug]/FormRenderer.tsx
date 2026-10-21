@@ -70,7 +70,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
   const clearDraft = () => {
     try {
       localStorage.removeItem(storageKey);
-    } catch {}
+    } catch { }
     setAnswers({});
     setErrors({});
     setMobileStep(0);
@@ -232,7 +232,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         );
         try {
           localStorage.removeItem(storageKey);
-        } catch {}
+        } catch { }
       } else {
         if (res.errors) {
           setErrors(res.errors);
@@ -266,7 +266,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
               <Image
                 src="/logo_light_mode.png"
-                alt="Club Médical New Era Logo"
+                alt="New Era Medical Club Logo"
                 width={36}
                 height={36}
                 className="w-full h-full object-contain"
@@ -276,7 +276,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
           </div>
 
           <p className="text-xs font-semibold text-[#52525B] tracking-wide uppercase mb-1">
-            Club Médical New Era &bull; Faculté de Médecine Univ. Ouargla
+            New Era Medical Club &bull; Faculté de Médecine Univ. Ouargla
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#18181B] tracking-tight mb-3">
             Candidature envoyée avec succès
@@ -310,7 +310,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
           <div className="pt-6 border-t border-[#E6DFD5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold text-[#18181B]">Restez connectés avec le Club Médical New Era</p>
+              <p className="text-xs font-semibold text-[#18181B]">Restez connectés avec le New Era Medical Club</p>
               <p className="text-[11px] text-[#71717A]">Suivez la suite du processus de recrutement sur nos réseaux</p>
             </div>
             <ClubSocialLinks />
@@ -354,9 +354,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -370,9 +369,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -386,9 +384,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -402,9 +399,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -418,9 +414,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value === '' ? '' : Number(e.target.value))}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition placeholder:text-[#A1A1AA] focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -433,9 +428,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           />
         )}
 
@@ -447,9 +441,8 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             onChange={(e) => handleAnswerChange(field.key, e.target.value)}
             aria-invalid={!!errorMsg}
             aria-describedby={errorMsg ? errorId : undefined}
-            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${
-              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
-            }`}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base text-[#18181B] bg-white border rounded-lg transition focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20 ${errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/30' : 'border-[#D4D4D8]'
+              }`}
           >
             <option value="">Sélectionnez une option</option>
             {(field.options || []).map((opt) => (
@@ -468,11 +461,10 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
               return (
                 <label
                   key={opt.value}
-                  className={`flex items-center min-h-[42px] px-3 py-2 rounded-lg border cursor-pointer transition ${
-                    isChecked
+                  className={`flex items-center min-h-[42px] px-3 py-2 rounded-lg border cursor-pointer transition ${isChecked
                       ? 'border-[#3B33FF] bg-[#3B33FF]/5 text-[#18181B] font-medium'
                       : 'border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-[#3F3F46]'
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"
@@ -510,11 +502,10 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
               return (
                 <label
                   key={opt.value}
-                  className={`flex items-center min-h-[42px] px-3 py-2 rounded-lg border cursor-pointer transition ${
-                    isChecked
+                  className={`flex items-center min-h-[42px] px-3 py-2 rounded-lg border cursor-pointer transition ${isChecked
                       ? 'border-[#3B33FF] bg-[#3B33FF]/5 text-[#18181B] font-medium'
                       : 'border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-[#3F3F46]'
-                  }`}
+                    }`}
                 >
                   <input
                     type="checkbox"
@@ -622,7 +613,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
           <div className="relative w-full h-24 rounded-xl overflow-hidden border border-[#E6DFD5] mb-3.5 bg-[#FAF8F5]">
             <Image
               src="/cover.png"
-              alt="Club Médical New Era Banner"
+              alt="New Era Medical Club Banner"
               fill
               priority
               className="object-cover"
@@ -641,7 +632,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             </div>
             <div>
               <p className="text-xs font-bold text-[#52525B] tracking-wide uppercase">
-                Club Médical New Era
+                New Era Medical Club
               </p>
               <p className="text-[10px] text-[#71717A]">Faculté de Médecine Univ. Ouargla</p>
             </div>
@@ -676,11 +667,10 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
               type="button"
               onClick={handlePrevMobileStep}
               disabled={safeMobileStep === 0 || isPending}
-              className={`min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold border transition ${
-                safeMobileStep === 0 || isPending
+              className={`min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold border transition ${safeMobileStep === 0 || isPending
                   ? 'border-transparent text-[#A1A1AA] cursor-not-allowed'
                   : 'border-[#E6DFD5] text-[#18181B] bg-white hover:bg-[#FAF8F5]'
-              }`}
+                }`}
             >
               Précédent
             </button>
@@ -732,7 +722,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
                 <div className="relative w-full h-32 rounded-xl overflow-hidden border border-[#E6DFD5] mb-2 bg-[#FAF8F5]">
                   <Image
                     src="/cover.png"
-                    alt="Club Médical New Era Banner"
+                    alt="New Era Medical Club Banner"
                     fill
                     priority
                     className="object-cover"
@@ -743,7 +733,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
                   <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
                     <Image
                       src="/logo_light_mode.png"
-                      alt="Club Médical New Era Logo"
+                      alt="New Era Medical Club Logo"
                       width={36}
                       height={36}
                       className="w-full h-full object-contain"
@@ -751,7 +741,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
                   </div>
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
-                      Club Médical New Era
+                      New Era Medical Club
                     </span>
                     <span className="text-[11px] text-[#71717A] block">
                       Faculté de Médecine &bull; Univ. Ouargla

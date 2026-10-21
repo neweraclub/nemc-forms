@@ -82,7 +82,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#E6DFD5] bg-white p-0.5 shrink-0 flex items-center justify-center">
             <Image
               src="/logo_light_mode.png"
-              alt="Club Médical New Era Logo"
+              alt="New Era Medical Club Logo"
               width={28}
               height={28}
               className="w-full h-full object-contain"
@@ -90,7 +90,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </div>
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-[#18181B] block">
-              Club Médical New Era
+              New Era Medical Club
             </span>
             <span className="text-[10px] text-[#71717A] block">Administration</span>
           </div>
@@ -116,9 +116,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       {/* Main Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-[#E6DFD5] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-[#E6DFD5] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div>
           {/* Brand Header */}
@@ -127,7 +126,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
                 <Image
                   src="/logo_light_mode.png"
-                  alt="Club Médical New Era Logo"
+                  alt="New Era Medical Club Logo"
                   width={36}
                   height={36}
                   className="w-full h-full object-contain"
@@ -156,11 +155,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
-                  item.active
+                className={`flex items-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition ${item.active
                     ? 'bg-[#18181B] text-white'
                     : 'text-[#3F3F46] hover:bg-[#FAF8F5] hover:text-[#18181B]'
-                }`}
+                  }`}
               >
                 {item.icon}
                 {item.label}

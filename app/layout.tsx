@@ -12,24 +12,24 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ||
-      'http://form.new-era-medical-club-univ-ouargla.dz'
+    'http://form.new-era-medical-club-univ-ouargla.dz'
   ),
-  title: 'Club Médical New Era — Formulaires & Recrutement',
+  title: 'New Era Medical Club — Formulaires & Recrutement',
   description:
-    'Plateforme officielle de candidatures et formulaires pour le Club Médical New Era.',
+    'Plateforme officielle de candidatures et formulaires pour le New Era Medical Club.',
   icons: {
     icon: '/favicon.ico',
     apple: '/logo_light_mode.png',
   },
   openGraph: {
-    title: 'Club Médical New Era — Formulaires & Recrutement',
-    description: 'Plateforme officielle de candidatures et formulaires pour le Club Médical New Era.',
+    title: 'New Era Medical Club — Formulaires & Recrutement',
+    description: 'Plateforme officielle de candidatures et formulaires pour le New Era Medical Club.',
     images: [
       {
         url: '/cover.png',
         width: 1200,
         height: 630,
-        alt: 'Club Médical New Era Banner',
+        alt: 'New Era Medical Club Banner',
       },
     ],
   },

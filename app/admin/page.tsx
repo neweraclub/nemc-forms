@@ -3,7 +3,7 @@ import { getAdminForms } from '@/lib/supabase/admin';
 import { FormRowActions } from './FormRowActions';
 
 export const metadata = {
-  title: 'Formulaires — Administration Club Médical New Era',
+  title: 'Formulaires — Administration New Era Medical Club',
 };
 
 export const dynamic = 'force-dynamic';

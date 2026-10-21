@@ -30,7 +30,7 @@ export function sanitizeHeader(str: string): string {
 export function getSenderAddress(): { fromAddress: string; replyTo: string } {
   const user = process.env.SMTP_USER?.trim();
   const rawFrom = process.env.SMTP_FROM?.trim();
-  const clubName = 'Club Médical New Era';
+  const clubName = 'New Era Medical Club';
   const eventEmail = 'event@new-era-medical-club-univ-ouargla.dz';
 
   if (user) {
@@ -166,7 +166,7 @@ export function buildTeamEmailHtml(
           </tr>
           <tr>
             <td style="padding: 24px 28px 16px 28px; background-color: #FAF6EE; border-bottom: 1px solid #E6DFD5;">
-              <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">Club Médical New Era</span>
+              <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">New Era Medical Club</span>
               <h1 style="margin: 6px 0 0 0; font-size: 20px; font-weight: 700; color: #18181B; line-height: 1.3;">
                 Nouvelle réponse reçue
               </h1>
@@ -188,7 +188,7 @@ export function buildTeamEmailHtml(
             <td style="padding: 20px 28px; background-color: #FAF8F5; border-top: 1px solid #E6DFD5; font-size: 12px; color: #71717A; line-height: 1.5;">
               Soumis le ${new Date(createdAt).toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' })}.
               <br />
-              Ce message a été envoyé automatiquement par le serveur de soumissions de <strong>Club Médical New Era</strong>.
+              Ce message a été envoyé automatiquement par le serveur de soumissions de <strong>New Era Medical Club</strong>.
             </td>
           </tr>
         </table>
@@ -241,7 +241,7 @@ export function buildReceiptEmailHtml(
           </tr>
           <tr>
             <td style="padding: 24px 28px 16px 28px;">
-              <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">Club Médical New Era</span>
+              <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">New Era Medical Club</span>
               <h1 style="margin: 8px 0 12px 0; font-size: 20px; font-weight: 700; color: #18181B;">
                 Accusé de réception
               </h1>
@@ -265,7 +265,7 @@ export function buildReceiptEmailHtml(
           </tr>
           <tr>
             <td style="padding: 16px 28px; background-color: #FAF8F5; border-top: 1px solid #E6DFD5; font-size: 12px; color: #71717A;">
-              Club Médical New Era &bull; event@new-era-medical-club-univ-ouargla.dz &bull; Cet email confirme la bonne transmission de vos données.
+              New Era Medical Club &bull; event@new-era-medical-club-univ-ouargla.dz &bull; Cet email confirme la bonne transmission de vos données.
             </td>
           </tr>
         </table>
@@ -276,7 +276,7 @@ export function buildReceiptEmailHtml(
 </html>
   `;
 }
- 
+
 /**
  * Renders an AI-generated or custom HTML email template with candidate's answers and metadata.
  */
@@ -433,7 +433,7 @@ export async function sendDirectTestEmail(
   html: string
 ): Promise<{ success: boolean; messageId?: string; response?: string; error?: string; debugLogs?: string[] }> {
   const { fromAddress, replyTo } = getSenderAddress();
-  const transport = createEmailTransport(true);
+  const transport = createEmailTransport();
   const debugLogs: string[] = [];
 
   debugLogs.push(`Destinataire : ${toEmail}`);
@@ -458,7 +458,7 @@ export async function sendDirectTestEmail(
       from: fromAddress,
       replyTo,
       to: sanitizeHeader(toEmail),
-      subject: sanitizeHeader(subject || 'Test — Club Médical New Era'),
+      subject: sanitizeHeader(subject || 'Test — New Era Medical Club'),
       html,
       text: 'Veuillez afficher ce courriel avec un client prenant en charge le HTML pour voir le rendu officiel New Era Club.',
     });
@@ -489,13 +489,13 @@ export function buildPlainTextSummary(
   submissionId: string
 ): string {
   const lines = [
-    `CLUB MÉDICAL NEW ERA`,
+    `New Era Medical Club`,
     `${title}`,
     `Référence: ${submissionId.slice(0, 8)}`,
     `--------------------------------------------------`,
     ...summary.map((item) => `${item.label}:\n${item.value}\n`),
     `--------------------------------------------------`,
-    `Club Médical New Era - event@new-era-medical-club-univ-ouargla.dz`,
+    `New Era Medical Club - event@new-era-medical-club-univ-ouargla.dz`,
   ];
   return lines.join('\n');
 }

@@ -1,8 +1,8 @@
-# NEMC Forms — Club Médical New Era
+# NEMC Forms — New Era Medical Club
 
-Custom form engine and recruitment platform built specifically for **Club Médical New Era (NEW ERA CLUB)**. Designed for medical students filling in forms on mobile devices between lectures, with draft autosave, resilient submissions, and instant email receipts.
+Custom form engine and recruitment platform built specifically for **New Era Medical Club (NEW ERA CLUB)**. Designed for medical students filling in forms on mobile devices between lectures, with draft autosave, resilient submissions, and instant email receipts.
 
-![Club Médical New Era](https://img.shields.io/badge/Club%20M%C3%A9dical-New%20Era-3B33FF)
+![New Era Medical Club](https://img.shields.io/badge/Club%20M%C3%A9dical-New%20Era-3B33FF)
 ![Next.js](https://img.shields.io/badge/Next.js-16%20(App%20Router)-black)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20RLS-3ECF8E)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4)
@@ -79,7 +79,7 @@ cp .env.example .env.local
 | `SMTP_PORT` | SMTP port (`587` or `465`) |
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASS` | SMTP password |
-| `SMTP_FROM` | Sender display string (e.g. `"Club Médical New Era <event@new-era-medical-club-univ-ouargla.dz>"`) |
+| `SMTP_FROM` | Sender display string (e.g. `"New Era Medical Club <event@new-era-medical-club-univ-ouargla.dz>"`) |
 | `NEXT_PUBLIC_SITE_URL` | Base public URL (`http://form.new-era-medical-club-univ-ouargla.dz`) |
 
 ### 3. Database Migration
@@ -110,4 +110,4 @@ Open [http://localhost:3000](http://localhost:3000) or test the form directly at
 
 ## License
 
-Built for **Club Médical New Era**. All rights reserved.
+Built for **New Era Medical Club**. All rights reserved.

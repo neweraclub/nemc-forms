@@ -3,7 +3,7 @@ import { FormFieldRecord, FormRecord } from '@/types/form';
 export const SAMPLE_RECRUITMENT_FORM: FormRecord = {
   id: '00000000-0000-0000-0000-000000000001',
   slug: 'recrutement-2026',
-  title: 'Club Médical New Era — Recrutement 2026',
+  title: 'New Era Medical Club — Recrutement 2026',
   description:
     'Rejoignez une équipe dynamique d’étudiants en médecine engagés dans la formation médicale continue, les actions humanitaires et la vie associative.',
   status: 'open',
@@ -11,7 +11,7 @@ export const SAMPLE_RECRUITMENT_FORM: FormRecord = {
   closes_at: null,
   max_responses: null,
   confirmation_message:
-    'Votre candidature a bien été enregistrée par le Club Médical New Era. Notre équipe examinera votre profil et vous contactera très prochainement par email.',
+    'Votre candidature a bien été enregistrée par le New Era Medical Club. Notre équipe examinera votre profil et vous contactera très prochainement par email.',
   notify_emails: ['event@new-era-medical-club-univ-ouargla.dz'],
   send_receipt: true,
   receipt_email_field: 'email',
@@ -118,7 +118,7 @@ export const SAMPLE_RECRUITMENT_FIELDS: FormFieldRecord[] = [
     key: 'motivation',
     label: 'Motivation',
     help_text:
-      'Pourquoi souhaitez-vous rejoindre le Club Médical New Era ? Quelles sont vos attentes et ce que vous souhaitez apporter ? (Min. 30 caractères)',
+      'Pourquoi souhaitez-vous rejoindre le New Era Medical Club ? Quelles sont vos attentes et ce que vous souhaitez apporter ? (Min. 30 caractères)',
     placeholder: 'Partagez vos motivations et vos idées...',
     required: true,
     validation: {
@@ -169,7 +169,7 @@ export const SAMPLE_RECRUITMENT_FIELDS: FormFieldRecord[] = [
     type: 'consent',
     key: 'rgpd_consent',
     label:
-      'J’accepte le traitement de mes données par le Club Médical New Era dans le strict cadre du processus de sélection 2026.',
+      'J’accepte le traitement de mes données par le New Era Medical Club dans le strict cadre du processus de sélection 2026.',
     help_text: 'Vos coordonnées ne seront jamais cédées ni utilisées à des fins commerciales.',
     required: true,
   },

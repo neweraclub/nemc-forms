@@ -1,5 +1,5 @@
 -- ==============================================================================
--- NEW ERA CLUB (Club Médical New Era) — Sample Recruitment Form Seed
+-- NEW ERA CLUB (New Era Medical Club) — Sample Recruitment Form Seed
 -- Seed: 001_recruitment_seed.sql
 -- ==============================================================================
 
@@ -23,13 +23,13 @@ begin
             notify_emails
         ) values (
             'recrutement-2026',
-            'Club Médical New Era — Recrutement 2026',
+            'New Era Medical Club — Recrutement 2026',
             'Rejoignez une équipe dynamique d''étudiants en médecine engagés dans la formation médicale continue, les actions humanitaires et la vie associative.',
             'open',
             'stepped',
             true,
             'email',
-            'Votre candidature a bien été enregistrée par le Club Médical New Era. Notre équipe examinera votre profil et vous contactera très prochainement par email.',
+            'Votre candidature a bien été enregistrée par le New Era Medical Club. Notre équipe examinera votre profil et vous contactera très prochainement par email.',
             array['contact@newera-club.org']
         ) returning id into v_form_id;
 
@@ -142,7 +142,7 @@ begin
             'long_text',
             'motivation',
             'Motivation',
-            'Pourquoi souhaitez-vous rejoindre le Club Médical New Era ? Quelles sont vos attentes et ce que vous souhaitez apporter ? (Min. 30 caractères)',
+            'Pourquoi souhaitez-vous rejoindre le New Era Medical Club ? Quelles sont vos attentes et ce que vous souhaitez apporter ? (Min. 30 caractères)',
             'Partagez vos motivations et vos idées...',
             true,
             '{"minLength": 30}'::jsonb
@@ -197,7 +197,7 @@ begin
             11,
             'consent',
             'rgpd_consent',
-            'J''accepte le traitement de mes données par le Club Médical New Era dans le strict cadre du processus de sélection 2026.',
+            'J''accepte le traitement de mes données par le New Era Medical Club dans le strict cadre du processus de sélection 2026.',
             'Vos coordonnées ne seront jamais cédées ni utilisées à des fins commerciales.',
             true
         );

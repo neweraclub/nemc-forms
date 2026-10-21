@@ -115,7 +115,7 @@ export function DocsClient() {
       <div className="bg-[#FAF8F5] border-b border-[#E6DFD5] text-[11px] text-[#52525B] px-4 sm:px-8 py-1.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-          <span>Plateforme Officielle · Club Médical New Era &bull; Faculté de Médecine d&apos;Ouargla</span>
+          <span>Plateforme Officielle · New Era Medical Club &bull; Faculté de Médecine d&apos;Ouargla</span>
         </div>
         <div className="hidden sm:flex items-center gap-3">
           <Link href="/admin" className="text-[#3B33FF] hover:underline font-medium">
@@ -136,7 +136,7 @@ export function DocsClient() {
             <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
               <Image
                 src="/logo_light_mode.png"
-                alt="Logo Club Médical New Era"
+                alt="Logo New Era Medical Club"
                 width={32}
                 height={32}
                 className="w-full h-full object-contain"
@@ -221,11 +221,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('intro')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId === 'intro'
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId === 'intro'
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>Vue d&apos;ensemble</span>
                 </button>
@@ -236,11 +235,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('sidebar-nav')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId.startsWith('sidebar')
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId.startsWith('sidebar')
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>Barre latérale Admin</span>
                 </button>
@@ -255,9 +253,8 @@ export function DocsClient() {
                       key={sub.id}
                       type="button"
                       onClick={() => scrollToSection(sub.id)}
-                      className={`w-full text-left pl-6 pr-3 py-1.5 text-[11px] font-medium transition block ${
-                        activeId === sub.id ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                      }`}
+                      className={`w-full text-left pl-6 pr-3 py-1.5 text-[11px] font-medium transition block ${activeId === sub.id ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                        }`}
                     >
                       {sub.label}
                     </button>
@@ -270,11 +267,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('fields-nav')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId.startsWith('field-') || activeId === 'fields-nav'
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId.startsWith('field-') || activeId === 'fields-nav'
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>11 Types de questions</span>
                 </button>
@@ -296,9 +292,8 @@ export function DocsClient() {
                       key={f.id}
                       type="button"
                       onClick={() => scrollToSection(f.id)}
-                      className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block truncate ${
-                        activeId === f.id ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                      }`}
+                      className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block truncate ${activeId === f.id ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                        }`}
                     >
                       &bull; {f.label}
                     </button>
@@ -311,11 +306,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('ai-nav')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId.startsWith('ai-')
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId.startsWith('ai-')
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>Emails IA & Senior Designer</span>
                 </button>
@@ -323,18 +317,16 @@ export function DocsClient() {
                   <button
                     type="button"
                     onClick={() => scrollToSection('ai-senior-designer')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'ai-senior-designer' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'ai-senior-designer' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Moteur Gemini 3.8 Flash
                   </button>
                   <button
                     type="button"
                     onClick={() => scrollToSection('ai-refinements')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'ai-refinements' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'ai-refinements' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Ajustements interactifs
                   </button>
@@ -346,11 +338,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('layout-nav')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId.startsWith('layout-')
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId.startsWith('layout-')
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>Ergonomie & Affichage</span>
                 </button>
@@ -358,27 +349,24 @@ export function DocsClient() {
                   <button
                     type="button"
                     onClick={() => scrollToSection('layout-mobile')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'layout-mobile' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'layout-mobile' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Mobile : Questions 3 par 3
                   </button>
                   <button
                     type="button"
                     onClick={() => scrollToSection('layout-pc')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'layout-pc' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'layout-pc' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; PC : Double volet fixe
                   </button>
                   <button
                     type="button"
                     onClick={() => scrollToSection('layout-autosave')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'layout-autosave' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'layout-autosave' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Sauvegarde locale (LocalStorage)
                   </button>
@@ -390,11 +378,10 @@ export function DocsClient() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('security-nav')}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${
-                    activeId.startsWith('security-')
+                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold transition flex items-center justify-between ${activeId.startsWith('security-')
                       ? 'border-l-4 border-[#0A3670] bg-[#FAF8F5] text-[#0A3670]'
                       : 'text-[#18181B] hover:bg-[#FAF8F5]'
-                  }`}
+                    }`}
                 >
                   <span>Sécurité & Notifications</span>
                 </button>
@@ -402,18 +389,16 @@ export function DocsClient() {
                   <button
                     type="button"
                     onClick={() => scrollToSection('security-honeypot')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'security-honeypot' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'security-honeypot' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Protection Honeypot & IP
                   </button>
                   <button
                     type="button"
                     onClick={() => scrollToSection('security-smtp')}
-                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${
-                      activeId === 'security-smtp' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
-                    }`}
+                    className={`w-full text-left pl-6 pr-3 py-1 text-[11px] font-medium transition block ${activeId === 'security-smtp' ? 'text-[#0A3670] font-bold bg-white' : 'text-[#52525B] hover:text-[#18181B]'
+                      }`}
                   >
                     &bull; Email officiel verrouillé
                   </button>
@@ -427,7 +412,7 @@ export function DocsClient() {
                 Espace Superadmin
               </span>
               <p className="text-xs text-[#52525B]">
-                Accédez directement aux outils d&apos;administration du Club Médical New Era.
+                Accédez directement aux outils d&apos;administration du New Era Medical Club.
               </p>
               <Link
                 href="/admin"
@@ -449,7 +434,7 @@ export function DocsClient() {
               Manuel de Référence de la Plateforme
             </h1>
             <p className="text-base sm:text-xl text-[#3F3F46] font-medium leading-relaxed max-w-3xl">
-              Ce document fournit la spécification complète de l&apos;application du Club Médical New Era : rôles de chaque page dans la barre latérale, fonctionnement détaillé des 11 types de questions du constructeur, directives ergonomiques et intégration du studio d&apos;emails IA.
+              Ce document fournit la spécification complète de l&apos;application du New Era Medical Club : rôles de chaque page dans la barre latérale, fonctionnement détaillé des 11 types de questions du constructeur, directives ergonomiques et intégration du studio d&apos;emails IA.
             </p>
           </section>
 
@@ -689,7 +674,7 @@ export function DocsClient() {
                 3. Studio d&apos;Emails IA & Senior Designer
               </h2>
               <p className="text-sm text-[#52525B] leading-relaxed">
-                Le modèle <strong>Gemini 3.8 Flash</strong> opère avec une directive système stricte de <em>Senior Email Designer & Front-End Developer</em> pour concevoir des courriels conformes à l&apos;identité visuelle du Club Médical New Era :
+                Le modèle <strong>Gemini 3.8 Flash</strong> opère avec une directive système stricte de <em>Senior Email Designer & Front-End Developer</em> pour concevoir des courriels conformes à l&apos;identité visuelle du New Era Medical Club :
               </p>
             </div>
 
@@ -867,7 +852,7 @@ export function DocsClient() {
             <div className="w-16 h-16 rounded-full bg-white border border-[#D4D4D8] p-1.5 flex items-center justify-center shrink-0 shadow-xs">
               <Image
                 src="/logo_light_mode.png"
-                alt="Logo Club Médical New Era"
+                alt="Logo New Era Medical Club"
                 width={52}
                 height={52}
                 className="w-full h-full object-contain"
@@ -875,7 +860,7 @@ export function DocsClient() {
             </div>
             <div>
               <span className="text-lg font-serif font-bold text-[#18181B] block">
-                Club Médical New Era
+                New Era Medical Club
               </span>
               <span className="text-xs text-[#52525B] block font-medium">
                 Faculté de Médecine · Université Kasdi Merbah Ouargla
