@@ -34,9 +34,15 @@ export function createServiceRoleServerClient() {
   });
 }
 
-// Local persistent fallback directory for submissions when DB tables are pending
+// Local persistent fallback directory for submissions & custom forms when DB tables are pending
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), '.local_data');
 const LOCAL_SUBMISSIONS_FILE = path.join(LOCAL_STORAGE_DIR, 'submissions.json');
+const LOCAL_FORMS_FILE = path.join(LOCAL_STORAGE_DIR, 'custom_forms.json');
+
+export interface StoredFormData {
+  form: FormRecord;
+  fields: FormFieldRecord[];
+}
 
 function ensureLocalStorage() {
   if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
@@ -44,6 +50,19 @@ function ensureLocalStorage() {
   }
   if (!fs.existsSync(LOCAL_SUBMISSIONS_FILE)) {
     fs.writeFileSync(LOCAL_SUBMISSIONS_FILE, JSON.stringify([]), 'utf-8');
+  }
+}
+
+export function getLocalStoredForms(): StoredFormData[] {
+  try {
+    ensureLocalStorage();
+    if (!fs.existsSync(LOCAL_FORMS_FILE)) {
+      return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
+    }
+    const raw = fs.readFileSync(LOCAL_FORMS_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
   }
 }
 
@@ -122,10 +141,16 @@ export async function getFormBySlug(slug: string): Promise<{
     console.warn('Supabase query error, falling back to seed if matched:', e);
   }
 
-  // Graceful fallback for seed form if DB tables not yet migrated
-  if (!form && slug === 'recrutement-2026') {
-    form = SAMPLE_RECRUITMENT_FORM;
-    fields = SAMPLE_RECRUITMENT_FIELDS;
+  // Graceful fallback for custom forms or seed if DB tables not yet migrated
+  if (!form) {
+    const local = getLocalStoredForms().find((item) => item.form.slug === slug);
+    if (local) {
+      form = local.form;
+      fields = local.fields;
+    } else if (slug === 'recrutement-2026') {
+      form = SAMPLE_RECRUITMENT_FORM;
+      fields = SAMPLE_RECRUITMENT_FIELDS;
+    }
   }
 
   if (!form) {

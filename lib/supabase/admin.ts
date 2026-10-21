@@ -1,4 +1,10 @@
-import { createAnonServerClient, createServiceRoleServerClient, getLocalSubmissions } from './server';
+import {
+  createAnonServerClient,
+  createServiceRoleServerClient,
+  getLocalSubmissions,
+  getLocalStoredForms,
+  StoredFormData,
+} from './server';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
 import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
 
@@ -33,18 +39,28 @@ export async function getAdminForms(): Promise<AdminFormSummary[]> {
     console.warn('Admin getAdminForms query fallback:', e);
   }
 
-  // Fallback to sample recruitment form
-  const localSubs = getLocalSubmissions().filter(
-    (s) => s.form_id === SAMPLE_RECRUITMENT_FORM.id
-  );
+  // Fallback to local custom forms
+  try {
+    const localForms = getLocalStoredForms();
+    const allSubs = getLocalSubmissions();
 
-  return [
-    {
-      form: SAMPLE_RECRUITMENT_FORM,
-      fieldsCount: SAMPLE_RECRUITMENT_FIELDS.length,
-      submissionsCount: localSubs.length,
-    },
-  ];
+    return localForms.map((item: StoredFormData) => ({
+      form: item.form,
+      fieldsCount: item.fields.length,
+      submissionsCount: allSubs.filter((s) => s.form_id === item.form.id).length,
+    }));
+  } catch {
+    const localSubs = getLocalSubmissions().filter(
+      (s) => s.form_id === SAMPLE_RECRUITMENT_FORM.id
+    );
+    return [
+      {
+        form: SAMPLE_RECRUITMENT_FORM,
+        fieldsCount: SAMPLE_RECRUITMENT_FIELDS.length,
+        submissionsCount: localSubs.length,
+      },
+    ];
+  }
 }
 
 export async function getAdminSubmissions(slug: string): Promise<{
@@ -85,6 +101,17 @@ export async function getAdminSubmissions(slug: string): Promise<{
     }
   } catch (e) {
     console.warn('Admin getAdminSubmissions query fallback:', e);
+  }
+
+  if (!form) {
+    try {
+      const local = getLocalStoredForms().find((item: StoredFormData) => item.form.slug === slug);
+      if (local) {
+        form = local.form;
+        fields = local.fields;
+        submissions = getLocalSubmissions().filter((s) => s.form_id === form?.id);
+      }
+    } catch {}
   }
 
   if (!form && slug === 'recrutement-2026') {

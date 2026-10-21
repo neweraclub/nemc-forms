@@ -1,0 +1,143 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { AdminUserSession } from '@/lib/auth';
+import { logoutAction } from '@/app/actions/authActions';
+
+interface AdminSidebarProps {
+  user: AdminUserSession;
+}
+
+export function AdminSidebar({ user }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navItems = [
+    {
+      label: 'Formulaires',
+      href: '/admin',
+      active: pathname === '/admin' || (pathname.startsWith('/admin/') && !pathname.startsWith('/admin/stats') && !pathname.startsWith('/admin/forms/new')),
+      icon: (
+        <svg className="w-4 h-4 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Créer un formulaire',
+      href: '/admin/forms/new',
+      active: pathname === '/admin/forms/new',
+      icon: (
+        <svg className="w-4 h-4 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Statistiques',
+      href: '/admin/stats',
+      active: pathname.startsWith('/admin/stats'),
+      icon: (
+        <svg className="w-4 h-4 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      {/* Mobile Top Header */}
+      <div className="lg:hidden bg-white border-b border-[#E6DFD5] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-[#18181B]">
+            Club Médical New Era
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 border border-[#E6DFD5] rounded-lg text-[#18181B] hover:bg-[#FAF8F5]"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Sidebar Overlay on Mobile */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Main Sidebar */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-[#E6DFD5] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div>
+          {/* Brand Header */}
+          <div className="p-5 border-b border-[#E6DFD5]">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#3B33FF]" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[#52525B]">
+                Club Médical New Era
+              </span>
+            </div>
+            <h2 className="text-base font-bold text-[#18181B]">Espace Superadmin</h2>
+            <div className="mt-1.5 inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#3B33FF]/10 text-[#3B33FF]">
+              {user.role}
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-3 space-y-1">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+                  item.active
+                    ? 'bg-[#18181B] text-white'
+                    : 'text-[#3F3F46] hover:bg-[#FAF8F5] hover:text-[#18181B]'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        {/* User Profile & Logout Footer */}
+        <div className="p-4 border-t border-[#E6DFD5] bg-[#FAF8F5]">
+          <div className="mb-3">
+            <div className="text-xs font-bold text-[#18181B] truncate">
+              {user.first_name} {user.last_name}
+            </div>
+            <div className="text-[11px] text-[#71717A] truncate font-mono">
+              {user.email}
+            </div>
+          </div>
+
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="w-full min-h-[38px] px-3 py-1.5 border border-[#E6DFD5] bg-white hover:bg-[#FEE2E2] text-xs font-semibold text-[#DC2626] rounded-lg transition text-center"
+            >
+              Déconnexion
+            </button>
+          </form>
+        </div>
+      </aside>
+    </>
+  );
+}
