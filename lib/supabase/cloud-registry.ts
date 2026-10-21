@@ -28,9 +28,31 @@ function createAnonClient() {
 
 /**
  * Fetch forms registry directly from Supabase Storage bucket 'Html_forms'.
- * 100% cloud-hosted on Supabase.
+ * Uses timestamp cache-busting and no-store to guarantee immediate synchronization.
  */
 export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> {
+  try {
+    const fetchUrl = `${supabaseUrl}/storage/v1/object/Html_forms/${REGISTRY_STORAGE_FILE}?t=${Date.now()}`;
+    const res = await fetch(fetchUrl, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    });
+
+    if (res.ok) {
+      const parsed = (await res.json()) as StoredFormData[];
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchCloudStoredForms direct fetch warning:', err);
+  }
+
+  // Fallback to client.storage.download
   const client = createAnonClient();
   try {
     const { data, error } = await client.storage
@@ -52,7 +74,7 @@ export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> 
 
 /**
  * Upload forms registry to Supabase Storage bucket 'Html_forms'.
- * 100% cloud-hosted on Supabase.
+ * Explicitly sets cacheControl to 0 so updates propagate instantly worldwide.
  */
 export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boolean> {
   const client = createAnonClient();
@@ -62,6 +84,7 @@ export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boo
       .from('Html_forms')
       .upload(REGISTRY_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
         contentType: 'application/json',
+        cacheControl: '0',
         upsert: true,
       });
 
@@ -78,9 +101,31 @@ export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boo
 
 /**
  * Fetch submissions registry directly from Supabase Storage bucket 'Html_forms'.
- * 100% cloud-hosted on Supabase.
+ * Uses timestamp cache-busting and no-store to guarantee immediate synchronization.
  */
 export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null> {
+  try {
+    const fetchUrl = `${supabaseUrl}/storage/v1/object/Html_forms/${SUBMISSIONS_STORAGE_FILE}?t=${Date.now()}`;
+    const res = await fetch(fetchUrl, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    });
+
+    if (res.ok) {
+      const parsed = (await res.json()) as SubmissionRecord[];
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchCloudSubmissions direct fetch warning:', err);
+  }
+
+  // Fallback to client.storage.download
   const client = createAnonClient();
   try {
     const { data, error } = await client.storage
@@ -102,7 +147,7 @@ export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null
 
 /**
  * Upload submissions registry to Supabase Storage bucket 'Html_forms'.
- * 100% cloud-hosted on Supabase.
+ * Explicitly sets cacheControl to 0 so updates propagate instantly worldwide.
  */
 export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<boolean> {
   const client = createAnonClient();
@@ -112,6 +157,7 @@ export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<bo
       .from('Html_forms')
       .upload(SUBMISSIONS_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
         contentType: 'application/json',
+        cacheControl: '0',
         upsert: true,
       });
 

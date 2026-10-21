@@ -16,7 +16,8 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleDeleted = (deletedSlug: string) => {
-    const target = deletedSlug.trim().toLowerCase();
+    const target = (deletedSlug || '').trim().toLowerCase();
+    if (!target) return;
     setDeletedSlugs((prev) => (prev.includes(target) ? prev : [...prev, target]));
   };
 
@@ -27,9 +28,11 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
   };
 
   const forms = initialForms.filter((item) => {
-    const s = item.form.slug?.trim().toLowerCase() || '';
-    const id = item.form.id?.trim().toLowerCase() || '';
-    return !deletedSlugs.includes(s) && !deletedSlugs.includes(id);
+    const s = item.form.slug?.trim().toLowerCase();
+    const id = item.form.id?.trim().toLowerCase();
+    if (s && deletedSlugs.includes(s)) return false;
+    if (id && deletedSlugs.includes(id)) return false;
+    return true;
   });
 
   return (

@@ -179,6 +179,10 @@ export async function updateFormCustomEmail(
  */
 export async function removeFormBySlug(slug: string): Promise<{ success: boolean; error?: string }> {
   const cleanSlug = (slug || '').trim().toLowerCase();
+  let decodedSlug = cleanSlug;
+  try {
+    decodedSlug = decodeURIComponent(cleanSlug);
+  } catch {}
 
   // 1. Remove from Supabase Cloud Storage forms and submissions
   try {
@@ -188,13 +192,23 @@ export async function removeFormBySlug(slug: string): Promise<{ success: boolean
     if (cloudForms !== null) {
       const filtered = cloudForms.filter((item) => {
         const s = (item.form?.slug || '').trim().toLowerCase();
+        let sDec = s;
+        try {
+          sDec = decodeURIComponent(s);
+        } catch {}
         const id = (item.form?.id || '').trim().toLowerCase();
-        if (s === cleanSlug || id === cleanSlug) {
+
+        const match =
+          (cleanSlug && (s === cleanSlug || sDec === cleanSlug || id === cleanSlug)) ||
+          (decodedSlug && (s === decodedSlug || sDec === decodedSlug || id === decodedSlug));
+
+        if (match) {
           targetFormId = item.form.id;
           return false;
         }
         return true;
       });
+
       await saveCloudStoredForms(filtered);
     }
 
@@ -217,14 +231,19 @@ export async function removeFormBySlug(slug: string): Promise<{ success: boolean
       const { data: formRow } = await serviceClient
         .from('forms')
         .select('id')
-        .eq('slug', cleanSlug)
+        .or(`slug.eq.${cleanSlug},slug.eq.${decodedSlug}`)
         .maybeSingle();
 
-      if (formRow?.id) {
-        await serviceClient.from('submissions').delete().eq('form_id', formRow.id);
-        await serviceClient.from('form_fields').delete().eq('form_id', formRow.id);
+      const formIdToDelete = formRow?.id || (cleanSlug.includes('-') && cleanSlug.length > 25 ? cleanSlug : null);
+      if (formIdToDelete) {
+        await serviceClient.from('submissions').delete().eq('form_id', formIdToDelete);
+        await serviceClient.from('form_fields').delete().eq('form_id', formIdToDelete);
+        await serviceClient.from('forms').delete().eq('id', formIdToDelete);
       }
       await serviceClient.from('forms').delete().eq('slug', cleanSlug);
+      if (decodedSlug !== cleanSlug) {
+        await serviceClient.from('forms').delete().eq('slug', decodedSlug);
+      }
     } catch {
       // ignore
     }
