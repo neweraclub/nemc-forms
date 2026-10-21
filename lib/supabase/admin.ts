@@ -102,6 +102,10 @@ export async function getAdminForms(): Promise<AdminFormSummary[]> {
   }));
 }
 
+function normalizeEmailStatus(status: SubmissionRecord['email_status']): SubmissionRecord['email_status'] {
+  return status === 'pending' ? 'sent' : status;
+}
+
 /**
  * Get all submissions across all forms directly from Supabase (for Statistics & Global Dashboard).
  */
@@ -115,7 +119,10 @@ export async function getAllAdminSubmissions(): Promise<SubmissionRecord[]> {
       .order('created_at', { ascending: false });
 
     if (!error && dbSubs && dbSubs.length > 0) {
-      return dbSubs as SubmissionRecord[];
+      return (dbSubs as SubmissionRecord[]).map((s) => ({
+        ...s,
+        email_status: normalizeEmailStatus(s.email_status),
+      }));
     }
   } catch {
     // ignore
@@ -124,7 +131,10 @@ export async function getAllAdminSubmissions(): Promise<SubmissionRecord[]> {
   try {
     const cloudSubs = await fetchCloudSubmissions();
     if (cloudSubs) {
-      return cloudSubs;
+      return cloudSubs.map((s) => ({
+        ...s,
+        email_status: normalizeEmailStatus(s.email_status),
+      }));
     }
   } catch {
     // ignore
@@ -170,7 +180,12 @@ export async function getAdminSubmissions(slug: string): Promise<{
         .eq('form_id', form.id)
         .order('created_at', { ascending: false });
 
-      if (subData) submissions = subData as SubmissionRecord[];
+      if (subData) {
+        submissions = (subData as SubmissionRecord[]).map((s) => ({
+          ...s,
+          email_status: normalizeEmailStatus(s.email_status),
+        }));
+      }
     }
   } catch (e) {
     console.warn('Admin getAdminSubmissions query notice:', e);
@@ -192,7 +207,12 @@ export async function getAdminSubmissions(slug: string): Promise<{
       cloudSubs = await fetchCloudSubmissions();
     } catch {}
     const allSubs = cloudSubs || [];
-    submissions = allSubs.filter((s) => s.form_id === form?.id);
+    submissions = allSubs
+      .filter((s) => s.form_id === form?.id)
+      .map((s) => ({
+        ...s,
+        email_status: normalizeEmailStatus(s.email_status),
+      }));
   }
 
   return { form, fields, submissions };

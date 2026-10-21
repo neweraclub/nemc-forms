@@ -16,7 +16,6 @@ export default async function AdminStatsPage() {
 
   const sentCount = allSubs.filter((s) => s.email_status === 'sent').length;
   const failedCount = allSubs.filter((s) => s.email_status === 'failed').length;
-  const pendingCount = allSubs.filter((s) => s.email_status === 'pending').length;
 
   const emailRate =
     allSubs.length > 0 ? Math.round((sentCount / allSubs.length) * 100) : 100;
@@ -66,7 +65,9 @@ export default async function AdminStatsPage() {
           <p className={`text-3xl font-extrabold mt-1 ${failedCount > 0 ? 'text-[#DC2626]' : 'text-[#71717A]'}`}>
             {failedCount}
           </p>
-          <p className="text-[11px] text-[#71717A] mt-1">{pendingCount} en attente</p>
+          <p className="text-[11px] text-[#71717A] mt-1">
+            {failedCount === 0 ? 'Aucun échec (mesure en direct)' : `${failedCount} notification(s) échouée(s)`}
+          </p>
         </div>
       </div>
 
@@ -77,44 +78,102 @@ export default async function AdminStatsPage() {
             Répartition des candidatures par formulaire
           </h2>
           <p className="text-xs text-[#52525B]">
-            Volume de candidatures et statut actuel de chaque formulaire.
+            Volume de candidatures, capacité configurée et statut actuel de chaque formulaire.
           </p>
         </div>
 
         <div className="divide-y divide-[#E6DFD5]">
           {formsSummary.map(({ form, fieldsCount, submissionsCount }) => {
-            const pct =
-              totalSubmissions > 0
-                ? Math.round((submissionsCount / totalSubmissions) * 100)
-                : 0;
+            const hasMax = typeof form.max_responses === 'number' && form.max_responses > 0;
+            const max = form.max_responses || 0;
+            const pct = hasMax
+              ? Math.min(100, Math.round((submissionsCount / max) * 100))
+              : 0;
+            const isFull = hasMax && submissionsCount >= max;
 
             return (
               <div key={form.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1 flex-1 max-w-xl">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-1.5 flex-1 max-w-xl">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-bold text-[#18181B]">{form.title}</span>
                     <span className="text-xs text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E6DFD5]">
                       /f/{form.slug}
                     </span>
+                    {hasMax ? (
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                          isFull
+                            ? 'bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]'
+                            : 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]'
+                        }`}
+                      >
+                        {isFull ? 'Complet (Quota atteint)' : `Plafond : ${max} max`}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+                        Places illimitées
+                      </span>
+                    )}
                   </div>
-                  <div className="w-full bg-[#E6DFD5] h-2 rounded-full overflow-hidden mt-2">
-                    <div
-                      className="brand-gradient-bar h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.max(pct, 4)}%` }}
-                    />
+
+                  {/* Capacity-based progress bar */}
+                  <div className="w-full bg-[#E6DFD5] h-2.5 rounded-full overflow-hidden mt-2">
+                    {hasMax ? (
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isFull ? 'bg-[#DC2626]' : 'brand-gradient-bar'
+                        }`}
+                        style={{ width: `${Math.max(pct, submissionsCount > 0 ? 5 : 0)}%` }}
+                      />
+                    ) : (
+                      <div
+                        className="brand-gradient-bar h-full rounded-full transition-all duration-500"
+                        style={{ width: submissionsCount > 0 ? '100%' : '0%' }}
+                      />
+                    )}
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-[#71717A] pt-1">
-                    <span>{fieldsCount} questions</span>
-                    <span>Statut : {form.status}</span>
+
+                  <div className="flex items-center gap-4 text-xs text-[#71717A] pt-1 flex-wrap">
+                    <span>{fieldsCount} question{fieldsCount > 1 ? 's' : ''}</span>
+                    <span>Statut : <strong className="text-[#18181B]">{form.status}</strong></span>
+                    {form.closes_at && (
+                      <span className="text-[#B45309] bg-[#FEF3C7] px-2 py-0.5 rounded border border-[#FDE68A]">
+                        Fin : {new Date(form.closes_at).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="text-right">
                     <div className="text-xl font-extrabold text-[#18181B]">
-                      {submissionsCount}
+                      {hasMax ? (
+                        <>
+                          <span>{submissionsCount}</span>
+                          <span className="text-xs text-[#71717A] font-normal"> / {max}</span>
+                        </>
+                      ) : (
+                        <span>{submissionsCount}</span>
+                      )}
                     </div>
-                    <div className="text-xs text-[#71717A]">{pct}% du total</div>
+                    <div className="text-xs font-medium">
+                      {hasMax ? (
+                        isFull ? (
+                          <span className="text-[#DC2626] font-bold">100% (Complet)</span>
+                        ) : (
+                          <span className="text-[#71717A]">{pct}% du quota</span>
+                        )
+                      ) : (
+                        <span className="text-[#059669]">Illimité</span>
+                      )}
+                    </div>
                   </div>
 
                   <Link

@@ -132,22 +132,7 @@ export async function submitFormAction(
     const submissionId = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
-    const newSubmission: SubmissionRecord = {
-      id: submissionId,
-      form_id: form.id,
-      answers: validatedData,
-      submitter_email: submitterEmail,
-      created_at: createdAt,
-      email_status: 'pending',
-      ip_hash: ipHash,
-      user_agent: userAgent.slice(0, 255),
-      idempotency_key: effectiveIdempotencyKey,
-    };
-
-    // 7. Store Submission to Supabase (Zero local disk writes)
-    await saveSubmissionToSupabase(newSubmission);
-
-    // 8. Send Emails (Resilient: failure updates status, does not crash response)
+    // 7. Send Emails immediately (Outcome is measured on submit: 'sent' or 'failed', never 'pending')
     const officialEmail = 'event@new-era-medical-club-univ-ouargla.dz';
     const effectiveForm: FormRecord = {
       ...form,
@@ -156,23 +141,44 @@ export async function submitFormAction(
       ),
     };
 
-    const emailStatus = await sendSubmissionEmails({
-      form: effectiveForm,
-      fields,
-      answers: validatedData,
-      submitterEmail,
-      submissionId,
-      createdAt,
-    });
+    let emailOutcome: 'sent' | 'failed' | 'not_requested' = 'not_requested';
+    try {
+      emailOutcome = await sendSubmissionEmails({
+        form: effectiveForm,
+        fields,
+        answers: validatedData,
+        submitterEmail,
+        submissionId,
+        createdAt,
+      });
+    } catch (err) {
+      console.error('[sendSubmissionEmails Error]', err);
+      emailOutcome = 'failed';
+    }
 
-    // Update email status in Supabase
-    await updateSubmissionEmailStatusInSupabase(submissionId, emailStatus);
+    const finalEmailStatus: SubmissionRecord['email_status'] =
+      emailOutcome === 'sent' ? 'sent' : emailOutcome === 'not_requested' ? 'not_requested' : 'failed';
+
+    const newSubmission: SubmissionRecord = {
+      id: submissionId,
+      form_id: form.id,
+      answers: validatedData,
+      submitter_email: submitterEmail,
+      created_at: createdAt,
+      email_status: finalEmailStatus,
+      ip_hash: ipHash,
+      user_agent: userAgent.slice(0, 255),
+      idempotency_key: effectiveIdempotencyKey,
+    };
+
+    // 8. Store Submission directly with definitive status (Zero local disk writes)
+    await saveSubmissionToSupabase(newSubmission);
 
     return {
       success: true,
       submissionId,
       message: form.confirmation_message || 'Votre candidature a bien été enregistrée.',
-      emailStatus,
+      emailStatus: finalEmailStatus,
     };
   } catch (err) {
     console.error('[submitFormAction unexpected error]', err);

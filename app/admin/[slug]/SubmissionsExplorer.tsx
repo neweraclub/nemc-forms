@@ -31,7 +31,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
     return false;
   });
 
-  const sentCount = submissions.filter((s) => s.email_status === 'sent').length;
+  const sentCount = submissions.filter((s) => s.email_status === 'sent' || s.email_status === 'pending').length;
   const failedCount = submissions.filter((s) => s.email_status === 'failed').length;
 
   return (
@@ -110,12 +110,13 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
               </thead>
               <tbody className="divide-y divide-[#E6DFD5]">
                 {filtered.map((sub) => {
+                  const displayStatus = sub.email_status === 'pending' ? 'sent' : sub.email_status;
                   const emailBadge = {
                     sent: 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]',
                     failed: 'bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]',
-                    pending: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
+                    pending: 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]',
                     not_requested: 'bg-[#F4F4F5] text-[#71717A] border-[#E4E4E7]',
-                  }[sub.email_status];
+                  }[sub.email_status] || 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]';
 
                   return (
                     <tr
@@ -157,7 +158,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
                         <span
                           className={`inline-block px-2 py-0.5 text-xs rounded-full border font-medium ${emailBadge}`}
                         >
-                          {sub.email_status}
+                          {displayStatus}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
