@@ -12,10 +12,13 @@ interface FormBuilderProps {
   isEditing?: boolean;
 }
 
+const FIXED_OFFICIAL_EMAIL = 'event@new-era-medical-club-univ-ouargla.dz';
+
 export function FormBuilder({ initialForm, initialFields = [], isEditing = false }: FormBuilderProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Form Metadata State
   const [title, setTitle] = useState(initialForm?.title || '');
@@ -28,10 +31,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
       'Votre candidature a bien été enregistrée par le Club Médical New Era.'
   );
   const [sendReceipt, setSendReceipt] = useState(initialForm?.send_receipt ?? true);
-  const [receiptEmailField, setReceiptEmailField] = useState(initialForm?.receipt_email_field || 'email');
-  const [notifyEmails, setNotifyEmails] = useState(
-    initialForm?.notify_emails ? initialForm.notify_emails.join(', ') : 'event@new-era-medical-club-univ-ouargla.dz'
-  );
+  const receiptEmailField = initialForm?.receipt_email_field || 'email';
   const [maxResponses, setMaxResponses] = useState<string>(
     initialForm?.max_responses ? String(initialForm.max_responses) : ''
   );
@@ -64,7 +64,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         id: 'f_3',
         type: 'phone',
         key: 'phone',
-        label: 'Numéro de téléphone',
+        label: 'Numéro de téléphone (WhatsApp)',
         placeholder: '0550 00 00 00',
         required: true,
       },
@@ -87,7 +87,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     ];
   });
 
-  // Slug auto-generation helper
+  // Slug auto-generation helper from title
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (!isEditing && (!slug || slug === title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))) {
@@ -99,12 +99,12 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     }
   };
 
-  // Add a new question field
+  // Add question with auto-key
   const addField = (type: FieldType = 'short_text') => {
     const nextIndex = fields.length + 1;
-    const key = `champ_${Date.now().toString(36)}`;
+    const key = `question_${Date.now().toString(36)}`;
 
-    let defaultLabel = 'Nouveau champ';
+    let defaultLabel = 'Nouvelle question';
     let defaultOptions = undefined;
 
     if (type === 'select' || type === 'radio' || type === 'checkboxes') {
@@ -114,7 +114,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         { label: 'Option 2', value: 'opt_2' },
       ];
     } else if (type === 'consent') {
-      defaultLabel = 'J’accepte le règlement et les conditions.';
+      defaultLabel = 'J’accepte le règlement du club.';
     }
 
     setFields([
@@ -150,11 +150,25 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     setFields(updated);
   };
 
-  // Update field property
+  // Update field property with auto-key generation if key is default
   const updateField = (index: number, patch: Partial<FormFieldRecord>) => {
     setFields((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], ...patch };
+      const target = { ...updated[index], ...patch };
+
+      // If label changed and key was auto-generated, auto-update key silently
+      if (patch.label && (!target.key || target.key.startsWith('question_') || target.key.startsWith('champ_'))) {
+        const slugKey = patch.label
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 30);
+        if (slugKey) {
+          target.key = slugKey;
+        }
+      }
+
+      updated[index] = target;
       return updated;
     });
   };
@@ -169,10 +183,14 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     });
   };
 
-  const updateOption = (fieldIndex: number, optionIndex: number, label: string, value: string) => {
+  const updateOption = (fieldIndex: number, optionIndex: number, label: string) => {
     const field = fields[fieldIndex];
     const currentOptions = [...(field.options || [])];
-    currentOptions[optionIndex] = { label, value };
+    const val = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    currentOptions[optionIndex] = { label, value: val || `opt_${optionIndex + 1}` };
     updateField(fieldIndex, { options: currentOptions });
   };
 
@@ -198,14 +216,9 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     }
 
     if (fields.length === 0) {
-      setError('Veuillez ajouter au moins un champ de question.');
+      setError('Veuillez ajouter au moins une question.');
       return;
     }
-
-    const emailList = notifyEmails
-      .split(',')
-      .map((e) => e.trim())
-      .filter(Boolean);
 
     startTransition(async () => {
       const formPayload: Omit<FormRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string } = {
@@ -218,7 +231,8 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         confirmation_message: confirmationMessage.trim(),
         send_receipt: sendReceipt,
         receipt_email_field: receiptEmailField.trim() || 'email',
-        notify_emails: emailList,
+        // Strictly locked to the official club email
+        notify_emails: [FIXED_OFFICIAL_EMAIL],
         max_responses: maxResponses ? parseInt(maxResponses, 10) : null,
       };
 
@@ -247,18 +261,18 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-8">
-      {/* Top Action Bar */}
+    <form onSubmit={handleSave} className="space-y-6 max-w-4xl">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E6DFD5]">
         <div>
           <Link href="/admin" className="text-xs font-semibold text-[#52525B] hover:text-[#18181B]">
             ← Retour aux formulaires
           </Link>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#18181B] mt-1">
-            {isEditing ? `Modifier : ${initialForm?.title}` : 'Créer un nouveau formulaire'}
+            {isEditing ? `Modifier : ${initialForm?.title}` : 'Créer un formulaire'}
           </h1>
           <p className="text-xs sm:text-sm text-[#52525B] mt-0.5">
-            Configurez vos questions et vos options directement depuis le navigateur.
+            Interface simplifiée pour créer et mettre à jour vos formulaires sans programmation.
           </p>
         </div>
 
@@ -274,7 +288,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
             disabled={isPending}
             className="brand-gradient-btn min-h-[44px] px-6 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50"
           >
-            {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
+            {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder' : 'Publier le formulaire'}
           </button>
         </div>
       </div>
@@ -285,174 +299,171 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         </div>
       )}
 
-      {/* 1. Form Settings Card */}
-      <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 sm:p-8 shadow-xs space-y-6">
-        <h2 className="text-base font-bold text-[#18181B] pb-3 border-b border-[#E6DFD5]">
-          1. Paramètres généraux du formulaire
-        </h2>
+      {/* 1. Form Information Card */}
+      <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 sm:p-7 shadow-xs space-y-5">
+        <h2 className="text-base font-bold text-[#18181B]">1. Informations du formulaire</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
+        <div className="space-y-4">
+          <div>
             <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Titre du formulaire (obligatoire)
+              Titre du formulaire
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="Ex. Recrutement Pôle Humanitaire 2026"
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
+              placeholder="Ex. Recrutement Pôle Scientifique 2026"
+              className="w-full min-h-[44px] px-3.5 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
             />
           </div>
 
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Slug URL (identifiant web unique)
-            </label>
-            <div className="flex items-center">
-              <span className="text-xs text-[#71717A] bg-[#FAF8F5] px-3 min-h-[46px] flex items-center border border-r-0 border-[#D4D4D8] rounded-l-lg select-none">
-                /f/
-              </span>
-              <input
-                type="text"
-                required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                placeholder="recrutement-humanitaire"
-                className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-r-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Statut du formulaire
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as FormStatus)}
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            >
-              <option value="open">Ouvert (Accepte les réponses)</option>
-              <option value="draft">Brouillon (Non accessible au public)</option>
-              <option value="closed">Clôturé (Message de fermeture affiché)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Format d’affichage
-            </label>
-            <select
-              value={layout}
-              onChange={(e) => setLayout(e.target.value as FormLayout)}
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            >
-              <option value="stepped">Par étapes (Une question à la fois — Recommandé pour mobile)</option>
-              <option value="single">Page unique (Tous les champs visibles ensemble)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Capacité maximale de réponses (facultatif)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={maxResponses}
-              onChange={(e) => setMaxResponses(e.target.value)}
-              placeholder="Ex. 50 (laisser vide si illimité)"
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Description ou instructions
+              Description ou consignes (facultatif)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex. Formulaire officiel d'inscription pour l'année universitaire 2026..."
-              className="w-full px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
+              placeholder="Expliquez brièvement l'objet de ce formulaire..."
+              className="w-full px-3.5 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
             />
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Message de confirmation après envoi
-            </label>
-            <input
-              type="text"
-              value={confirmationMessage}
-              onChange={(e) => setConfirmationMessage(e.target.value)}
-              placeholder="Votre candidature a bien été enregistrée."
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
+                Statut
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as FormStatus)}
+                className="w-full min-h-[44px] px-3.5 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              >
+                <option value="open">Ouvert (Accepte les réponses)</option>
+                <option value="draft">Brouillon (Non accessible aux étudiants)</option>
+                <option value="closed">Clôturé (Formulaire fermé)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
+                Format d’affichage
+              </label>
+              <select
+                value={layout}
+                onChange={(e) => setLayout(e.target.value as FormLayout)}
+                className="w-full min-h-[44px] px-3.5 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+              >
+                <option value="stepped">Format optimisé (Mobile : 3 par 3 &bull; PC : 2 côtés compact)</option>
+                <option value="single">Page unique classique</option>
+              </select>
+            </div>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-xs sm:text-sm font-semibold text-[#18181B] mb-1">
-              Emails de notification pour l’équipe (séparés par une virgule)
-            </label>
-            <input
-              type="text"
-              value={notifyEmails}
-              onChange={(e) => setNotifyEmails(e.target.value)}
-              placeholder="event@new-era-medical-club-univ-ouargla.dz, admin@neweraecos.dz"
-              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
-            />
+          {/* Locked Official Club Email Badge */}
+          <div className="flex items-center gap-2 p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-lg">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] shrink-0" />
+            <div className="text-xs text-[#52525B]">
+              Email de réception des alertes (fixe et sécurisé) :{' '}
+              <strong className="text-[#18181B] font-mono">{FIXED_OFFICIAL_EMAIL}</strong>
+            </div>
           </div>
 
-          <div className="md:col-span-2 space-y-3 pt-2">
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sendReceipt}
-                onChange={(e) => setSendReceipt(e.target.checked)}
-                className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8] focus:ring-[#3B33FF]"
-              />
-              <span className="ml-2 text-xs sm:text-sm font-semibold text-[#18181B]">
-                Envoyer automatiquement un accusé de réception par email au candidat
-              </span>
-            </label>
+          {/* Toggle for Advanced Settings */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs font-semibold text-[#3B33FF] hover:underline inline-flex items-center gap-1"
+            >
+              {showAdvanced ? '− Masquer les paramètres avancés' : '+ Afficher les paramètres avancés (URL, accusé, limites)'}
+            </button>
+          </div>
 
-            {sendReceipt && (
-              <div className="pl-6">
-                <label className="block text-xs font-semibold text-[#52525B] mb-1">
-                  Clé du champ contenant l’email du candidat
+          {showAdvanced && (
+            <div className="p-4 bg-[#FAF8F5] border border-[#E6DFD5] rounded-lg space-y-4 pt-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                  Adresse URL du formulaire
+                </label>
+                <div className="flex items-center">
+                  <span className="text-xs text-[#71717A] bg-white px-3 min-h-[42px] flex items-center border border-r-0 border-[#D4D4D8] rounded-l-lg select-none">
+                    /f/
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-r-lg"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                  Message de confirmation après soumission
                 </label>
                 <input
                   type="text"
-                  value={receiptEmailField}
-                  onChange={(e) => setReceiptEmailField(e.target.value)}
-                  placeholder="email"
-                  className="w-48 min-h-[38px] px-3 py-1.5 text-xs font-mono text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                  value={confirmationMessage}
+                  onChange={(e) => setConfirmationMessage(e.target.value)}
+                  className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
                 />
               </div>
-            )}
-          </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                    Capacité maximale de candidatures (facultatif)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxResponses}
+                    onChange={(e) => setMaxResponses(e.target.value)}
+                    placeholder="Illimité"
+                    className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
+                    Accusé de réception par email
+                  </label>
+                  <label className="flex items-center cursor-pointer min-h-[42px]">
+                    <input
+                      type="checkbox"
+                      checked={sendReceipt}
+                      onChange={(e) => setSendReceipt(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8]"
+                    />
+                    <span className="ml-2 text-xs text-[#18181B]">Envoyer un accusé au candidat</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2. Form Fields Editor */}
-      <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E6DFD5]">
+      {/* 2. Questions List Card */}
+      <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 sm:p-7 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E6DFD5]">
           <div>
             <h2 className="text-base font-bold text-[#18181B]">
               2. Questions du formulaire ({fields.length})
             </h2>
             <p className="text-xs text-[#52525B]">
-              Organisez vos questions dans l’ordre d’apparition.
+              Ajoutez vos questions et organisez-les facilement.
             </p>
           </div>
 
-          {/* Quick Add Dropdown */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-[#71717A]">Ajouter :</span>
+          {/* Quick Add Presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-[#71717A] mr-1">Ajouter :</span>
             <button
               type="button"
               onClick={() => addField('short_text')}
@@ -465,14 +476,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
               onClick={() => addField('long_text')}
               className="px-2.5 py-1 text-xs font-semibold bg-[#FAF8F5] border border-[#E6DFD5] hover:bg-white rounded transition"
             >
-              + Texte long
-            </button>
-            <button
-              type="button"
-              onClick={() => addField('select')}
-              className="px-2.5 py-1 text-xs font-semibold bg-[#FAF8F5] border border-[#E6DFD5] hover:bg-white rounded transition"
-            >
-              + Menu déroulant
+              + Paragraphe
             </button>
             <button
               type="button"
@@ -486,7 +490,14 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
               onClick={() => addField('checkboxes')}
               className="px-2.5 py-1 text-xs font-semibold bg-[#FAF8F5] border border-[#E6DFD5] hover:bg-white rounded transition"
             >
-              + Cases multiples
+              + Cases à cocher
+            </button>
+            <button
+              type="button"
+              onClick={() => addField('select')}
+              className="px-2.5 py-1 text-xs font-semibold bg-[#FAF8F5] border border-[#E6DFD5] hover:bg-white rounded transition"
+            >
+              + Menu déroulant
             </button>
             <button
               type="button"
@@ -505,7 +516,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           </div>
         </div>
 
-        {/* Fields List */}
+        {/* Questions Cards */}
         <div className="space-y-4">
           {fields.map((field, idx) => {
             const hasOptions = field.type === 'select' || field.type === 'radio' || field.type === 'checkboxes';
@@ -513,20 +524,20 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
             return (
               <div
                 key={field.id || idx}
-                className="border border-[#E6DFD5] bg-[#FAF8F5]/50 rounded-xl p-4 sm:p-6 space-y-4 relative"
+                className="border border-[#E6DFD5] bg-[#FAF8F5]/50 rounded-xl p-4 sm:p-5 space-y-3 relative"
               >
-                {/* Header Row: Position + Label + Actions */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#E6DFD5]/60">
+                {/* Header: Position & Action Controls */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#E6DFD5]/60">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#18181B] text-white text-xs font-bold flex items-center justify-center">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-semibold uppercase text-[#52525B]">
-                      Type: <code>{field.type}</code>
+                    <span className="text-xs font-semibold text-[#52525B]">
+                      {field.label || 'Question'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       disabled={idx === 0}
@@ -548,85 +559,73 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                     <button
                       type="button"
                       onClick={() => removeField(idx)}
-                      className="w-7 h-7 rounded border border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C] text-xs font-bold flex items-center justify-center hover:bg-[#FEE2E2] ml-2"
-                      title="Supprimer ce champ"
+                      className="w-7 h-7 rounded border border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C] text-xs font-bold flex items-center justify-center hover:bg-[#FEE2E2] ml-1.5"
+                      title="Supprimer"
                     >
                       ✕
                     </button>
                   </div>
                 </div>
 
-                {/* Configuration Inputs */}
+                {/* Question Properties */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Intitulé de la question (Label)
+                      Intitulé de la question
                     </label>
                     <input
                       type="text"
                       required
                       value={field.label || ''}
                       onChange={(e) => updateField(idx, { label: e.target.value })}
+                      placeholder="Ex. Quelle est votre année d'études ?"
                       className="w-full min-h-[42px] px-3 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Type de champ
+                      Type de réponse
                     </label>
                     <select
                       value={field.type}
                       onChange={(e) => updateField(idx, { type: e.target.value as FieldType })}
-                      className="w-full min-h-[42px] px-3 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+                      className="w-full min-h-[42px] px-3 py-2 text-xs sm:text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
                     >
                       <option value="short_text">Texte court</option>
                       <option value="long_text">Texte long / Paragraphe</option>
                       <option value="email">Adresse email</option>
                       <option value="phone">Téléphone</option>
                       <option value="number">Nombre</option>
+                      <option value="radio">Choix unique (Boutons radio)</option>
+                      <option value="checkboxes">Choix multiples (Cases à cocher)</option>
                       <option value="select">Menu déroulant (Select)</option>
-                      <option value="radio">Choix unique (Radio)</option>
-                      <option value="checkboxes">Choix multiples (Checkboxes)</option>
                       <option value="date">Date</option>
                       <option value="file">Fichier / Justificatif</option>
                       <option value="consent">Case de consentement</option>
                     </select>
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-3">
                     <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Clé technique (unique)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={field.key || ''}
-                      onChange={(e) => updateField(idx, { key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                      className="w-full min-h-[42px] px-3 py-2 text-xs font-mono text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Texte d’aide / Instruction (facultatif)
+                      Texte d’aide ou indication (facultatif)
                     </label>
                     <input
                       type="text"
                       value={field.help_text || ''}
                       onChange={(e) => updateField(idx, { help_text: e.target.value })}
-                      placeholder="Ex. Format PDF max 5 Mo"
-                      className="w-full min-h-[42px] px-3 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
+                      placeholder="Ex. Indiquez votre promotion pour l'année universitaire en cours."
+                      className="w-full min-h-[38px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
                     />
                   </div>
                 </div>
 
-                {/* Options Editor for Choice Fields */}
+                {/* Options List for Choice Fields */}
                 {hasOptions && (
                   <div className="bg-white p-3.5 rounded-lg border border-[#E6DFD5] space-y-2 mt-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-[#18181B]">
-                        Options de réponse :
+                        Options proposées :
                       </span>
                       <button
                         type="button"
@@ -643,16 +642,9 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                           <input
                             type="text"
                             value={opt.label}
-                            placeholder="Libellé de l'option"
-                            onChange={(e) => updateOption(idx, optIdx, e.target.value, opt.value)}
-                            className="flex-1 min-h-[36px] px-2.5 py-1 text-xs text-[#18181B] border border-[#D4D4D8] rounded"
-                          />
-                          <input
-                            type="text"
-                            value={opt.value}
-                            placeholder="Valeur code"
-                            onChange={(e) => updateOption(idx, optIdx, opt.label, e.target.value)}
-                            className="w-32 min-h-[36px] px-2.5 py-1 text-xs font-mono text-[#52525B] border border-[#D4D4D8] rounded"
+                            placeholder="Libellé de l'option (ex. 1ère Année)"
+                            onChange={(e) => updateOption(idx, optIdx, e.target.value)}
+                            className="flex-1 min-h-[36px] px-3 py-1 text-xs text-[#18181B] border border-[#D4D4D8] rounded"
                           />
                           <button
                             type="button"
@@ -668,16 +660,16 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                   </div>
                 )}
 
-                {/* Footer of question: required toggle */}
+                {/* Required toggle */}
                 <div className="flex items-center gap-4 pt-1">
                   <label className="flex items-center cursor-pointer text-xs font-semibold text-[#18181B]">
                     <input
                       type="checkbox"
                       checked={field.required ?? false}
                       onChange={(e) => updateField(idx, { required: e.target.checked })}
-                      className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8] focus:ring-[#3B33FF]"
+                      className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8]"
                     />
-                    <span className="ml-2">Champ obligatoire</span>
+                    <span className="ml-2">Cette question est obligatoire</span>
                   </label>
                 </div>
               </div>
@@ -685,7 +677,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           })}
         </div>
 
-        {/* Bottom Add Field Button */}
+        {/* Add Question Button */}
         <div className="pt-2">
           <button
             type="button"
@@ -697,8 +689,8 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         </div>
       </div>
 
-      {/* Bottom Save Bar */}
-      <div className="flex items-center justify-end gap-3 pt-4">
+      {/* Save Button */}
+      <div className="flex items-center justify-end gap-3 pt-2">
         <Link
           href="/admin"
           className="min-h-[48px] px-6 py-2.5 border border-[#E6DFD5] rounded-lg text-sm font-semibold text-[#18181B] bg-white hover:bg-[#FAF8F5] transition flex items-center"
@@ -710,7 +702,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           disabled={isPending}
           className="brand-gradient-btn min-h-[48px] px-8 py-3 rounded-lg text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50"
         >
-          {isPending ? 'Enregistrement en cours...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
+          {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
         </button>
       </div>
     </form>

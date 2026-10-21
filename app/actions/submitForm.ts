@@ -5,7 +5,7 @@ import { getFormBySlug, createServiceRoleServerClient, saveLocalSubmission, upda
 import { buildFormZodSchema } from '@/lib/schema-builder';
 import { hashClientIp, checkRateLimit } from '@/lib/rate-limit';
 import { sendSubmissionEmails } from '@/lib/mailer';
-import { SubmissionRecord } from '@/types/form';
+import { FormRecord, SubmissionRecord } from '@/types/form';
 import crypto from 'crypto';
 
 export interface SubmitFormResult {
@@ -171,8 +171,16 @@ export async function submitFormAction(
     }
 
     // 8. Send Emails (Resilient: failure updates status, does not crash response)
+    const officialEmail = 'event@new-era-medical-club-univ-ouargla.dz';
+    const effectiveForm: FormRecord = {
+      ...form,
+      notify_emails: Array.from(
+        new Set([...(form.notify_emails || []), officialEmail])
+      ),
+    };
+
     const emailStatus = await sendSubmissionEmails({
-      form,
+      form: effectiveForm,
       fields,
       answers: validatedData,
       submitterEmail,
