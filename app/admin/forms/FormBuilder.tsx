@@ -304,8 +304,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           title: isEditing ? 'Formulaire mis à jour' : 'Formulaire créé',
           message: `Le formulaire "${title}" a été enregistré avec succès.`,
         });
-        router.push('/admin');
-        router.refresh();
+        window.location.href = '/admin';
       } else {
         setError(res.error || 'Erreur lors de l’enregistrement.');
       }

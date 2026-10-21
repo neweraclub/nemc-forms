@@ -33,6 +33,7 @@ interface RawFormWithNested extends FormRecord {
  */
 export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> {
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
+  const formsMap = new Map<string, AdminFormWithFields>();
 
   // 1. Try PostgreSQL if available
   try {
@@ -42,11 +43,15 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
       .order('created_at', { ascending: false });
 
     if (!error && dbForms && dbForms.length > 0) {
-      return (dbForms as unknown as RawFormWithNested[]).map((f) => ({
-        form: f,
-        fields: (f.form_fields || []).sort((a, b) => (a.position || 0) - (b.position || 0)),
-        submissionsCount: f.submissions?.[0]?.count || 0,
-      }));
+      for (const f of dbForms as unknown as RawFormWithNested[]) {
+        if (f.slug) {
+          formsMap.set(f.slug, {
+            form: f,
+            fields: (f.form_fields || []).sort((a, b) => (a.position || 0) - (b.position || 0)),
+            submissionsCount: f.submissions?.[0]?.count || 0,
+          });
+        }
+      }
     }
   } catch (e) {
     console.warn('PostgreSQL getAdminFormsWithFields query notice:', e);
@@ -60,25 +65,7 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
     // ignore
   }
 
-  const map = new Map<string, StoredFormData>();
-
-  if (cloudItems !== null) {
-    // Cloud Storage is authoritative
-    syncLocalFormsWithCloud(cloudItems);
-    for (const item of cloudItems) {
-      if (item.form?.slug) {
-        map.set(item.form.slug, item);
-      }
-    }
-  } else {
-    // Fall back to local items only if Cloud Storage was unreachable
-    const localItems = getLocalStoredForms();
-    for (const item of localItems) {
-      if (item.form?.slug) {
-        map.set(item.form.slug, item);
-      }
-    }
-  }
+  const storageItems = cloudItems !== null ? cloudItems : getLocalStoredForms();
 
   let cloudSubs: SubmissionRecord[] | null = null;
   try {
@@ -87,14 +74,18 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
   const localSubs = getLocalSubmissions();
   const allSubs = cloudSubs !== null && cloudSubs.length > 0 ? cloudSubs : localSubs;
 
-  const results: AdminFormWithFields[] = Array.from(map.values()).map((item) => ({
-    form: item.form,
-    fields: (item.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0)),
-    submissionsCount: allSubs.filter((s) => s.form_id === item.form.id).length,
-  }));
+  for (const item of storageItems) {
+    if (item.form?.slug && !formsMap.has(item.form.slug)) {
+      formsMap.set(item.form.slug, {
+        form: item.form,
+        fields: (item.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0)),
+        submissionsCount: allSubs.filter((s) => s.form_id === item.form.id).length,
+      });
+    }
+  }
 
   // Sort descending by updated_at or created_at
-  return results.sort((a, b) => {
+  return Array.from(formsMap.values()).sort((a, b) => {
     const timeA = new Date(a.form.updated_at || a.form.created_at || 0).getTime();
     const timeB = new Date(b.form.updated_at || b.form.created_at || 0).getTime();
     return timeB - timeA;
