@@ -38,7 +38,7 @@ export default async function AdminFormSubmissionsPage({ params }: PageProps) {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-[#52525B] mt-1">
-              Visualisation des candidatures soumises via <code>/f/{form.slug}</code>
+              Visualisation des réponses soumises via <code>/f/{form.slug}</code>
             </p>
           </div>
 

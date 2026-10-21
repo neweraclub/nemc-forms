@@ -40,7 +40,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 shadow-xs">
           <p className="text-xs font-semibold text-[#52525B] uppercase tracking-wide">
-            Total candidatures
+            Total réponses
           </p>
           <p className="text-2xl font-bold text-[#18181B] mt-1">{submissions.length}</p>
         </div>
@@ -69,7 +69,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher par nom, email, faculté, mot-clé..."
+            placeholder="Rechercher par mot-clé, nom, email, valeur..."
             className="w-full min-h-[44px] px-3.5 py-2 text-sm text-[#18181B] bg-[#FAF8F5] border border-[#E6DFD5] rounded-lg focus:border-[#3B33FF] focus:bg-white transition"
           />
         </div>
@@ -90,7 +90,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-[#71717A]">
             <p className="text-sm">
-              {searchQuery ? 'Aucune candidature ne correspond à votre recherche.' : 'Aucune candidature enregistrée pour le moment.'}
+              {searchQuery ? 'Aucune réponse ne correspond à votre recherche.' : 'Aucune réponse enregistrée pour le moment.'}
             </p>
           </div>
         ) : (
@@ -98,26 +98,18 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#E6DFD5] bg-[#FAF8F5] text-xs font-semibold text-[#52525B]">
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Candidat</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Année / Faculté</th>
-                  <th className="py-3 px-4">Statut Email</th>
-                  <th className="py-3 px-4 text-right">Action</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Date</th>
+                  {fields.map((f) => (
+                    <th key={f.id || f.key} className="py-3 px-4 whitespace-nowrap">
+                      {f.label}
+                    </th>
+                  ))}
+                  <th className="py-3 px-4 whitespace-nowrap">Statut Email</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E6DFD5]">
                 {filtered.map((sub) => {
-                  const candidateName =
-                    (sub.answers['full_name'] as string) ||
-                    (sub.answers['nom'] as string) ||
-                    'Candidat';
-
-                  const yearOrFac =
-                    (sub.answers['study_year'] as string) ||
-                    (sub.answers['faculty'] as string) ||
-                    '—';
-
                   const emailBadge = {
                     sent: 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]',
                     failed: 'bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]',
@@ -139,15 +131,28 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="py-3.5 px-4 font-semibold text-[#18181B] whitespace-nowrap">
-                        {candidateName}
-                      </td>
-                      <td className="py-3.5 px-4 text-[#3F3F46] whitespace-nowrap">
-                        {sub.submitter_email || '—'}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs text-[#52525B] whitespace-nowrap">
-                        {yearOrFac}
-                      </td>
+                      {fields.map((f) => {
+                        const raw = sub.answers[f.key];
+                        let display = '—';
+                        if (raw !== null && raw !== undefined && String(raw).trim() !== '') {
+                          if (Array.isArray(raw)) {
+                            display = raw.join(', ');
+                          } else if (typeof raw === 'boolean') {
+                            display = raw ? 'Oui' : 'Non';
+                          } else {
+                            display = String(raw);
+                          }
+                        }
+                        return (
+                          <td
+                            key={f.id || f.key}
+                            className="py-3.5 px-4 text-xs text-[#18181B] max-w-xs truncate whitespace-nowrap font-normal"
+                            title={display}
+                          >
+                            {display}
+                          </td>
+                        );
+                      })}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
                           className={`inline-block px-2 py-0.5 text-xs rounded-full border font-medium ${emailBadge}`}

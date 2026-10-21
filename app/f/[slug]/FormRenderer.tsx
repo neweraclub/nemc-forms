@@ -279,24 +279,12 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
             New Era Medical Club &bull; Faculté de Médecine Univ. Ouargla
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#18181B] tracking-tight mb-3">
-            Candidature envoyée avec succès
+            Formulaire envoyé avec succès
           </h1>
 
-          <p className="text-[#3F3F46] text-sm sm:text-base leading-relaxed mb-6">
+          <p className="text-[#3F3F46] text-sm sm:text-base leading-relaxed mb-8">
             {submissionMessage}
           </p>
-
-          <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-lg p-4 mb-8">
-            <div className="text-xs text-[#71717A] mb-1">Numéro de confirmation</div>
-            <div className="font-mono text-sm font-semibold text-[#18181B] tracking-wider select-all">
-              {submissionId ? submissionId.slice(0, 13).toUpperCase() : 'REC-CONFIRMED'}
-            </div>
-            {form.send_receipt && (
-              <div className="mt-2 pt-2 border-t border-[#E6DFD5] text-xs text-[#52525B]">
-                Un accusé de réception officiel a été envoyé à votre adresse email.
-              </div>
-            )}
-          </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <a

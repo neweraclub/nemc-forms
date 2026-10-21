@@ -571,9 +571,13 @@ export async function sendSubmissionEmails(params: {
 
       if (form.custom_email_html && form.custom_email_html.trim().length > 0) {
         receiptHtml = renderCustomEmailHtml(form.custom_email_html, form, summary, submissionId, answers);
-        const rawSubject = form.custom_email_subject || `Accusé de réception — ${form.title}`;
+        let rawSubject = form.custom_email_subject?.trim() || `Accusé de réception — ${form.title}`;
+        if (rawSubject.toLowerCase().endsWith('.html') || rawSubject.toLowerCase().startsWith('modèle ')) {
+          rawSubject = `Accusé de réception : ${form.title} — New Era Medical Club`;
+        }
         receiptSubject = sanitizeHeader(
           rawSubject
+            .replace(/\{\{full_name\}\}/gi, String(answers.full_name || answers.nom || ''))
             .replace(/\{\{nom\}\}/gi, String(answers.full_name || answers.nom || ''))
             .replace(/\{\{prenom\}\}/gi, String(answers.prenom || ''))
             .replace(/\{\{confirmation_id\}\}/gi, submissionId.slice(0, 8).toUpperCase())

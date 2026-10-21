@@ -218,13 +218,24 @@ export function EmailStudioClient({
     setStatusMessage(null);
     const res = await getHtmlTemplateContentAction(fileName);
     if (res.success && res.html) {
+      const titleMatch = res.html.match(/<title>([^<]+)<\/title>/i);
+      const extractedTitle = titleMatch ? titleMatch[1].trim() : '';
+      const fallbackSubject = activeFormWithFields?.form.title
+        ? `Accusé de réception : ${activeFormWithFields.form.title} — New Era Medical Club`
+        : 'Accusé de réception — New Era Medical Club';
+
       setEmailResult({
-        subject: `Modèle ${fileName}`,
+        subject:
+          extractedTitle &&
+          !extractedTitle.toLowerCase().endsWith('.html') &&
+          !extractedTitle.toLowerCase().startsWith('modèle ')
+            ? extractedTitle
+            : fallbackSubject,
         badge: 'HTML_FORMS',
-        headline: fileName.replace('.html', ''),
-        preheader: `Modèle chargé depuis Supabase Storage Html_forms`,
+        headline: activeFormWithFields?.form.title || fileName.replace('.html', ''),
+        preheader: `Accusé de réception officiel`,
         html: res.html,
-        plainText: 'Chargé depuis le bucket Html_forms',
+        plainText: 'Accusé de réception officiel',
       });
       setSaveFileName(fileName);
       showAdminToast({
@@ -431,7 +442,15 @@ export function EmailStudioClient({
     if (!emailResult || !selectedFormSlug) return;
     setStatusMessage(null);
     startAttaching(async () => {
-      const res = await attachAiEmailToFormAction(selectedFormSlug, emailResult.subject, emailResult.html);
+      let cleanSubject = emailResult.subject || subject;
+      if (cleanSubject.toLowerCase().endsWith('.html') || cleanSubject.toLowerCase().startsWith('modèle ')) {
+        cleanSubject =
+          subject ||
+          (activeFormWithFields?.form.title
+            ? `Accusé de réception : ${activeFormWithFields.form.title} — New Era Medical Club`
+            : 'Accusé de réception — New Era Medical Club');
+      }
+      const res = await attachAiEmailToFormAction(selectedFormSlug, cleanSubject, emailResult.html);
       if (res.success) {
         showAdminToast({
           type: 'success',
