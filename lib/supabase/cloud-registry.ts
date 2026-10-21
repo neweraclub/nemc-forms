@@ -1,5 +1,4 @@
 import { FormFieldRecord, FormRecord } from '@/types/form';
-import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';

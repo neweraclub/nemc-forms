@@ -23,9 +23,33 @@ export function sanitizeHeader(str: string): string {
 }
 
 /**
- * Creates Nodemailer transport based on environment variables.
+ * Resolves the compliant sender address for the SMTP server.
+ * Critical for providers like Zoho Mail that prohibit relaying if the From address
+ * does not match the authenticated SMTP user mailbox.
  */
-export function createEmailTransport() {
+export function getSenderAddress(): { fromAddress: string; replyTo: string } {
+  const user = process.env.SMTP_USER?.trim();
+  const rawFrom = process.env.SMTP_FROM?.trim();
+  const clubName = 'Club Médical New Era';
+  const eventEmail = 'event@new-era-medical-club-univ-ouargla.dz';
+
+  if (user) {
+    return {
+      fromAddress: `${clubName} <${user}>`,
+      replyTo: `${clubName} <${eventEmail}>`,
+    };
+  }
+
+  return {
+    fromAddress: rawFrom || `${clubName} <${eventEmail}>`,
+    replyTo: `${clubName} <${eventEmail}>`,
+  };
+}
+
+/**
+ * Creates Nodemailer transport based on environment variables with optional debug mode.
+ */
+export function createEmailTransport(forceDebug: boolean = false) {
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER;
@@ -36,6 +60,8 @@ export function createEmailTransport() {
     return null;
   }
 
+  const isDebug = forceDebug || process.env.EMAIL_DEBUG === 'true';
+
   return nodemailer.createTransport({
     host,
     port,
@@ -44,6 +70,12 @@ export function createEmailTransport() {
       user,
       pass,
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    debug: isDebug,
+    logger: isDebug,
+    connectionTimeout: 10000,
   });
 }
 
@@ -294,38 +326,157 @@ export function renderCustomEmailHtml(
   return rendered;
 }
 
+export interface SmtpDiagnosticResult {
+  success: boolean;
+  configured: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  authUser: string;
+  fromAddress: string;
+  replyTo: string;
+  message: string;
+  rawResponse?: unknown;
+  logs: string[];
+}
+
 /**
- * Sends a direct test email from the Admin AI Email Studio.
+ * Diagnostic tool for testing SMTP connectivity and credentials in debug mode.
+ */
+export async function diagnoseSmtpConnection(): Promise<SmtpDiagnosticResult> {
+  const host = process.env.SMTP_HOST || 'non configuré';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER || 'non configuré';
+  const { fromAddress, replyTo } = getSenderAddress();
+  const logs: string[] = [];
+
+  logs.push(`[SMTP Config] Hôte : ${host}:${port} (SSL/TLS direct : ${port === 465})`);
+  logs.push(`[SMTP Config] Utilisateur authentifié : ${user}`);
+  logs.push(`[SMTP Config] Expéditeur From : ${fromAddress}`);
+  logs.push(`[SMTP Config] Adresse Reply-To : ${replyTo}`);
+
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    logs.push('[Diagnostic] ❌ Paramètres SMTP incomplets dans les variables d’environnement.');
+    return {
+      success: false,
+      configured: false,
+      host,
+      port,
+      secure: port === 465,
+      authUser: user,
+      fromAddress,
+      replyTo,
+      message: 'Configuration SMTP incomplète : SMTP_HOST, SMTP_USER ou SMTP_PASS manquant.',
+      logs,
+    };
+  }
+
+  const transport = createEmailTransport(true);
+  if (!transport) {
+    logs.push('[Diagnostic] ❌ Échec de création du transporteur Nodemailer.');
+    return {
+      success: false,
+      configured: false,
+      host,
+      port,
+      secure: port === 465,
+      authUser: user,
+      fromAddress,
+      replyTo,
+      message: 'Impossible d’initialiser le transporteur email.',
+      logs,
+    };
+  }
+
+  try {
+    logs.push('[Diagnostic] Tentative de connexion et vérification SMTP (transporter.verify)...');
+    const verifyResult = await transport.verify();
+    logs.push(`[Diagnostic] ✅ Connexion SMTP validée avec succès ! Réponse du serveur: ${JSON.stringify(verifyResult)}`);
+    return {
+      success: true,
+      configured: true,
+      host,
+      port,
+      secure: port === 465,
+      authUser: user,
+      fromAddress,
+      replyTo,
+      message: `Serveur SMTP opérationnel (${host}:${port}). Prêt à délivrer les courriels.`,
+      rawResponse: verifyResult,
+      logs,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logs.push(`[Diagnostic] ❌ Erreur lors de la vérification SMTP: ${errorMsg}`);
+    return {
+      success: false,
+      configured: true,
+      host,
+      port,
+      secure: port === 465,
+      authUser: user,
+      fromAddress,
+      replyTo,
+      message: `Échec de connexion SMTP: ${errorMsg}`,
+      rawResponse: err,
+      logs,
+    };
+  }
+}
+
+/**
+ * Sends a direct test email from the Admin AI Email Studio with full debug reporting.
  */
 export async function sendDirectTestEmail(
   toEmail: string,
   subject: string,
   html: string
-): Promise<{ success: boolean; error?: string }> {
-  const transport = createEmailTransport();
-  const fromAddress = sanitizeHeader(
-    process.env.SMTP_FROM ||
-      'Club Médical New Era <event@new-era-medical-club-univ-ouargla.dz>'
-  );
+): Promise<{ success: boolean; messageId?: string; response?: string; error?: string; debugLogs?: string[] }> {
+  const { fromAddress, replyTo } = getSenderAddress();
+  const transport = createEmailTransport(true);
+  const debugLogs: string[] = [];
+
+  debugLogs.push(`Destinataire : ${toEmail}`);
+  debugLogs.push(`Expéditeur From : ${fromAddress}`);
+  debugLogs.push(`Adresse Reply-To : ${replyTo}`);
+  debugLogs.push(`Objet : ${subject}`);
 
   if (!transport) {
-    console.log(`[Test Mail Mock] Sent test to ${toEmail}: ${subject}`);
-    return { success: true };
+    const mockMsg = `[Test Mail Mock] SMTP non configuré. Test simulé avec succès pour ${toEmail}: ${subject}`;
+    console.log(mockMsg);
+    debugLogs.push(mockMsg);
+    return {
+      success: true,
+      messageId: 'mock-test-id',
+      response: 'Simulation locale (Variables SMTP non définies)',
+      debugLogs,
+    };
   }
 
   try {
-    await transport.sendMail({
+    const info = await transport.sendMail({
       from: fromAddress,
+      replyTo,
       to: sanitizeHeader(toEmail),
       subject: sanitizeHeader(subject || 'Test — Club Médical New Era'),
       html,
       text: 'Veuillez afficher ce courriel avec un client prenant en charge le HTML pour voir le rendu officiel New Era Club.',
     });
-    return { success: true };
+    debugLogs.push(`Succès d’envoi ! Message ID: ${info.messageId}`);
+    if (info.response) {
+      debugLogs.push(`Réponse du serveur SMTP: ${info.response}`);
+    }
+    return {
+      success: true,
+      messageId: info.messageId,
+      response: info.response,
+      debugLogs,
+    };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    debugLogs.push(`❌ Échec de transmission SMTP: ${msg}`);
     console.error(`[Test Mail Error] Failed to send to ${toEmail}:`, msg);
-    return { success: false, error: msg };
+    return { success: false, error: msg, debugLogs };
   }
 }
 
@@ -372,10 +523,7 @@ export async function sendSubmissionEmails(params: {
 
   const transport = createEmailTransport();
   const summary = formatAnswersSummary(fields, answers);
-  const fromAddress = sanitizeHeader(
-    process.env.SMTP_FROM ||
-      'Club Médical New Era <event@new-era-medical-club-univ-ouargla.dz>'
-  );
+  const { fromAddress, replyTo } = getSenderAddress();
 
   if (!transport) {
     console.log(
@@ -384,7 +532,6 @@ export async function sendSubmissionEmails(params: {
     console.log(`- To Team:`, notifyEmails.join(', '));
     if (needsReceipt) console.log(`- To Submitter:`, submitterEmail);
     console.log(`- Summary answers:`, summary);
-    // In local dev without SMTP credentials, we consider it logged and successful
     return 'sent';
   }
 
@@ -397,6 +544,7 @@ export async function sendSubmissionEmails(params: {
       promises.push(
         transport.sendMail({
           from: fromAddress,
+          replyTo,
           to: notifyEmails.join(', '),
           subject,
           text: buildPlainTextSummary(subject, summary, submissionId),
@@ -427,6 +575,7 @@ export async function sendSubmissionEmails(params: {
       promises.push(
         transport.sendMail({
           from: fromAddress,
+          replyTo,
           to: sanitizeHeader(submitterEmail),
           subject: receiptSubject,
           text: buildPlainTextSummary(receiptSubject, summary, submissionId),

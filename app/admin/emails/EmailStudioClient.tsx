@@ -8,6 +8,7 @@ import {
   refineAiEmailAction,
   sendAiTestEmailAction,
   attachAiEmailToFormAction,
+  diagnoseSmtpAction,
 } from '@/app/actions/aiEmailActions';
 import {
   listHtmlTemplatesAction,
@@ -17,21 +18,32 @@ import {
 } from '@/app/actions/htmlStorageActions';
 import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
+import { SmtpDiagnosticResult } from '@/lib/mailer';
 import { showAdminToast } from '../AdminToast';
 
 export interface EmailStudioClientProps {
   formsWithFields?: AdminFormWithFields[];
   forms?: FormRecord[];
+  initialSelectedSlug?: string;
 }
 
-export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientProps) {
+export function EmailStudioClient({
+  formsWithFields,
+  forms,
+  initialSelectedSlug,
+}: EmailStudioClientProps) {
   // Normalize forms list
   const formsList: FormRecord[] = formsWithFields
     ? formsWithFields.map((f) => f.form)
     : forms || [];
 
+  const defaultSlug =
+    initialSelectedSlug && formsList.some((f) => f.slug === initialSelectedSlug)
+      ? initialSelectedSlug
+      : formsList[0]?.slug || '';
+
   // 1. Target Form Selection State (Always first)
-  const [selectedFormSlug, setSelectedFormSlug] = useState<string>(() => formsList[0]?.slug || '');
+  const [selectedFormSlug, setSelectedFormSlug] = useState<string>(() => defaultSlug);
 
   const activeFormWithFields = formsWithFields?.find((f) => f.form.slug === selectedFormSlug);
   const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
@@ -92,6 +104,31 @@ export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientP
   // Test Email & File Name State
   const [testEmailAddress, setTestEmailAddress] = useState('event@new-era-medical-club-univ-ouargla.dz');
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // SMTP Diagnostic & Debug Mode State
+  const [smtpDiagnostic, setSmtpDiagnostic] = useState<SmtpDiagnosticResult | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
+  const [testDebugLogs, setTestDebugLogs] = useState<string[] | null>(null);
+  const [testDeliveryStatus, setTestDeliveryStatus] = useState<{
+    success: boolean;
+    messageId?: string;
+    response?: string;
+    error?: string;
+  } | null>(null);
+
+  const runSmtpDiagnostic = async () => {
+    setIsDiagnosing(true);
+    setShowDebugConsole(true);
+    const result = await diagnoseSmtpAction();
+    setSmtpDiagnostic(result);
+    setIsDiagnosing(false);
+    showAdminToast({
+      type: result.success ? 'success' : 'error',
+      title: result.success ? 'Connexion SMTP Vérifiée' : 'Erreur Diagnostic SMTP',
+      message: result.message,
+    });
+  };
 
   // Supabase Storage 'Html_forms' state
   const [storageTemplates, setStorageTemplates] = useState<HtmlStorageItem[]>([]);
@@ -335,16 +372,31 @@ export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientP
   const handleSendTest = () => {
     if (!emailResult || !testEmailAddress) return;
     setStatusMessage(null);
+    setTestDebugLogs(null);
+    setTestDeliveryStatus(null);
     startSendingTest(async () => {
       const res = await sendAiTestEmailAction(testEmailAddress, emailResult.subject, emailResult.html);
+      if (res.debugLogs) {
+        setTestDebugLogs(res.debugLogs);
+      }
       if (res.success) {
+        setTestDeliveryStatus({
+          success: true,
+          messageId: res.messageId,
+          response: res.response,
+        });
         showAdminToast({
           type: 'success',
           title: 'Email de test envoyé',
           message: `Test transmis avec succès à ${testEmailAddress}.`,
         });
-        setStatusMessage({ type: 'success', text: `Email de test envoyé avec succès à ${testEmailAddress} !` });
+        setStatusMessage({ type: 'success', text: `Email de test délivré avec succès à ${testEmailAddress} !` });
       } else {
+        setShowDebugConsole(true);
+        setTestDeliveryStatus({
+          success: false,
+          error: res.error,
+        });
         setStatusMessage({ type: 'error', text: res.error || 'Échec de l’envoi de l’email de test.' });
       }
     });
@@ -478,18 +530,21 @@ export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientP
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <select
                 id="target-form-select"
                 value={selectedFormSlug}
                 onChange={(e) => handleFormChange(e.target.value)}
                 className="w-full min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] shadow-2xs"
               >
-                {formsList.map((f) => (
-                  <option key={f.id} value={f.slug}>
-                    {f.title} ({f.slug})
-                  </option>
-                ))}
+                {formsList.map((f) => {
+                  const hasCustom = Boolean(f.custom_email_html && f.custom_email_html.trim().length > 0);
+                  return (
+                    <option key={f.id} value={f.slug}>
+                      {f.title} {hasCustom ? '✨ [Modèle IA lié]' : ''}
+                    </option>
+                  );
+                })}
               </select>
 
               {activeFormWithFields && (
@@ -497,6 +552,38 @@ export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientP
                   <span>URL publique : <code className="font-mono text-[#18181B]">/f/{selectedFormSlug}</code></span>
                   <span>&bull;</span>
                   <span>{currentFields.length} question(s) configurée(s)</span>
+                </div>
+              )}
+
+              {activeFormWithFields?.form.custom_email_html && (
+                <div className="p-3 bg-[#EEF2FF] border border-[#C7D2FE] rounded-lg text-xs text-[#3730A3] flex items-center justify-between gap-2.5 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#4F46E5] shrink-0"></span>
+                    <span className="line-clamp-1">
+                      <strong className="text-[#312E81]">Modèle IA actif :</strong> &ldquo;{activeFormWithFields.form.custom_email_subject || 'Accusé officiel'}&rdquo;
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailResult({
+                        subject: activeFormWithFields.form.custom_email_subject || `Accusé de réception — ${activeFormWithFields.form.title}`,
+                        badge: 'Modèle Actif Formulaire',
+                        headline: activeFormWithFields.form.title,
+                        preheader: 'Modèle officiel actuellement configuré',
+                        html: activeFormWithFields.form.custom_email_html || '',
+                        plainText: activeFormWithFields.form.custom_email_subject || '',
+                      });
+                      showAdminToast({
+                        type: 'success',
+                        title: 'Modèle actif chargé',
+                        message: 'Le modèle IA actuel du formulaire a été injecté dans l’éditeur.',
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-[#F5F3FF] border border-[#C7D2FE] text-[#4338CA] font-semibold text-[11px] rounded-md shadow-2xs transition shrink-0"
+                  >
+                    👁️ Charger dans l&apos;éditeur
+                  </button>
                 </div>
               )}
             </div>
@@ -1093,27 +1180,142 @@ export function EmailStudioClient({ formsWithFields, forms }: EmailStudioClientP
               {/* ================================================================ */}
               {/* ACTION BAR: Send Test Email (Clean Responsive)                   */}
               {/* ================================================================ */}
-              <div className="p-4 border-t border-[#E6DFD5] bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <span className="text-xs text-[#52525B] font-medium shrink-0">
-                  Tester la délivrabilité en direct :
-                </span>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 sm:max-w-md">
-                  <input
-                    type="email"
-                    value={testEmailAddress}
-                    onChange={(e) => setTestEmailAddress(e.target.value)}
-                    placeholder="email.destinataire@exemple.com"
-                    className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendTest}
-                    disabled={isSendingTest || !testEmailAddress}
-                    className="min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center"
-                  >
-                    {isSendingTest ? 'Envoi...' : 'Envoyer un test'}
-                  </button>
+              <div className="p-4 border-t border-[#E6DFD5] bg-white space-y-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#52525B] font-medium shrink-0">
+                      Tester la délivrabilité en direct :
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDebugConsole(!showDebugConsole)}
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded border transition flex items-center gap-1 ${
+                        showDebugConsole
+                          ? 'bg-[#18181B] text-white border-[#18181B]'
+                          : 'bg-[#FAF8F5] text-[#52525B] border-[#E6DFD5] hover:bg-[#F4F4F5]'
+                      }`}
+                    >
+                      <span>🛠️ Mode Debug SMTP</span>
+                      <span>{showDebugConsole ? '▲' : '▼'}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 sm:max-w-md">
+                    <input
+                      type="email"
+                      value={testEmailAddress}
+                      onChange={(e) => setTestEmailAddress(e.target.value)}
+                      placeholder="email.destinataire@exemple.com"
+                      className="min-w-0 flex-1 px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendTest}
+                      disabled={isSendingTest || !testEmailAddress}
+                      className="min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
+                    >
+                      {isSendingTest ? 'Envoi...' : 'Envoyer un test'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Delivery Quick Feedback */}
+                {testDeliveryStatus && (
+                  <div
+                    className={`p-3 rounded-lg text-xs border ${
+                      testDeliveryStatus.success
+                        ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#166534]'
+                        : 'bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 font-semibold">
+                      <span>
+                        {testDeliveryStatus.success
+                          ? '✅ Courriel de test transmis avec succès au serveur SMTP !'
+                          : '❌ Échec de transmission du courriel :'}
+                      </span>
+                      {testDeliveryStatus.messageId && (
+                        <span className="font-mono text-[10px] text-[#15803D] opacity-80">
+                          ID: {testDeliveryStatus.messageId}
+                        </span>
+                      )}
+                    </div>
+                    {testDeliveryStatus.response && (
+                      <p className="mt-1 font-mono text-[11px] text-[#15803D]">
+                        Réponse serveur : {testDeliveryStatus.response}
+                      </p>
+                    )}
+                    {testDeliveryStatus.error && (
+                      <p className="mt-1 font-mono text-[11px] text-[#991B1B]">
+                        {testDeliveryStatus.error}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* EXPANDABLE SMTP DEBUG & DIAGNOSTIC CONSOLE */}
+                {showDebugConsole && (
+                  <div className="bg-[#18181B] text-[#F4F4F5] rounded-xl p-4 space-y-3 font-mono text-xs border border-black shadow-inner animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping"></span>
+                        <span className="font-bold text-white font-sans text-xs">
+                          Console Diagnostic &amp; Logs SMTP (Mode Debug Actif)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={runSmtpDiagnostic}
+                        disabled={isDiagnosing}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[11px] font-sans font-semibold transition disabled:opacity-50"
+                      >
+                        {isDiagnosing ? 'Test en cours...' : '🧪 Tester la connexion SMTP'}
+                      </button>
+                    </div>
+
+                    {smtpDiagnostic && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] bg-white/5 p-3 rounded-lg border border-white/10">
+                        <div>
+                          <span className="text-[#A1A1AA]">Statut : </span>
+                          <span className={smtpDiagnostic.success ? 'text-[#34D399] font-bold' : 'text-[#F87171] font-bold'}>
+                            {smtpDiagnostic.success ? 'Connecté & Vérifié (250 OK)' : 'Erreur de connexion'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[#A1A1AA]">Hôte : </span>
+                          <span>{smtpDiagnostic.host}:{smtpDiagnostic.port}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#A1A1AA]">Utilisateur : </span>
+                          <span>{smtpDiagnostic.authUser}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#A1A1AA]">Expéditeur (From) : </span>
+                          <span className="text-[#60A5FA]">{smtpDiagnostic.fromAddress}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1 text-[11px] text-[#D4D4D8] max-h-40 overflow-y-auto bg-black/40 p-2.5 rounded border border-white/5">
+                      <p className="text-[#71717A] text-[10px]">--- LOGS DU SERVEUR SMTP ---</p>
+                      {testDebugLogs && testDebugLogs.map((log, idx) => (
+                        <p key={`test-log-${idx}`} className={log.includes('❌') ? 'text-[#F87171]' : log.includes('Succès') ? 'text-[#34D399]' : 'text-[#D4D4D8]'}>
+                          {log}
+                        </p>
+                      ))}
+                      {smtpDiagnostic && smtpDiagnostic.logs.map((log, idx) => (
+                        <p key={`diag-log-${idx}`} className={log.includes('❌') ? 'text-[#F87171]' : log.includes('✅') ? 'text-[#34D399]' : 'text-[#A1A1AA]'}>
+                          {log}
+                        </p>
+                      ))}
+                      {!testDebugLogs && !smtpDiagnostic && (
+                        <p className="text-[#71717A] italic">
+                          Cliquez sur &quot;Tester la connexion SMTP&quot; ou &quot;Envoyer un test&quot; pour afficher les logs de communication en direct.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

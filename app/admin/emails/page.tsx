@@ -8,8 +8,19 @@ export const metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminEmailsPage() {
+export default async function AdminEmailsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ slug?: string }>;
+}) {
   const formsWithFields = await getAdminFormsWithFields();
+  const resolvedParams = searchParams ? await searchParams : undefined;
+  const initialSelectedSlug = resolvedParams?.slug;
 
-  return <EmailStudioClient formsWithFields={formsWithFields} />;
+  return (
+    <EmailStudioClient
+      formsWithFields={formsWithFields}
+      initialSelectedSlug={initialSelectedSlug}
+    />
+  );
 }

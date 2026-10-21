@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { FormFieldRecord, FormRecord, FormStateEvaluation, SubmissionRecord } from '@/types/form';
-import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
 import fs from 'fs';
 
 const supabaseUrl =

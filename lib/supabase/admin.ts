@@ -7,7 +7,6 @@ import {
 } from './server';
 import { fetchCloudStoredForms } from './forms-manager';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
-import { SAMPLE_RECRUITMENT_FIELDS, SAMPLE_RECRUITMENT_FORM } from '@/lib/sample-seed';
 
 export interface AdminFormSummary {
   form: FormRecord;

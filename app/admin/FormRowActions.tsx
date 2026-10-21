@@ -10,9 +10,10 @@ interface FormRowActionsProps {
   slug: string;
   title: string;
   submissionsCount: number;
+  hasAiEmail?: boolean;
 }
 
-export function FormRowActions({ slug, title, submissionsCount }: FormRowActionsProps) {
+export function FormRowActions({ slug, title, submissionsCount, hasAiEmail }: FormRowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -51,6 +52,23 @@ export function FormRowActions({ slug, title, submissionsCount }: FormRowActions
   return (
     <>
       <div className="flex items-center gap-2 flex-wrap">
+        <Link
+          href={`/admin/emails?slug=${slug}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition shadow-2xs border ${
+            hasAiEmail
+              ? 'bg-[#EEF2FF] hover:bg-[#E0E7FF] border-[#C7D2FE] text-[#4338CA]'
+              : 'bg-white hover:bg-[#FAF8F5] border-[#E6DFD5] text-[#52525B]'
+          }`}
+          title={hasAiEmail ? 'Gérer le modèle d’email IA associé' : 'Créer et associer un modèle d’email IA'}
+        >
+          <span>✨ Email IA</span>
+          {hasAiEmail ? (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5]"></span>
+          ) : (
+            <span className="text-[#A1A1AA] text-[10px]">+</span>
+          )}
+        </Link>
+
         <Link
           href={`/admin/forms/${slug}/edit`}
           className="inline-flex items-center px-3 py-1.5 border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#18181B] rounded-lg transition shadow-2xs"

@@ -72,12 +72,16 @@ export default async function AdminFormsPage() {
                 closed: 'bg-[#F4F4F5] text-[#71717A] border-[#E4E4E7]',
               }[form.status];
 
+              const hasCustomEmail = Boolean(
+                form.custom_email_html && form.custom_email_html.trim().length > 0
+              );
+
               return (
                 <div
                   key={form.id}
                   className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FAF8F5]/50 transition"
                 >
-                  <div className="space-y-1.5 flex-1 max-w-2xl">
+                  <div className="space-y-2 flex-1 max-w-2xl">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-base sm:text-lg font-bold text-[#18181B]">
                         {form.title}
@@ -90,6 +94,27 @@ export default async function AdminFormsPage() {
                       <span className="text-xs text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E6DFD5]">
                         Format: {form.layout === 'stepped' ? 'Étapes (1/page)' : 'Page unique'}
                       </span>
+
+                      {/* Studio Emails IA Link Status Badge */}
+                      {hasCustomEmail ? (
+                        <Link
+                          href={`/admin/emails?slug=${form.slug}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#4338CA] border border-[#C7D2FE] hover:bg-[#E0E7FF] transition shadow-2xs"
+                          title="Courriel IA personnalisé actif — Cliquez pour l'ouvrir dans le Studio IA"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] animate-pulse"></span>
+                          <span>✨ Modèle Email IA Lié</span>
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/admin/emails?slug=${form.slug}`}
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#71717A] border border-[#E4E4E7] hover:bg-[#E4E4E7] hover:text-[#18181B] transition"
+                          title="Aucun modèle IA lié — Cliquez pour créer un modèle dans le Studio IA"
+                        >
+                          <span>✉️ Modèle standard</span>
+                          <span className="text-[10px] text-[#4F46E5] font-semibold ml-0.5">+ Lier IA</span>
+                        </Link>
+                      )}
                     </div>
 
                     {form.description && (
@@ -104,7 +129,17 @@ export default async function AdminFormsPage() {
                       </span>
                       <span>{fieldsCount} question{fieldsCount > 1 ? 's' : ''}</span>
                       <span>
-                        Reçu email: {form.send_receipt ? 'Oui' : 'Non'}
+                        Reçu candidat: {form.send_receipt ? 'Oui' : 'Non'}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span>Courriel :</span>
+                        {hasCustomEmail ? (
+                          <span className="font-semibold text-[#4338CA] bg-[#EEF2FF] px-1.5 py-0.5 rounded border border-[#C7D2FE]">
+                            Studio IA ({form.custom_email_subject || 'Modèle actif'})
+                          </span>
+                        ) : (
+                          <span className="text-[#71717A]">Accusé standard</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -114,6 +149,7 @@ export default async function AdminFormsPage() {
                       slug={form.slug}
                       title={form.title}
                       submissionsCount={submissionsCount}
+                      hasAiEmail={hasCustomEmail}
                     />
                   </div>
                 </div>

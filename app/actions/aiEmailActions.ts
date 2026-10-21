@@ -7,7 +7,7 @@ import {
   EmailGenerationInput,
   GeneratedEmailResult,
 } from '@/lib/gemini';
-import { sendDirectTestEmail } from '@/lib/mailer';
+import { sendDirectTestEmail, diagnoseSmtpConnection, SmtpDiagnosticResult } from '@/lib/mailer';
 import { updateFormCustomEmail } from '@/lib/supabase/forms-manager';
 import { revalidatePath } from 'next/cache';
 
@@ -56,11 +56,11 @@ export async function sendAiTestEmailAction(
   toEmail: string,
   subject: string,
   html: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; response?: string; error?: string; debugLogs?: string[] }> {
   try {
     const session = await getAdminSession();
     if (!session) {
-      return { success: false, error: 'Session expirée. Veuillez vous reconnecter.' };
+      return { success: false, error: 'Session expirée. Veuillez vous reconnecter.', debugLogs: ['Session expirée'] };
     }
 
     if (!toEmail || !toEmail.includes('@')) {
@@ -70,8 +70,28 @@ export async function sendAiTestEmailAction(
     return await sendDirectTestEmail(toEmail.trim(), subject, html);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, error: msg };
+    return { success: false, error: msg, debugLogs: [msg] };
   }
+}
+
+export async function diagnoseSmtpAction(): Promise<SmtpDiagnosticResult> {
+  const session = await getAdminSession();
+  if (!session) {
+    return {
+      success: false,
+      configured: false,
+      host: '',
+      port: 0,
+      secure: false,
+      authUser: '',
+      fromAddress: '',
+      replyTo: '',
+      message: 'Session expirée. Veuillez vous reconnecter.',
+      logs: ['Session expirée.'],
+    };
+  }
+
+  return await diagnoseSmtpConnection();
 }
 
 export async function attachAiEmailToFormAction(
