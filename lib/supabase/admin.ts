@@ -4,6 +4,7 @@ import {
   getLocalSubmissions,
   getLocalStoredForms,
   StoredFormData,
+  fetchCloudSubmissions,
 } from './server';
 import { fetchCloudStoredForms, syncLocalFormsWithCloud } from './forms-manager';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
@@ -79,7 +80,12 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
     }
   }
 
-  const allSubs = getLocalSubmissions();
+  let cloudSubs: SubmissionRecord[] | null = null;
+  try {
+    cloudSubs = await fetchCloudSubmissions();
+  } catch {}
+  const localSubs = getLocalSubmissions();
+  const allSubs = cloudSubs !== null && cloudSubs.length > 0 ? cloudSubs : localSubs;
 
   const results: AdminFormWithFields[] = Array.from(map.values()).map((item) => ({
     form: item.form,
@@ -154,8 +160,17 @@ export async function getAdminSubmissions(slug: string): Promise<{
     if (found) {
       form = found.form;
       fields = found.fields;
-      submissions = getLocalSubmissions().filter((s) => s.form_id === form?.id);
     }
+  }
+
+  if (form && submissions.length === 0) {
+    let cloudSubs: SubmissionRecord[] | null = null;
+    try {
+      cloudSubs = await fetchCloudSubmissions();
+    } catch {}
+    const localSubs = getLocalSubmissions();
+    const allSubs = cloudSubs !== null && cloudSubs.length > 0 ? cloudSubs : localSubs;
+    submissions = allSubs.filter((s) => s.form_id === form?.id);
   }
 
   return { form, fields, submissions };

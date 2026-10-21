@@ -39,10 +39,12 @@ import {
   ensureLocalStorage,
   getLocalSubmissionsFilePath,
   syncLocalFormsWithCloud,
+  fetchCloudSubmissions,
+  saveCloudSubmissions,
 } from './cloud-registry';
 
 export type { StoredFormData };
-export { getLocalStoredForms };
+export { getLocalStoredForms, fetchCloudSubmissions, saveCloudSubmissions };
 
 export function getLocalSubmissions(): SubmissionRecord[] {
   try {
@@ -67,6 +69,8 @@ export function saveLocalSubmission(sub: SubmissionRecord): void {
     if (!existing) {
       all.push(sub);
       fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
+      // Sync to Supabase Cloud Storage
+      saveCloudSubmissions(all).catch((e) => console.warn('Cloud submission sync notice:', e));
     }
   } catch (err) {
     console.error('Failed to save local submission:', err);
@@ -81,6 +85,7 @@ export function updateLocalSubmissionEmailStatus(id: string, status: SubmissionR
     if (target) {
       target.email_status = status;
       fs.writeFileSync(getLocalSubmissionsFilePath(), JSON.stringify(all, null, 2), 'utf-8');
+      saveCloudSubmissions(all).catch(() => {});
     }
   } catch (err) {
     console.error('Failed to update local email status:', err);

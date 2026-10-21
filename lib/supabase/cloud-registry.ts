@@ -1,4 +1,4 @@
-import { FormFieldRecord, FormRecord } from '@/types/form';
+import { FormFieldRecord, FormRecord, SubmissionRecord } from '@/types/form';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
@@ -9,6 +9,7 @@ export interface StoredFormData {
 }
 
 const REGISTRY_STORAGE_FILE = '_nemc_registry/forms.json';
+const SUBMISSIONS_STORAGE_FILE = '_nemc_registry/submissions.json';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -106,6 +107,54 @@ export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boo
     return true;
   } catch (err) {
     console.warn('saveCloudStoredForms exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch submissions registry directly from Supabase Storage bucket 'Html_forms'.
+ */
+export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null> {
+  const client = createAnonClient();
+  try {
+    const { data, error } = await client.storage
+      .from('Html_forms')
+      .download(SUBMISSIONS_STORAGE_FILE);
+
+    if (!error && data) {
+      const text = await data.text();
+      const parsed = JSON.parse(text) as SubmissionRecord[];
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Registry not yet created or offline
+  }
+  return null;
+}
+
+/**
+ * Upload submissions registry to Supabase Storage bucket 'Html_forms'.
+ */
+export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<boolean> {
+  const client = createAnonClient();
+  try {
+    const jsonStr = JSON.stringify(subs, null, 2);
+    const { error } = await client.storage
+      .from('Html_forms')
+      .upload(SUBMISSIONS_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
+        contentType: 'application/json',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('saveCloudSubmissions warning:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('saveCloudSubmissions exception:', err);
     return false;
   }
 }
