@@ -109,6 +109,8 @@ export async function persistFormWithFields(
           notify_emails: fullForm.notify_emails,
           send_receipt: fullForm.send_receipt,
           receipt_email_field: fullForm.receipt_email_field,
+          custom_email_subject: fullForm.custom_email_subject || null,
+          custom_email_html: fullForm.custom_email_html || null,
           layout: fullForm.layout,
           updated_at: now,
         },
@@ -148,6 +150,47 @@ export async function persistFormWithFields(
   }
 
   return { success: true, slug: fullForm.slug };
+}
+
+/**
+ * Updates only the custom AI email template and subject for a form.
+ */
+export async function updateFormCustomEmail(
+  slug: string,
+  custom_email_subject: string,
+  custom_email_html: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const all = getLocalCustomForms();
+    const item = all.find((f) => f.form.slug === slug);
+    if (item) {
+      item.form.custom_email_subject = custom_email_subject;
+      item.form.custom_email_html = custom_email_html;
+      item.form.updated_at = new Date().toISOString();
+      saveLocalCustomForm(item.form, item.fields);
+    }
+
+    const serviceClient = createServiceRoleServerClient();
+    if (serviceClient) {
+      try {
+        await serviceClient
+          .from('forms')
+          .update({
+            custom_email_subject,
+            custom_email_html,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('slug', slug);
+      } catch (err) {
+        console.warn('Supabase updateFormCustomEmail warning:', err);
+      }
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
+  }
 }
 
 /**

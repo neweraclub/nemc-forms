@@ -19,7 +19,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     {
       label: 'Formulaires',
       href: '/admin',
-      active: pathname === '/admin' || (pathname.startsWith('/admin/') && !pathname.startsWith('/admin/stats') && !pathname.startsWith('/admin/forms/new')),
+      active:
+        pathname === '/admin' ||
+        (pathname.startsWith('/admin/') &&
+          !pathname.startsWith('/admin/stats') &&
+          !pathname.startsWith('/admin/forms/new') &&
+          !pathname.startsWith('/admin/emails')),
       icon: (
         <svg className="w-4 h-4 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -33,6 +38,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: (
         <svg className="w-4 h-4 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Emails IA (Gemini)',
+      href: '/admin/emails',
+      active: pathname.startsWith('/admin/emails'),
+      icon: (
+        <svg className="w-4 h-4 mr-2.5 shrink-0 text-[#E53888]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
     },

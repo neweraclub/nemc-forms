@@ -32,6 +32,8 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   );
   const [sendReceipt, setSendReceipt] = useState(initialForm?.send_receipt ?? true);
   const receiptEmailField = initialForm?.receipt_email_field || 'email';
+  const [customEmailSubject, setCustomEmailSubject] = useState(initialForm?.custom_email_subject || '');
+  const [customEmailHtml, setCustomEmailHtml] = useState(initialForm?.custom_email_html || '');
   const [maxResponses, setMaxResponses] = useState<string>(
     initialForm?.max_responses ? String(initialForm.max_responses) : ''
   );
@@ -231,6 +233,8 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
         confirmation_message: confirmationMessage.trim(),
         send_receipt: sendReceipt,
         receipt_email_field: receiptEmailField.trim() || 'email',
+        custom_email_subject: customEmailSubject.trim() || null,
+        custom_email_html: customEmailHtml.trim() || null,
         // Strictly locked to the official club email
         notify_emails: [FIXED_OFFICIAL_EMAIL],
         max_responses: maxResponses ? parseInt(maxResponses, 10) : null,
@@ -443,6 +447,58 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                     <span className="ml-2 text-xs text-[#18181B]">Envoyer un accusé au candidat</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Custom AI Email Template Option */}
+              <div className="pt-2 border-t border-[#E6DFD5] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#18181B]">
+                      Modèle d’email HTML personnalisé (IA Gemini)
+                    </label>
+                    <p className="text-[11px] text-[#71717A]">
+                      Remplace l’accusé standard par un email au design Club Médical New Era.
+                    </p>
+                  </div>
+                  <Link
+                    href="/admin/emails"
+                    target="_blank"
+                    className="text-xs font-semibold text-[#3B33FF] hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>✨ Ouvrir le Studio IA</span>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </Link>
+                </div>
+
+                <input
+                  type="text"
+                  value={customEmailSubject}
+                  onChange={(e) => setCustomEmailSubject(e.target.value)}
+                  placeholder="Objet personnalisé (ex: Confirmation d'inscription — ECOS 2026)"
+                  className="w-full min-h-[38px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                />
+
+                <textarea
+                  rows={3}
+                  value={customEmailHtml}
+                  onChange={(e) => setCustomEmailHtml(e.target.value)}
+                  placeholder="Collez ici le code HTML généré depuis le Studio IA (ou laissez vide pour l'accusé standard)..."
+                  className="w-full px-3 py-1.5 text-xs font-mono text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
+                />
+                {customEmailHtml && (
+                  <div className="flex items-center justify-between text-[11px] text-[#059669]">
+                    <span>✓ Template HTML personnalisé actif pour ce formulaire</span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomEmailHtml('')}
+                      className="text-[#DC2626] hover:underline"
+                    >
+                      Effacer le template
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

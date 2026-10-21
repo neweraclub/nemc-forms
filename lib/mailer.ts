@@ -244,6 +244,90 @@ export function buildReceiptEmailHtml(
 </html>
   `;
 }
+ 
+/**
+ * Renders an AI-generated or custom HTML email template with candidate's answers and metadata.
+ */
+export function renderCustomEmailHtml(
+  templateHtml: string,
+  form: FormRecord,
+  summary: Array<{ label: string; value: string }>,
+  submissionId: string,
+  answers: Record<string, unknown>
+): string {
+  const tableRows = summary
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 600; color: #A1A1AA; width: 40%; vertical-align: top;">
+          ${escapeHtml(item.label)}
+        </td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #FFFFFF; vertical-align: top;">
+          ${escapeHtml(item.value).replace(/\n/g, '<br/>')}
+        </td>
+      </tr>
+    `
+    )
+    .join('');
+
+  const summaryTable = `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; margin: 16px 0; background-color: rgba(255,255,255,0.03);">
+      ${tableRows}
+    </table>
+  `;
+
+  const fullName = String(answers.full_name || answers.nom_complet || answers.nom || 'Candidat');
+  const firstName = fullName.split(' ')[0] || 'Candidat';
+  const email = String(answers.email || answers.adresse_email || '');
+
+  const rendered = templateHtml
+    .replace(/\{\{nom\}\}/gi, escapeHtml(fullName))
+    .replace(/\{\{full_name\}\}/gi, escapeHtml(fullName))
+    .replace(/\{\{prenom\}\}/gi, escapeHtml(firstName))
+    .replace(/\{\{email\}\}/gi, escapeHtml(email))
+    .replace(/\{\{confirmation_id\}\}/gi, escapeHtml(submissionId.slice(0, 8).toUpperCase()))
+    .replace(/\{\{titre\}\}/gi, escapeHtml(form.title))
+    .replace(/\{\{form_title\}\}/gi, escapeHtml(form.title))
+    .replace(/\{\{date\}\}/gi, new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }))
+    .replace(/\{\{reponses\}\}/gi, summaryTable);
+
+  return rendered;
+}
+
+/**
+ * Sends a direct test email from the Admin AI Email Studio.
+ */
+export async function sendDirectTestEmail(
+  toEmail: string,
+  subject: string,
+  html: string
+): Promise<{ success: boolean; error?: string }> {
+  const transport = createEmailTransport();
+  const fromAddress = sanitizeHeader(
+    process.env.SMTP_FROM ||
+      'Club Médical New Era <event@new-era-medical-club-univ-ouargla.dz>'
+  );
+
+  if (!transport) {
+    console.log(`[Test Mail Mock] Sent test to ${toEmail}: ${subject}`);
+    return { success: true };
+  }
+
+  try {
+    await transport.sendMail({
+      from: fromAddress,
+      to: sanitizeHeader(toEmail),
+      subject: sanitizeHeader(subject || 'Test — Club Médical New Era'),
+      html,
+      text: 'Veuillez afficher ce courriel avec un client prenant en charge le HTML pour voir le rendu officiel New Era Club.',
+    });
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Test Mail Error] Failed to send to ${toEmail}:`, msg);
+    return { success: false, error: msg };
+  }
+}
 
 /**
  * Builds plain-text fallback string from answers summary.
@@ -323,14 +407,30 @@ export async function sendSubmissionEmails(params: {
 
     // 2. Submitter Receipt
     if (needsReceipt && submitterEmail) {
-      const receiptSubject = sanitizeHeader(`Accusé de réception — ${form.title}`);
+      let receiptHtml: string;
+      let receiptSubject: string;
+
+      if (form.custom_email_html && form.custom_email_html.trim().length > 0) {
+        receiptHtml = renderCustomEmailHtml(form.custom_email_html, form, summary, submissionId, answers);
+        const rawSubject = form.custom_email_subject || `Accusé de réception — ${form.title}`;
+        receiptSubject = sanitizeHeader(
+          rawSubject
+            .replace(/\{\{nom\}\}/gi, String(answers.full_name || answers.nom || ''))
+            .replace(/\{\{prenom\}\}/gi, String(answers.prenom || ''))
+            .replace(/\{\{confirmation_id\}\}/gi, submissionId.slice(0, 8).toUpperCase())
+        );
+      } else {
+        receiptHtml = buildReceiptEmailHtml(form, summary, submissionId);
+        receiptSubject = sanitizeHeader(`Accusé de réception — ${form.title}`);
+      }
+
       promises.push(
         transport.sendMail({
           from: fromAddress,
           to: sanitizeHeader(submitterEmail),
           subject: receiptSubject,
           text: buildPlainTextSummary(receiptSubject, summary, submissionId),
-          html: buildReceiptEmailHtml(form, summary, submissionId),
+          html: receiptHtml,
         })
       );
     }

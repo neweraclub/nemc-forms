@@ -67,6 +67,8 @@ export interface FormRecord {
   notify_emails?: string[] | null;
   send_receipt: boolean;
   receipt_email_field?: string | null;
+  custom_email_subject?: string | null;
+  custom_email_html?: string | null;
   layout: FormLayout;
   created_at?: string;
   updated_at?: string;
