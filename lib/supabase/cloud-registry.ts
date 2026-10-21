@@ -51,13 +51,7 @@ export function ensureLocalStorage() {
     }
     const formsFile = getLocalFormsFilePath();
     if (!fs.existsSync(formsFile)) {
-      const initial: StoredFormData[] = [
-        {
-          form: SAMPLE_RECRUITMENT_FORM,
-          fields: SAMPLE_RECRUITMENT_FIELDS,
-        },
-      ];
-      fs.writeFileSync(formsFile, JSON.stringify(initial, null, 2), 'utf-8');
+      fs.writeFileSync(formsFile, JSON.stringify([], null, 2), 'utf-8');
     }
     const subsFile = getLocalSubmissionsFilePath();
     if (!fs.existsSync(subsFile)) {
@@ -82,7 +76,7 @@ export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> 
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text) as StoredFormData[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -122,12 +116,13 @@ export function getLocalStoredForms(): StoredFormData[] {
     ensureLocalStorage();
     const file = getLocalFormsFilePath();
     if (!fs.existsSync(file)) {
-      return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
+      return [];
     }
     const raw = fs.readFileSync(file, 'utf-8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [{ form: SAMPLE_RECRUITMENT_FORM, fields: SAMPLE_RECRUITMENT_FIELDS }];
+    return [];
   }
 }
 

@@ -48,60 +48,78 @@ export default async function AdminFormsPage() {
         </div>
 
         <div className="divide-y divide-[#E6DFD5]">
-          {forms.map(({ form, fieldsCount, submissionsCount }) => {
-            const statusBadge = {
-              open: 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]',
-              draft: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
-              closed: 'bg-[#F4F4F5] text-[#71717A] border-[#E4E4E7]',
-            }[form.status];
-
-            return (
-              <div
-                key={form.id}
-                className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FAF8F5]/50 transition"
-              >
-                <div className="space-y-1.5 flex-1 max-w-2xl">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-base sm:text-lg font-bold text-[#18181B]">
-                      {form.title}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusBadge}`}
-                    >
-                      {form.status.toUpperCase()}
-                    </span>
-                    <span className="text-xs text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E6DFD5]">
-                      Format: {form.layout === 'stepped' ? 'Étapes (1/page)' : 'Page unique'}
-                    </span>
-                  </div>
-
-                  {form.description && (
-                    <p className="text-xs sm:text-sm text-[#52525B] line-clamp-2">
-                      {form.description}
-                    </p>
-                  )}
-
-                  <div className="text-xs text-[#71717A] flex items-center gap-4 pt-1 flex-wrap">
-                    <span>
-                      URL: <code className="font-mono text-[#18181B]">/f/{form.slug}</code>
-                    </span>
-                    <span>{fieldsCount} question{fieldsCount > 1 ? 's' : ''}</span>
-                    <span>
-                      Reçu email: {form.send_receipt ? 'Oui' : 'Non'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="shrink-0 pt-2 md:pt-0">
-                  <FormRowActions
-                    slug={form.slug}
-                    title={form.title}
-                    submissionsCount={submissionsCount}
-                  />
-                </div>
+          {forms.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E6DFD5] flex items-center justify-center mx-auto mb-3 text-xl">
+                📋
               </div>
-            );
-          })}
+              <h3 className="text-base font-semibold text-[#18181B]">Aucun formulaire actif</h3>
+              <p className="text-xs text-[#52525B] max-w-sm mx-auto mt-1 mb-4">
+                Vous n’avez aucun formulaire publié pour le moment. Vous pouvez en créer un nouveau en quelques secondes.
+              </p>
+              <Link
+                href="/admin/forms/new"
+                className="brand-gradient-btn px-4 py-2 rounded-lg text-xs font-semibold text-white inline-flex items-center gap-1.5 shadow-xs"
+              >
+                + Créer un premier formulaire
+              </Link>
+            </div>
+          ) : (
+            forms.map(({ form, fieldsCount, submissionsCount }) => {
+              const statusBadge = {
+                open: 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]',
+                draft: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
+                closed: 'bg-[#F4F4F5] text-[#71717A] border-[#E4E4E7]',
+              }[form.status];
+
+              return (
+                <div
+                  key={form.id}
+                  className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FAF8F5]/50 transition"
+                >
+                  <div className="space-y-1.5 flex-1 max-w-2xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-base sm:text-lg font-bold text-[#18181B]">
+                        {form.title}
+                      </span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusBadge}`}
+                      >
+                        {form.status.toUpperCase()}
+                      </span>
+                      <span className="text-xs text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E6DFD5]">
+                        Format: {form.layout === 'stepped' ? 'Étapes (1/page)' : 'Page unique'}
+                      </span>
+                    </div>
+
+                    {form.description && (
+                      <p className="text-xs sm:text-sm text-[#52525B] line-clamp-2">
+                        {form.description}
+                      </p>
+                    )}
+
+                    <div className="text-xs text-[#71717A] flex items-center gap-4 pt-1 flex-wrap">
+                      <span>
+                        URL: <code className="font-mono text-[#18181B]">/f/{form.slug}</code>
+                      </span>
+                      <span>{fieldsCount} question{fieldsCount > 1 ? 's' : ''}</span>
+                      <span>
+                        Reçu email: {form.send_receipt ? 'Oui' : 'Non'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 pt-2 md:pt-0">
+                    <FormRowActions
+                      slug={form.slug}
+                      title={form.title}
+                      submissionsCount={submissionsCount}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

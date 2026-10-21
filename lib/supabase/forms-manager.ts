@@ -44,7 +44,7 @@ export async function persistFormWithFields(
 
   // 2. Persist to Supabase Cloud Storage (Html_forms registry)
   try {
-    const cloudForms = (await fetchCloudStoredForms()) || getLocalCustomForms();
+    const cloudForms = (await fetchCloudStoredForms()) ?? getLocalCustomForms();
     const existingIdx = cloudForms.findIndex(
       (item) => item.form.slug === fullForm.slug || item.form.id === fullForm.id
     );
@@ -193,7 +193,7 @@ export async function removeFormBySlug(slug: string): Promise<{ success: boolean
   // Remove from Cloud Storage
   try {
     const cloudForms = await fetchCloudStoredForms();
-    if (cloudForms) {
+    if (cloudForms !== null) {
       const filtered = cloudForms.filter((item) => item.form.slug !== slug);
       await saveCloudStoredForms(filtered);
     }

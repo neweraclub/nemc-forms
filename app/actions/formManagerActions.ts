@@ -48,6 +48,9 @@ export async function deleteFormAction(slug: string): Promise<{ success: boolean
   const res = await removeFormBySlug(slug);
   if (res.success) {
     revalidatePath('/admin');
+    revalidatePath(`/admin/${slug}`);
+    revalidatePath('/admin/emails');
+    revalidatePath(`/f/${slug}`);
     return { success: true };
   }
 

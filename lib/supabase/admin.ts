@@ -53,39 +53,30 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
   }
 
   // 2. Cloud Storage 'Html_forms' Registry & Local Fallback
-  let cloudItems: StoredFormData[] = [];
+  let cloudItems: StoredFormData[] | null = null;
   try {
-    const fetched = await fetchCloudStoredForms();
-    if (fetched && fetched.length > 0) {
-      cloudItems = fetched;
-    }
+    cloudItems = await fetchCloudStoredForms();
   } catch {
     // ignore
   }
 
-  const localItems = getLocalStoredForms();
-
-  // Merge items by slug (Cloud Storage takes precedence, then local)
   const map = new Map<string, StoredFormData>();
 
-  for (const item of localItems) {
-    if (item.form?.slug) {
-      map.set(item.form.slug, item);
+  if (cloudItems !== null) {
+    // Cloud Storage is authoritative
+    for (const item of cloudItems) {
+      if (item.form?.slug) {
+        map.set(item.form.slug, item);
+      }
     }
-  }
-
-  for (const item of cloudItems) {
-    if (item.form?.slug) {
-      map.set(item.form.slug, item);
+  } else {
+    // Fall back to local items only if Cloud Storage was unreachable
+    const localItems = getLocalStoredForms();
+    for (const item of localItems) {
+      if (item.form?.slug) {
+        map.set(item.form.slug, item);
+      }
     }
-  }
-
-  // Ensure sample recruitment form is present if map is empty
-  if (!map.has('recrutement-2026')) {
-    map.set('recrutement-2026', {
-      form: SAMPLE_RECRUITMENT_FORM,
-      fields: SAMPLE_RECRUITMENT_FIELDS,
-    });
   }
 
   const allSubs = getLocalSubmissions();
@@ -165,12 +156,6 @@ export async function getAdminSubmissions(slug: string): Promise<{
       fields = found.fields;
       submissions = getLocalSubmissions().filter((s) => s.form_id === form?.id);
     }
-  }
-
-  if (!form && slug === 'recrutement-2026') {
-    form = SAMPLE_RECRUITMENT_FORM;
-    fields = SAMPLE_RECRUITMENT_FIELDS;
-    submissions = getLocalSubmissions().filter((s) => s.form_id === form?.id);
   }
 
   return { form, fields, submissions };

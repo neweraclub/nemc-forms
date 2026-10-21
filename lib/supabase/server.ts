@@ -141,11 +141,6 @@ export async function getFormBySlug(slug: string): Promise<{
         // ignore
       }
     }
-
-    if (!form && slug === 'recrutement-2026') {
-      form = SAMPLE_RECRUITMENT_FORM;
-      fields = SAMPLE_RECRUITMENT_FIELDS;
-    }
   }
 
   if (!form) {
