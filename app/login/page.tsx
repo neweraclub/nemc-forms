@@ -48,12 +48,6 @@ export default async function LoginPage() {
         </p>
 
         <LoginForm />
-
-        <div className="mt-8 pt-4 border-t border-[#E6DFD5] bg-[#FAF8F5] p-3 rounded-lg text-xs text-[#71717A] space-y-1">
-          <p className="font-semibold text-[#18181B]">Comptes autorisés :</p>
-          <p>&bull; Compte Superadmin de votre table PostgreSQL <code>users</code></p>
-          <p>&bull; Ou identifiants statiques configurés dans <code>.env.local</code> (défaut : <code>admin@new-era-medical-club-univ-ouargla.dz</code> / <code>admin123</code>)</p>
-        </div>
       </div>
     </main>
   );

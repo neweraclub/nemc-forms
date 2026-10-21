@@ -60,16 +60,10 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <Link
-              href="/f/recrutement-2026"
-              className="brand-gradient-btn min-h-[48px] px-8 py-3.5 rounded-lg text-sm sm:text-base font-semibold text-white shadow-xs text-center inline-flex items-center justify-center"
-            >
-              Formulaire de Recrutement 2026
-            </Link>
-            <Link
               href="/admin"
-              className="min-h-[48px] px-6 py-3.5 rounded-lg text-sm font-semibold text-[#18181B] bg-white border border-[#E6DFD5] hover:bg-[#FAF8F5] transition text-center inline-flex items-center justify-center"
+              className="brand-gradient-btn min-h-[48px] px-8 py-3.5 rounded-lg text-sm sm:text-base font-semibold text-white shadow-xs text-center inline-flex items-center justify-center transition"
             >
-              Tableau de Bord Admin
+              Accéder au Tableau de Bord Admin →
             </Link>
           </div>
         </div>
