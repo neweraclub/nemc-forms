@@ -2,15 +2,23 @@
  * Google Gemini AI Integration for Club Médical New Era
  * Supports gemini-3.8-flash, gemini-2.5-flash, and automatic model fallback.
  */
-
 export interface EmailGenerationInput {
   subject?: string;
-  contextType?: string; // e.g. "Simulation ECOS", "Recrutement", "Atelier", "Convocation", "Information"
-  keyInfo?: string; // e.g. "Lundi 12 octobre 2026 à 08h00, Salle TD 4, carte d'étudiant obligatoire"
-  extraNotes?: string; // e.g. "Effectif 25 personnes, arriver 15 min en avance"
+  contextType?: string; // e.g. "confirmation d'inscription", "convocation", "rappel", "résultats", "annonce"
+  title?: string; // e.g. "Votre inscription est confirmée."
+  eyebrow?: string; // e.g. "ECOS · Hépato-Gastro-Entérologie"
+  intro?: string;
+  keyInfo?: string; // list of label: value (Date, Lieu, Candidats, À apporter, Arrivée...)
+  importantNote?: string; // e.g. "Tout retard entraîne l'exclusion de l'épreuve."
+  buttonText?: string;
+  buttonUrl?: string;
+  signOff?: string;
+  designMode?: 'cream' | 'dark' | 'light';
+  infoPresentation?: 'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style';
+  fontStyle?: 'Plus Jakarta Sans' | 'Inter' | 'Poppins' | 'Georgia (serif editorial)';
+  headingStyle?: 'bold tight sans' | 'light large sans' | 'serif editorial';
+  extraNotes?: string;
   tone?: 'officiel' | 'chaleureux' | 'urgent';
-  applicantNamePlaceholder?: string;
-  formTitle?: string;
 }
 
 export interface GeneratedEmailResult {
@@ -26,57 +34,87 @@ const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const API_KEY = process.env.GEMINI_API_KEY || '';
 
 /**
- * System prompt embedding the exact Club Médical New Era email design system
- * seen in official club communications (Gmail screenshot).
+ * Senior Email Designer System Prompt according to the official New Era Club guidelines.
  */
-const EMAIL_DESIGN_SYSTEM_PROMPT = `Tu es l'assistant IA officiel du Club Médical New Era (NEW ERA CLUB), un club scientifique et médical dynamique d'étudiants en médecine à l'Université d'Ouargla.
-Ta mission est de générer des emails HTML responsives extrêmement élégants, professionnels et percutants pour les étudiants, candidats et participants.
+const EMAIL_DESIGN_SYSTEM_PROMPT = `You are a senior email designer and front-end developer. Generate ONE production-ready HTML email for the New Era Club (Club Médical New Era, Faculté de Médecine d'Ouargla). Follow the CONTENT and DESIGN inputs exactly.
 
-CHARTE GRAPHIQUE ET STRUCTURE DU TEMPLATE OFFICIEL (EXACTE AU TEMPLATE GMAIL DU CLUB) :
-1. Style général :
-   - Thème Sombre Médical / Nocturne prestigieux :
-     * Fond global du mail : #0B0A11 ou #0F0D1B
-     * Conteneur de carte : #161326 avec bordure fine rgba(139, 62, 225, 0.4) et léger dégradé supérieur
-     * Barre dégradé néon en haut : background linear-gradient(90deg, #3B33FF 0%, #8B3EE1 50%, #E53888 100%)
-     * Typographie : -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif
-2. En-tête :
-   - Texte "NEW ERA CLUB" en gras majuscule blanc (#FFFFFF), espacement tracking 0.1em
-   - Motif subtil de losanges / étoiles à droite (ex: ✦ ✦ ✦ ✦ ✦ ou ❖ ❖ ❖)
-3. Badge thématique :
-   - Petit badge rectangulaire arrondi : background rgba(245, 158, 11, 0.15), bordure rgba(245, 158, 11, 0.35), texte jaune/ambre doré (#FBBF24), texte en majuscules (ex: "DOSSIER ECOS · 2026" ou "CANDIDATURE · 2026")
-4. Titre Principal (Headline) :
-   - Grand titre blanc (#FFFFFF), taille 22-26px, gras. Mettre en valeur le mot-clé principal (ex: ECOS, RECRUTEMENT, WORKSHOP) avec une couleur corail / orange éclatante (#FF7A00) ou un dégradé.
-5. Sous-titre :
-   - Module ou précision en gris bleuté clair (#A1A1AA) (ex: "Module — Hépato-Gastro-Entérologie" ou "Pôle Scientifique & Formations")
-6. Corps du message :
-   - "Bonjour {{prenom}}," ou "Bonjour {{nom}},"
-   - Texte bienveillant, clair, universitaire et rigoureux en blanc cassé (#E4E4E7), interligne aéré (line-height: 1.6).
-7. Bloc encadré "INFORMATIONS CLÉS" :
-   - Boîte mise en valeur : background #211936, bordure 1px solid #433268, border-radius 10px, padding 16px 20px
-   - Titre "❖❖❖❖❖❖ INFORMATIONS CLÉS" en ambre/or (#F59E0B), taille 12px gras
-   - Date / Heure en grand et gras blanc (#FFFFFF)
-   - Détails : effectif, consignes d'arrivée, pièces requises (carte d'étudiant, blouse, etc.)
-8. Clôture & Signature :
-   - Souhaits de réussite
-   - "L'équipe New Era Club" (en gras blanc)
-   - "Excellence clinique · Innovation pédagogique" (en gris #A1A1AA)
-9. Pied de page (Footer) :
-   - "NEW ERA CLUB · PAVING THE FUTURE OF MEDICINE" (taille 11px, gras, gris #71717A)
-   - "© 2026 New Era Club. Tous droits réservés."
-   - Liens vers les réseaux sociaux du club
-10. Compatibilité HTML email :
-   - Utiliser des tables HTML (table, tr, td) avec styles CSS inline pour une compatibilité parfaite avec Gmail, Outlook, Apple Mail et navigateurs mobiles.
-   - Utiliser les variables dynamiques si pertinent : {{nom}}, {{prenom}}, {{date}}, {{lieu}}, {{reponses}}, {{confirmation_id}}.
+## CONTENT GUIDELINES
+- language: Français
+- type: confirmation d'inscription / convocation / rappel / résultats / annonce
+- title (H1): e.g. "Votre inscription est confirmée." or context-adapted
+- eyebrow / badge: e.g. "ECOS · Hépato-Gastro-Entérologie" or "RECRUTEMENT · 2026"
+- greeting variable: {{prenom}} (keep literal, e.g. "Bonjour {{prenom}},")
+- intro (1–2 sentences): warm, inspiring, university medical standard
+- key info (label: value pairs):
+  - Date et heure
+  - Lieu / Salle
+  - Candidats / Effectif
+  - À apporter (blouse, carte d'étudiant, etc.)
+  - Arrivée (e.g. Dès 07h45)
+- important note: highlighted callout (e.g. "Tout retard entraîne l'exclusion de l'épreuve.")
+- button (optional): label + URL, or "none"
+- sign-off: "Bonne préparation," / "L'équipe New Era Club" / "Excellence clinique · Innovation pédagogique"
 
-RÉPONSE STRICTE EN FORMAT JSON :
-Tu dois impérativement répondre UNIQUEMENT un objet JSON valide, sans balises markdown de code (pas de \`\`\`json), avec les clés suivantes :
+## DESIGN MODES & PALETTES
+1. Mode "cream" (default luxury warm palette):
+   - page background: #F0E8DB
+   - card background: #FFFDF9
+   - card border: 1px solid #E3D8C6
+   - card radius: 12px
+   - ink (headings): #1B1740
+   - body text: #4A4460
+   - muted labels: #7A7390
+   - primary accent: #3B33FF (date/time, button)
+   - secondary accent: #8B3EE1 (eyebrow / badge)
+   - alert accent: #F97316 (important note only)
+   - top brand bar: linear-gradient(90deg, #3B33FF 0%, #8B3EE1 50%, #E53888 100%)
+
+2. Mode "dark" (official nocturnal high-tech medical palette):
+   - page background: #0B0A11
+   - card background: #161326
+   - card border: 1px solid rgba(139, 62, 225, 0.4)
+   - card radius: 12px
+   - ink (headings): #FFFFFF
+   - body text: #E4E4E7
+   - muted labels: #A1A1AA
+   - primary accent: #FF7A00 or #3B33FF
+   - secondary accent: #FBBF24 (gold badge)
+   - alert accent: #F97316
+   - key info box background: #211936 with border #433268
+
+3. Mode "light" (modern minimalist clean palette):
+   - page background: #FAF6EE
+   - card background: #FFFFFF
+   - card border: 1px solid #E6DFD5
+   - card radius: 12px
+   - ink: #18181B
+   - body text: #3F3F46
+   - muted labels: #71717A
+   - primary accent: #3B33FF
+
+## INFO PRESENTATION STYLES
+- "divider table": clean table rows separated by subtle borders
+- "2x2 grid of small blocks": 2-column rounded cards inside the email table
+- "vertical timeline": steps with vertical accent indicator
+- "ticket style": boarding pass / event ticket cut-out styling with perforated border
+
+## RULES (always apply)
+Design quality:
+- It MUST look hand-designed by a human senior front-end designer, NOT generated by generic AI or from a cookie-cutter SaaS template.
+- Fully production-ready, table-based HTML with inline styles compatible with Gmail (desktop/mobile, web/app), Outlook (Windows/Mac/365), Apple Mail, and Yahoo.
+- Include preheader text hidden from visual view.
+- Wordmark: "NEW ERA CLUB" in bold tracking 0.1em with decorative diamond motifs (✦ ✦ ✦ ✦ ✦).
+- Footer: "NEW ERA CLUB · PAVING THE FUTURE OF MEDICINE" & "© 2026 New Era Club. Tous droits réservés."
+
+STRICT JSON OUTPUT FORMAT:
+You must output ONLY valid JSON without any markdown formatting or \`\`\`json wrappers:
 {
-  "subject": "Sujet percutant et professionnel",
-  "badge": "TEXTE DU BADGE (ex: DOSSIER ECOS · 2026)",
-  "headline": "Titre principal avec accentuation",
-  "preheader": "Court texte d'aperçu pour la boîte de réception (50-90 car)",
-  "html": "Code HTML complet et autonome du courriel avec tables et styles inline",
-  "plainText": "Version texte brut lisible pour les clients mail sans HTML"
+  "subject": "Email subject line",
+  "badge": "EYEBROW / BADGE TEXT",
+  "headline": "Main Title (H1)",
+  "preheader": "Hidden preheader text (50-90 chars)",
+  "html": "Full standalone production-ready HTML email code",
+  "plainText": "Readable plain-text fallback version"
 }`;
 
 /**
@@ -143,18 +181,36 @@ function parseGeminiJson<T>(raw: string): T {
 }
 
 /**
- * Generates an email template from scratch.
+ * Generates an email template according to the Senior Email Designer specification.
  */
 export async function generateEmailTemplate(input: EmailGenerationInput): Promise<GeneratedEmailResult> {
-  const prompt = `Génère un email HTML complet pour le Club Médical New Era selon les paramètres suivants :
-- Sujet souhaité : ${input.subject || 'Confirmation de candidature / inscription'}
-- Contexte / Type d'événement : ${input.contextType || 'Confirmation d\'inscription'}
-- Informations clés (date, heure, lieu, effectif, matériel) : ${input.keyInfo || 'Non spécifié'}
-- Consignes supplémentaires / Détails optionnels : ${input.extraNotes || 'Aucune consigne particulière'}
-- Ton souhaité : ${input.tone || 'officiel'}
-- Titre du formulaire source : ${input.formTitle || 'Club Médical New Era'}
+  const prompt = `Génère UN courriel HTML de qualité production pour le Club Médical New Era selon ces paramètres stricts :
 
-Respecte scrupuleusement la charte graphique sombre prestigieuse avec badge, grand titre bicolore, encadré INFORMATIONS CLÉS violet/doré, signature officielle New Era Club et responsive tables.`;
+## CONTENT INPUT
+- language: Français
+- type: ${input.contextType || "confirmation d'inscription"}
+- title (H1): ${input.title || input.subject || 'Votre inscription est confirmée.'}
+- eyebrow: ${input.eyebrow || input.contextType || 'ECOS · Hépato-Gastro-Entérologie'}
+- greeting variable: {{prenom}} (keep literal)
+- intro: ${input.intro || "Nous vous confirmons la validation de votre participation organisée par le Club Médical New Era."}
+- key info:
+${input.keyInfo || `  - Date et heure: Lundi 12 octobre 2026 · 08h00
+  - Lieu: Salle TD 4
+  - Candidats: 25 au total
+  - À apporter: Blouse blanche et carte d'étudiant
+  - Arrivée: Dès 07h45`}
+- important note: ${input.importantNote || input.extraNotes || "Tout retard entraîne l'exclusion de l'épreuve."}
+- button: ${input.buttonText ? `${input.buttonText} (${input.buttonUrl || '#'})` : 'none'}
+- sign-off: ${input.signOff || "Bonne préparation, / L'équipe New Era Club / Excellence clinique · Innovation pédagogique"}
+
+## DESIGN INPUT
+- mode: ${input.designMode || 'cream'}
+- info presentation: ${input.infoPresentation || 'divider table'}
+- font: ${input.fontStyle || 'Plus Jakarta Sans'}
+- heading style: ${input.headingStyle || 'bold tight sans'}
+- density: compact
+
+RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
   const rawJson = await callGemini(prompt);
   return parseGeminiJson<GeneratedEmailResult>(rawJson);
@@ -167,7 +223,7 @@ export async function refineEmailTemplate(
   currentResult: GeneratedEmailResult,
   suggestion: string
 ): Promise<GeneratedEmailResult> {
-  const prompt = `Voici un modèle d'email HTML actuellement généré pour le Club Médical New Era :
+  const prompt = `Voici un modèle d'email HTML du Club Médical New Era :
 
 SUJET ACTUEL : ${currentResult.subject}
 BADGE : ${currentResult.badge}
@@ -175,12 +231,12 @@ HEADLINE : ${currentResult.headline}
 HTML ACTUEL :
 ${currentResult.html}
 
-MODIFICATION DEMANDÉE PAR L'ADMINISTRATEUR :
+MODIFICATION DEMANDÉE :
 "${suggestion}"
 
-Consigne :
-Applique précisément les modifications demandées (ex: changer une date, ajuster le ton, ajouter ou retirer une consigne, reformuler) TOUT EN CONSERVANT la structure visuelle prestigieuse (dark theme, barres dégradées, tables compatibles email, encadré INFORMATIONS CLÉS, signature).
-Réponds impérativement en JSON avec les mêmes champs : subject, badge, headline, preheader, html, plainText.`;
+Consigne de senior email designer :
+Applique précisément l'ajustement demandé en préservant le design unique, élégant et hand-crafted pour New Era Club.
+Réponds impérativement en JSON avec les clés : subject, badge, headline, preheader, html, plainText.`;
 
   const rawJson = await callGemini(prompt);
   return parseGeminiJson<GeneratedEmailResult>(rawJson);

@@ -20,7 +20,10 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
   const [contextType, setContextType] = useState('Simulation ECOS');
   const [keyInfo, setKeyInfo] = useState('Lundi 12 octobre 2026 à 08h00 pile. Effectif total de 25 candidats. Salle TD 4.');
   const [extraNotes, setExtraNotes] = useState("Veillez à arriver 15 minutes à l'avance munis de votre carte d'étudiant et de votre blouse blanche.");
+  const [importantNote, setImportantNote] = useState("Tout retard entraîne l'exclusion de l'épreuve.");
   const [tone, setTone] = useState<'officiel' | 'chaleureux' | 'urgent'>('officiel');
+  const [designMode, setDesignMode] = useState<'cream' | 'dark' | 'light'>('cream');
+  const [infoPresentation, setInfoPresentation] = useState<'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style'>('divider table');
 
   // AI Generation State
   const [isGenerating, startGenerating] = useTransition();
@@ -87,12 +90,15 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
         contextType,
         keyInfo,
         extraNotes,
+        importantNote,
         tone,
+        designMode,
+        infoPresentation,
       });
 
       if (res.success && res.result) {
         setEmailResult(res.result);
-        setStatusMessage({ type: 'success', text: 'Email généré avec succès par Gemini 3.8 Flash !' });
+        setStatusMessage({ type: 'success', text: `Email généré avec succès en mode ${designMode} !` });
       } else {
         setStatusMessage({ type: 'error', text: res.error || 'Erreur lors de la génération avec l’IA.' });
       }
@@ -312,6 +318,65 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
               onChange={(e) => setExtraNotes(e.target.value)}
               placeholder="Ex: Venir 15 min en avance avec carte d'étudiant et blouse blanche..."
               className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
+            />
+          </div>
+
+          {/* Design Mode Palette */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-[#18181B]">
+              Mode visuel & Thème
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'cream', label: 'Crème (Chaud)', dot: 'bg-[#F0E8DB] border-[#E3D8C6]' },
+                { id: 'dark', label: 'Sombre (Nocturne)', dot: 'bg-[#0B0A11] border-[#3B2E58]' },
+                { id: 'light', label: 'Clair (Minimal)', dot: 'bg-white border-[#E6DFD5]' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setDesignMode(m.id as 'cream' | 'dark' | 'light')}
+                  className={`py-2 px-2 text-xs font-semibold rounded-lg border flex items-center justify-center gap-1.5 transition ${
+                    designMode === m.id
+                      ? 'border-[#3B33FF] bg-[#3B33FF]/10 text-[#3B33FF]'
+                      : 'border-[#E6DFD5] bg-[#FAF8F5] text-[#52525B] hover:text-[#18181B]'
+                  }`}
+                >
+                  <span className={`w-3 h-3 rounded-full border ${m.dot}`} />
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Info Presentation Style */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-[#18181B]">
+              Présentation des informations clés
+            </label>
+            <select
+              value={infoPresentation}
+              onChange={(e) => setInfoPresentation(e.target.value as 'divider table' | '2x2 grid of small blocks' | 'vertical timeline' | 'ticket style')}
+              className="w-full px-3 py-2 text-xs border border-[#D4D4D8] rounded-lg bg-white"
+            >
+              <option value="divider table">Tableau épuré avec séparateurs (divider table)</option>
+              <option value="2x2 grid of small blocks">Grille 2x2 de cartes compactes</option>
+              <option value="vertical timeline">Frise chronologique verticale (timeline)</option>
+              <option value="ticket style">Style Billet / Ticket d&apos;accès découpé</option>
+            </select>
+          </div>
+
+          {/* Important Note Callout */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-[#18181B]">
+              Avertissement important (encadré d&apos;alerte)
+            </label>
+            <input
+              type="text"
+              value={importantNote}
+              onChange={(e) => setImportantNote(e.target.value)}
+              placeholder="Ex: Tout retard entraîne l'exclusion de l'épreuve."
+              className="w-full px-3.5 py-2 text-xs border border-[#D4D4D8] rounded-lg"
             />
           </div>
 
