@@ -624,21 +624,21 @@ export function EmailStudioClient({
               )}
 
               {!hasEmailField && (
-                <div className="p-3.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="p-3.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs space-y-2.5 shadow-2xs">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-base shrink-0">⚠️</span>
-                    <div>
-                      <p className="font-bold text-[#78350F]">
+                    <span className="text-base shrink-0 mt-0.5">⚠️</span>
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <p className="font-bold text-[#78350F] text-xs">
                         Aucun champ &laquo; Adresse email &raquo; dans ce formulaire
                       </p>
-                      <p className="text-[11px] text-[#92400E] mt-0.5 leading-relaxed">
-                        Il est <strong>inutile d&apos;y associer un modèle de courriel</strong> tant qu&apos;il ne collecte pas l&apos;adresse des candidats. Ajoutez d&apos;abord une question avec le type <strong>Adresse email</strong> dans le constructeur de formulaire pour que les candidats puissent recevoir leur confirmation.
+                      <p className="text-[11px] text-[#92400E] leading-relaxed">
+                        Pour que les candidats puissent recevoir un accusé de réception, ajoutez une question avec le type <strong>Adresse email</strong> dans ce formulaire.
                       </p>
                     </div>
                   </div>
                   <a
                     href={`/admin/forms/${selectedFormSlug}/edit`}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-lg text-xs transition shrink-0 shadow-xs cursor-pointer whitespace-nowrap"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-lg text-xs transition shadow-xs cursor-pointer text-center"
                   >
                     <span>✏️ Ajouter l&apos;email au formulaire</span>
                   </a>
@@ -697,7 +697,7 @@ export function EmailStudioClient({
 
             {/* Questions / Fields Selector */}
             <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <label className="block text-[11px] font-semibold text-[#52525B]">
                   Sélectionnez les réponses à intégrer dans le courriel :
                 </label>
@@ -711,7 +711,7 @@ export function EmailStudioClient({
                         setSelectedFieldKeys(currentFields.map((f) => f.key));
                       }
                     }}
-                    className="text-[10px] font-semibold text-[#3B33FF] hover:underline cursor-pointer"
+                    className="text-[10px] font-semibold text-[#3B33FF] hover:underline cursor-pointer whitespace-nowrap shrink-0"
                   >
                     {selectedFieldKeys.length === currentFields.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                   </button>
@@ -763,23 +763,6 @@ export function EmailStudioClient({
               <p className="text-[11px] text-[#71717A] pt-0.5">
                 💡 Seules ces variables réelles sélectionnées seront transmises à Gemini. Aucune variable fictive par défaut n&apos;est injectée.
               </p>
-
-              {!hasEmailField && currentFields.length > 0 && (
-                <div className="p-2.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-lg text-xs text-[#92400E] flex items-center justify-between gap-2 mt-2">
-                  <div className="flex items-center gap-2">
-                    <span>💡</span>
-                    <span className="text-[11px]">
-                      Ce formulaire ne collecte pas l&apos;adresse email du candidat. Ajoutez une question de type <strong>Adresse email</strong> pour que les candidats puissent recevoir l&apos;accusé.
-                    </span>
-                  </div>
-                  <a
-                    href={`/admin/forms/${selectedFormSlug}/edit`}
-                    className="text-[11px] font-bold text-[#B45309] hover:underline shrink-0"
-                  >
-                    + Ajouter l&apos;email
-                  </a>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1053,17 +1036,140 @@ export function EmailStudioClient({
         {/* ==================================================================== */}
         <div className="lg:col-span-7 space-y-4">
           {!emailResult ? (
-            <div className="bg-white border-2 border-dashed border-[#D4D4D8] rounded-2xl p-10 sm:p-14 text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-[#3B33FF]/10 text-[#3B33FF] mx-auto flex items-center justify-center text-2xl shadow-inner">
-                ✉️
+            <div className="bg-white border border-[#E6DFD5] rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+              {/* Studio Canvas Status Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#E6DFD5]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3B33FF]/15 to-[#8B3EE1]/15 text-[#3B33FF] flex items-center justify-center text-lg shadow-inner">
+                    ✨
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#18181B] tracking-tight flex items-center gap-2">
+                      <span>Studio d&apos;Aperçu &amp; Rendu</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#3B33FF]/10 text-[#3B33FF]">
+                        Prêt à générer
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-[#71717A]">
+                      Le rendu graphique HTML s&apos;affichera ici dès la génération
+                    </p>
+                  </div>
+                </div>
+
+                {activeFormWithFields?.form.custom_email_html && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailResult({
+                        subject:
+                          activeFormWithFields.form.custom_email_subject ||
+                          `Accusé de réception — ${activeFormWithFields.form.title}`,
+                        badge: 'Modèle Actif Formulaire',
+                        headline: activeFormWithFields.form.title,
+                        preheader: 'Modèle officiel actuellement configuré',
+                        html: activeFormWithFields.form.custom_email_html || '',
+                        plainText: activeFormWithFields.form.custom_email_subject || '',
+                      });
+                      showAdminToast({
+                        type: 'success',
+                        title: 'Modèle actif chargé',
+                        message: 'Le modèle IA actuel du formulaire a été injecté dans le studio.',
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#3B33FF] font-semibold text-xs rounded-lg transition shadow-2xs cursor-pointer shrink-0"
+                  >
+                    <span>👁️ Charger le modèle actif</span>
+                  </button>
+                )}
               </div>
-              <div className="space-y-1">
-                <h3 className="text-base sm:text-lg font-bold text-[#18181B]">
-                  Aucun email généré pour l’instant
-                </h3>
-                <p className="text-xs sm:text-sm text-[#71717A] max-w-md mx-auto">
-                  Sélectionnez votre formulaire à gauche, choisissez les variables de personnalisation souhaitées, puis cliquez sur <strong>&quot;Générer avec Gemini AI&quot;</strong>.
-                </p>
+
+              {/* Summary Live Card of Current Settings */}
+              <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 sm:p-5 space-y-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                  Configuration en cours pour la génération
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-white rounded-lg border border-[#E6DFD5] space-y-1">
+                    <span className="text-[10px] font-semibold text-[#71717A] uppercase">Formulaire Cible</span>
+                    <p className="font-bold text-[#18181B] truncate">
+                      {activeFormWithFields?.form.title || selectedFormSlug}
+                    </p>
+                    <p className="text-[10px] font-mono text-[#3B33FF]">/f/{selectedFormSlug}</p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-lg border border-[#E6DFD5] space-y-1">
+                    <span className="text-[10px] font-semibold text-[#71717A] uppercase">Variables Injectées</span>
+                    <p className="font-bold text-[#18181B]">
+                      {selectedFieldKeys.length} question(s) sélectionnée(s)
+                    </p>
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {selectedFieldKeys.length > 0 ? (
+                        selectedFieldKeys.slice(0, 4).map((k) => (
+                          <code key={k} className="text-[9px] font-mono bg-[#3B33FF]/10 text-[#3B33FF] px-1 py-0.2 rounded">
+                            &#123;&#123;{k}&#125;&#125;
+                          </code>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-[#71717A] italic">Aucune variable</span>
+                      )}
+                      {selectedFieldKeys.length > 4 && (
+                        <span className="text-[9px] text-[#71717A] font-semibold">+{selectedFieldKeys.length - 4}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-lg border border-[#E6DFD5] space-y-1 sm:col-span-2">
+                    <span className="text-[10px] font-semibold text-[#71717A] uppercase">Objet de l&apos;email</span>
+                    <p className="font-semibold text-[#18181B] truncate">
+                      {subject || 'Accusé de réception officiel — New Era Medical Club'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Trigger CTA inside Canvas */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !subject.trim() || !contentPrompt.trim()}
+                    className="brand-gradient-btn w-full min-h-[46px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-white shadow-sm hover:shadow-md disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>Génération Gemini en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        <span>Générer le modèle HTML maintenant</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quality & Production Guarantees Badges */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
+                  <div className="text-base mb-1">🏷️</div>
+                  <div className="text-xs font-bold text-[#18181B]">Variables Réelles</div>
+                  <p className="text-[10px] text-[#71717A] mt-0.5">Publipostage strict sans variables inventées</p>
+                </div>
+                <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
+                  <div className="text-base mb-1">📱</div>
+                  <div className="text-xs font-bold text-[#18181B]">HTML Tabulaire</div>
+                  <p className="text-[10px] text-[#71717A] mt-0.5">Compatible Gmail, Outlook, Apple &amp; mobile</p>
+                </div>
+                <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
+                  <div className="text-base mb-1">☁️</div>
+                  <div className="text-xs font-bold text-[#18181B]">Stockage Cloud</div>
+                  <p className="text-[10px] text-[#71717A] mt-0.5">Persistance immédiate dans Supabase</p>
+                </div>
               </div>
             </div>
           ) : (
@@ -1277,10 +1383,10 @@ export function EmailStudioClient({
                             </p>
                           </div>
                         </div>
-                        <div className="pt-0.5">
+                        <div className="pt-1">
                           <a
                             href={`/admin/forms/${selectedFormSlug}/edit`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-xs rounded-md shadow-xs transition"
+                            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-xs rounded-lg shadow-xs transition text-center cursor-pointer"
                           >
                             ✏️ Modifier le formulaire et ajouter l&apos;email
                           </a>
