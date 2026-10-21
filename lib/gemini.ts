@@ -199,7 +199,7 @@ export async function generateEmailTemplate(input: EmailGenerationInput): Promis
   const selectedFieldsList =
     input.selectedFields && input.selectedFields.length > 0
       ? input.selectedFields.map((f) => `  - {{${f.key}}} : intitulé "${f.label}"`).join('\n')
-      : '  - {{prenom}} : Prénom du candidat\n  - {{nom}} : Nom de famille\n  - {{email}} : Adresse email';
+      : '  - {{prenom}} : Prénom du destinataire\n  - {{nom}} : Nom de famille\n  - {{email}} : Adresse email';
 
   const userInstructions = (input.contentPrompt || input.keyInfo || '').trim();
 

@@ -65,11 +65,14 @@ export function EmailStudioClient({
     setSelectedFormSlug(slug);
     setSaveFileName(`${slug}.html`);
     const target = formsWithFields?.find((f) => f.form.slug === slug);
-    if (target && target.fields.length > 0) {
-      const keys = target.fields
-        .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
-        .map((f) => f.key);
-      setSelectedFieldKeys(keys.length > 0 ? keys : target.fields.slice(0, 3).map((f) => f.key));
+    if (target) {
+      if (target.fields.length > 0) {
+        const keys = target.fields
+          .filter((f) => f.key === 'full_name' || f.key === 'email' || f.key === 'phone' || f.required)
+          .map((f) => f.key);
+        setSelectedFieldKeys(keys.length > 0 ? keys : target.fields.slice(0, 3).map((f) => f.key));
+      }
+      setSubject(`Accusé de réception : ${target.form.title} — New Era Medical Club`);
     }
   };
 
@@ -80,10 +83,13 @@ export function EmailStudioClient({
   };
 
   // 3. Message Parameters State
-  const [subject, setSubject] = useState("Confirmation d'inscription — New Era Medical Club");
-  const [contextType, setContextType] = useState("Confirmation d'inscription");
+  const defaultSubject = currentForm
+    ? `Accusé de réception : ${currentForm.title} — New Era Medical Club`
+    : "Accusé de réception — New Era Medical Club";
+  const [subject, setSubject] = useState(defaultSubject);
+  const [contextType, setContextType] = useState("Accusé de réception");
   const [contentPrompt, setContentPrompt] = useState(
-    "Remercier le candidat d'avoir complété le formulaire. Confirmer que sa participation a été enregistrée avec succès et que notre équipe reviendra vers lui avec toutes les prochaines étapes."
+    "Remercier pour la soumission du formulaire. Confirmer la bonne réception des informations et préciser que notre équipe reste à disposition pour toute question ou étape suivante."
   );
   const [importantNote, setImportantNote] = useState('');
   const [buttonText, setButtonText] = useState('');
@@ -267,17 +273,21 @@ export function EmailStudioClient({
   const PRESETS = [
     {
       label: 'Accusé de réception',
-      subject: 'Confirmation de réception — New Era Medical Club',
+      subject: currentForm
+        ? `Accusé de réception : ${currentForm.title} — New Era Medical Club`
+        : 'Accusé de réception — New Era Medical Club',
       context: 'Accusé de réception',
       prompt:
-        'Remercier chaleureusement le candidat. Lui confirmer que sa réponse a bien été transmise et qu’un accusé de réception officiel a été généré.',
+        'Remercier pour la soumission du formulaire. Confirmer la bonne réception des informations et préciser que l’équipe reste disponible pour toute question ou précision.',
     },
     {
-      label: 'Validation d’inscription',
-      subject: 'Votre inscription est validée — New Era Medical Club',
-      context: 'Validation d’inscription',
+      label: 'Validation & Confirmation',
+      subject: currentForm
+        ? `Confirmation : ${currentForm.title} — New Era Medical Club`
+        : 'Confirmation de votre participation — New Era Medical Club',
+      context: 'Confirmation',
       prompt:
-        'Confirmer au candidat que son inscription est validée avec succès. Lui donner les détails importants et lui souhaiter une excellente expérience avec le club.',
+        'Confirmer au destinataire que sa participation ou demande est validée avec succès. Lui donner les détails importants et lui souhaiter une excellente expérience.',
     },
     {
       label: 'Atelier / Workshop',
@@ -430,7 +440,7 @@ export function EmailStudioClient({
         });
         setStatusMessage({
           type: 'success',
-          text: `Ce template officiel a été associé au formulaire "${selectedFormSlug}". Les futurs candidats recevront ce mail !`,
+          text: `Ce template officiel a été associé au formulaire "${selectedFormSlug}". Les personnes ayant répondu recevront automatiquement ce courriel !`,
         });
       } else {
         setStatusMessage({ type: 'error', text: res.error || 'Échec de l’association au formulaire.' });
@@ -620,7 +630,7 @@ export function EmailStudioClient({
             {/* Salutation format selection */}
             <div className="space-y-1.5">
               <label className="block text-[11px] font-semibold text-[#52525B]">
-                Formule de salutation du candidat :
+                Formule de salutation du destinataire :
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
@@ -754,13 +764,13 @@ export function EmailStudioClient({
             {/* Subject Field */}
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-[#18181B]">
-                Sujet de l’email <span className="text-[#DC2626]">*</span>
+                Objet / Sujet de l’email <span className="text-[#DC2626]">*</span>
               </label>
               <input
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Ex: Confirmation d'inscription — New Era Medical Club"
+                placeholder="Ex: Accusé de réception : {{titre_formulaire}} — New Era Medical Club"
                 className="w-full px-3.5 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF]"
               />
             </div>
@@ -779,7 +789,7 @@ export function EmailStudioClient({
                 rows={4}
                 value={contentPrompt}
                 onChange={(e) => setContentPrompt(e.target.value)}
-                placeholder="Décrivez ce que vous souhaitez dire dans cet email : remercier le candidat, donner les détails importants (dates, lieu, matériel si applicable), prochaines étapes, etc. L'IA structure tout avec élégance."
+                placeholder="Décrivez ce que vous souhaitez dire dans cet email : remercier pour la participation ou soumission, donner les détails importants (dates, lieu, consignes si applicable), prochaines étapes, etc. L'IA structure tout avec élégance."
                 className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] leading-relaxed"
               />
             </div>
