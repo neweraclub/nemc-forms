@@ -50,8 +50,7 @@ export function EmailStudioClient({
     activeFormWithFields?.form || formsList.find((f) => f.slug === selectedFormSlug);
   const currentFields: FormFieldRecord[] = activeFormWithFields?.fields || [];
 
-  // 2. Greeting & Variable Selection State
-  const [greetingFormat, setGreetingFormat] = useState<'fname' | 'both' | 'formal'>('fname');
+  // 2. Variable Selection State
   const [selectedFieldKeys, setSelectedFieldKeys] = useState<string[]>(() => {
     if (currentFields.length > 0) {
       const initial = currentFields
@@ -345,7 +344,6 @@ export function EmailStudioClient({
         infoPresentation,
         selectedFormTitle: activeFormWithFields?.form.title || 'Formulaire New Era Club',
         selectedFormSlug,
-        greetingFormat,
         selectedFields: selectedFieldsData,
       });
 
@@ -613,7 +611,7 @@ export function EmailStudioClient({
             </div>
           </div>
 
-          {/* STEP 2: FIELD SELECTION & SALUTATION (Strict Non-Random Variables) */}
+          {/* STEP 2: FIELD SELECTION (Strict Non-Random Variables) */}
           <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -621,63 +619,19 @@ export function EmailStudioClient({
                   2
                 </span>
                 <h3 className="text-xs font-bold text-[#18181B] uppercase tracking-wide">
-                  Variables &amp; Salutation
+                  Champs du formulaire à injecter
                 </h3>
               </div>
               <span className="text-[11px] font-semibold text-[#3B33FF] bg-[#3B33FF]/10 px-2 py-0.5 rounded-full shrink-0">
-                {selectedFieldKeys.length} sélectionnée(s)
+                {selectedFieldKeys.length} sélectionné(s)
               </span>
-            </div>
-
-            {/* Salutation format selection */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold text-[#52525B]">
-                Formule de salutation du destinataire :
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setGreetingFormat('fname')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'fname'
-                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
-                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                    }`}
-                >
-                  <div className="font-bold">Prénom seul</div>
-                  <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125;,</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGreetingFormat('both')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'both'
-                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
-                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                    }`}
-                >
-                  <div className="font-bold">Prénom &amp; Nom</div>
-                  <div className="text-[10px] opacity-75 font-mono">Bonjour &#123;&#123;prenom&#125;&#125; &#123;&#123;nom&#125;&#125;,</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGreetingFormat('formal')}
-                  className={`p-2.5 rounded-lg text-xs font-medium border text-left transition ${greetingFormat === 'formal'
-                      ? 'bg-white border-[#3B33FF] text-[#3B33FF] shadow-2xs ring-1 ring-[#3B33FF]'
-                      : 'bg-white/60 border-[#E6DFD5] text-[#52525B] hover:bg-white'
-                    }`}
-                >
-                  <div className="font-bold">Formel / Nom</div>
-                  <div className="text-[10px] opacity-75 font-mono">Cher(&egrave;re) &#123;&#123;nom&#125;&#125;,</div>
-                </button>
-              </div>
             </div>
 
             {/* Questions / Fields Selector */}
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] font-semibold text-[#52525B]">
-                  Champs du formulaire à injecter dans le courriel :
+                  Sélectionnez les réponses à intégrer dans le courriel :
                 </label>
                 {currentFields.length > 0 && (
                   <button

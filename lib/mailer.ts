@@ -175,6 +175,7 @@ export function buildTeamEmailHtml(
           </tr>
           <tr>
             <td style="padding: 24px 28px 16px 28px; background-color: #FAF6EE; border-bottom: 1px solid #E6DFD5;">
+              <img src="https://aysysyrjqhqrcqoinbgx.supabase.co/storage/v1/object/public/Html_forms/logo_light_mode.png" alt="Club Médical New Era" width="125" style="display: block; max-width: 135px; height: auto; margin-bottom: 14px; border: 0;" />
               <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">New Era Medical Club</span>
               <h1 style="margin: 6px 0 0 0; font-size: 20px; font-weight: 700; color: #18181B; line-height: 1.3;">
                 Nouvelle réponse reçue
@@ -250,6 +251,7 @@ export function buildReceiptEmailHtml(
           </tr>
           <tr>
             <td style="padding: 24px 28px 16px 28px;">
+              <img src="https://aysysyrjqhqrcqoinbgx.supabase.co/storage/v1/object/public/Html_forms/logo_light_mode.png" alt="Club Médical New Era" width="130" style="display: block; max-width: 140px; height: auto; margin-bottom: 16px; border: 0;" />
               <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">New Era Medical Club</span>
               <h1 style="margin: 8px 0 12px 0; font-size: 20px; font-weight: 700; color: #18181B;">
                 Accusé de réception
