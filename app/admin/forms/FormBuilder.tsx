@@ -31,10 +31,9 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   const [description, setDescription] = useState(initialForm?.description || '');
   const [layout, setLayout] = useState<FormLayout>(initialForm?.layout || 'stepped');
   const [status, setStatus] = useState<FormStatus>(initialForm?.status || 'open');
-  const [confirmationMessage, setConfirmationMessage] = useState(
+  const confirmationMessage =
     initialForm?.confirmation_message ||
-      'Votre candidature a bien été enregistrée par le Club Médical New Era.'
-  );
+    'Votre candidature a bien été enregistrée par le Club Médical New Era.';
   const [sendReceipt, setSendReceipt] = useState(initialForm?.send_receipt ?? true);
   const receiptEmailField = initialForm?.receipt_email_field || 'email';
   const [customEmailSubject, setCustomEmailSubject] = useState(initialForm?.custom_email_subject || '');
@@ -444,18 +443,6 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                     className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-r-lg"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                  Message de confirmation après soumission
-                </label>
-                <input
-                  type="text"
-                  value={confirmationMessage}
-                  onChange={(e) => setConfirmationMessage(e.target.value)}
-                  className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg"
-                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
