@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { FormFieldRecord, FormRecord, FieldType, FormLayout, FormStatus } from '@/types/form';
-import { saveFormAction } from '@/app/actions/formManagerActions';
+import { saveFormAction, deleteFormAction } from '@/app/actions/formManagerActions';
 import {
   listHtmlTemplatesAction,
   getHtmlTemplateContentAction,
@@ -10,6 +10,7 @@ import {
 import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { showAdminToast } from '../AdminToast';
 
 interface FormBuilderProps {
   initialForm?: FormRecord;
@@ -24,6 +25,9 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Form Metadata State
   const [title, setTitle] = useState(initialForm?.title || '');
@@ -295,12 +299,49 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
 
       const res = await saveFormAction(formPayload, fieldsPayload);
       if (res.success) {
+        showAdminToast({
+          type: 'success',
+          title: isEditing ? 'Formulaire mis à jour' : 'Formulaire créé',
+          message: `Le formulaire "${title}" a été enregistré avec succès.`,
+        });
         router.push('/admin');
         router.refresh();
       } else {
         setError(res.error || 'Erreur lors de l’enregistrement.');
       }
     });
+  };
+
+  // Close delete modal on Escape
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeleting) {
+        setShowDeleteModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteModal, isDeleting]);
+
+  const handleDeleteForm = async () => {
+    if (!initialForm?.slug) return;
+    setDeleteError(null);
+    setIsDeleting(true);
+    const res = await deleteFormAction(initialForm.slug);
+    setIsDeleting(false);
+    if (res.success) {
+      setShowDeleteModal(false);
+      showAdminToast({
+        type: 'success',
+        title: 'Formulaire supprimé',
+        message: `Le formulaire "${title}" a été supprimé définitivement. Toutes les candidatures associées ont été effacées.`,
+      });
+      router.push('/admin');
+      router.refresh();
+    } else {
+      setDeleteError(res.error || 'Erreur lors de la suppression.');
+    }
   };
 
   return (
@@ -319,7 +360,24 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {isEditing && initialForm?.slug && (
+            <button
+              type="button"
+              disabled={isPending || isDeleting}
+              onClick={() => {
+                setDeleteError(null);
+                setShowDeleteModal(true);
+              }}
+              className="min-h-[44px] px-3.5 py-2 border border-[#FCA5A5] text-[#DC2626] rounded-lg text-xs sm:text-sm font-semibold bg-white hover:bg-[#FEF2F2] transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Supprimer définitivement ce formulaire"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Supprimer</span>
+            </button>
+          )}
           <Link
             href="/admin"
             className="min-h-[44px] px-4 py-2 border border-[#E6DFD5] rounded-lg text-xs sm:text-sm font-semibold text-[#18181B] bg-white hover:bg-[#FAF8F5] transition flex items-center"
@@ -328,7 +386,7 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           </Link>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || isDeleting}
             className="brand-gradient-btn min-h-[44px] px-6 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-xs focus:ring-2 focus:ring-[#3B33FF] disabled:opacity-50"
           >
             {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder' : 'Publier le formulaire'}
@@ -863,6 +921,134 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
           {isPending ? 'Enregistrement...' : isEditing ? 'Sauvegarder les modifications' : 'Publier le formulaire'}
         </button>
       </div>
+
+      {/* Danger Zone: Form Deletion (Edit Mode Only) */}
+      {isEditing && initialForm?.slug && (
+        <div className="bg-[#FEF2F2]/40 border border-[#FEE2E2] rounded-xl p-5 sm:p-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-[#DC2626] flex items-center gap-2">
+                <span>⚠️</span>
+                <span>Zone de danger : Supprimer ce formulaire</span>
+              </h3>
+              <p className="text-xs text-[#71717A] max-w-xl">
+                Cette action supprimera définitivement le formulaire et toutes les candidatures collectées. Cette action est irréversible.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending || isDeleting}
+              onClick={() => {
+                setDeleteError(null);
+                setShowDeleteModal(true);
+              }}
+              className="px-4 py-2 text-xs font-semibold text-[#DC2626] bg-white border border-[#FCA5A5] hover:bg-[#FEF2F2] rounded-lg transition shrink-0 disabled:opacity-50"
+            >
+              Supprimer le formulaire...
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modern High-End Delete Confirmation Modal (Replaces browser default confirm) */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            if (!isDeleting) {
+              setShowDeleteModal(false);
+              setDeleteError(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl border border-[#E6DFD5] shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-form-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Warning Icon Badge */}
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] border border-[#FEE2E2] text-[#DC2626] flex items-center justify-center shrink-0 shadow-xs">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+
+              <div className="space-y-1">
+                <h3 id="delete-form-dialog-title" className="text-base font-bold text-[#18181B] leading-tight">
+                  Supprimer définitivement ce formulaire ?
+                </h3>
+                <p className="text-xs text-[#71717A]">
+                  Cette action est irréversible et effacera toutes les données collectées.
+                </p>
+              </div>
+            </div>
+
+            {/* Exact Warning Prompt Box */}
+            <div className="p-4 bg-[#FEF2F2]/60 border border-[#FEE2E2] rounded-xl text-xs sm:text-sm text-[#18181B] leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer définitivement le formulaire{' '}
+              <strong className="text-[#18181B] font-bold">&quot;{title}&quot;</strong> ?{' '}
+              <span className="text-[#DC2626] font-semibold block mt-1.5">
+                Toutes les candidatures associées seront effacées.
+              </span>
+            </div>
+
+            {/* Error Message if deletion fails */}
+            {deleteError && (
+              <div className="p-3 bg-[#FEF2F2] border border-[#FEE2E2] rounded-lg text-xs text-[#DC2626] font-medium flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#E6DFD5]">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
+                className="px-4 py-2.5 text-xs font-semibold text-[#18181B] bg-white border border-[#D4D4D8] hover:bg-[#FAF8F5] rounded-lg transition"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteForm}
+                className="px-4 py-2.5 text-xs font-semibold text-white bg-[#DC2626] hover:bg-[#B91C1C] rounded-lg transition shadow-xs disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span>Suppression en cours...</span>
+                  </>
+                ) : (
+                  <span>Confirmer la suppression</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Preview for Email Template */}
       {previewModalOpen && (

@@ -17,6 +17,7 @@ import {
 } from '@/app/actions/htmlStorageActions';
 import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
+import { showAdminToast } from '../AdminToast';
 
 interface EmailStudioClientProps {
   forms: FormRecord[];
@@ -127,19 +128,43 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     }
   };
 
-  const handleDeleteFromStorage = async (fileName: string) => {
-    if (!confirm(`Supprimer définitivement '${fileName}' du bucket Html_forms ?`)) return;
-    const res = await deleteHtmlTemplateAction(fileName);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [isDeletingFile, setIsDeletingFile] = useState(false);
+
+  // Close delete modal on Escape key
+  useEffect(() => {
+    if (!fileToDelete) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeletingFile) {
+        setFileToDelete(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fileToDelete, isDeletingFile]);
+
+  const handleConfirmDeleteFromStorage = async () => {
+    if (!fileToDelete) return;
+    setIsDeletingFile(true);
+    const res = await deleteHtmlTemplateAction(fileToDelete);
+    setIsDeletingFile(false);
+    const deletedName = fileToDelete;
+    setFileToDelete(null);
     if (res.success) {
       refreshStorageList();
+      showAdminToast({
+        type: 'success',
+        title: 'Modèle supprimé',
+        message: `Le modèle "${deletedName}" a été supprimé définitivement du bucket Supabase.`,
+      });
       setStatusMessage({
         type: 'success',
-        text: `Modèle '${fileName}' supprimé du bucket 'Html_forms'.`,
+        text: `✓ Modèle '${deletedName}' supprimé définitivement du bucket 'Html_forms'.`,
       });
     } else {
       setStatusMessage({
         type: 'error',
-        text: res.error || `Erreur de suppression.`,
+        text: res.error || `Erreur lors de la suppression de '${deletedName}'.`,
       });
     }
   };
@@ -148,6 +173,11 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
     if (!targetSlug) return;
     const res = await assignStorageTemplateToFormAction(targetSlug, fileName, subject);
     if (res.success) {
+      showAdminToast({
+        type: 'success',
+        title: 'Modèle lié au formulaire',
+        message: `Le modèle "${fileName}" a été lié avec succès au formulaire "${targetSlug}".`,
+      });
       setStatusMessage({
         type: 'success',
         text: `✓ Modèle '${fileName}' lié avec succès au formulaire '${targetSlug}' !`,
@@ -662,7 +692,7 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
                         )}
                         <button
                           type="button"
-                          onClick={() => handleDeleteFromStorage(item.name)}
+                          onClick={() => setFileToDelete(item.name)}
                           className="px-2 py-1 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded transition"
                           title="Supprimer du bucket"
                         >
@@ -985,6 +1015,65 @@ export function EmailStudioClient({ forms }: EmailStudioClientProps) {
           )}
         </div>
       </div>
+
+      {/* Modern Delete Template Confirmation Modal */}
+      {fileToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            if (!isDeletingFile) {
+              setFileToDelete(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl border border-[#E6DFD5] shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] border border-[#FEE2E2] text-[#DC2626] flex items-center justify-center shrink-0 shadow-xs">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-[#18181B] leading-tight">
+                  Supprimer ce modèle d’email ?
+                </h3>
+                <p className="text-xs text-[#71717A]">
+                  Cette action supprimera le fichier du bucket Supabase <code>Html_forms</code>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl text-xs text-[#3F3F46]">
+              Êtes-vous sûr de vouloir supprimer définitivement{' '}
+              <strong className="text-[#18181B] font-mono">{fileToDelete}</strong> ?
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#E6DFD5]">
+              <button
+                type="button"
+                disabled={isDeletingFile}
+                onClick={() => setFileToDelete(null)}
+                className="px-4 py-2.5 text-xs font-semibold text-[#18181B] bg-white border border-[#D4D4D8] hover:bg-[#FAF8F5] rounded-lg transition"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingFile}
+                onClick={handleConfirmDeleteFromStorage}
+                className="px-4 py-2.5 text-xs font-semibold text-white bg-[#DC2626] hover:bg-[#B91C1C] rounded-lg transition shadow-xs disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeletingFile ? 'Suppression...' : 'Confirmer la suppression'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
