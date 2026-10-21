@@ -6,6 +6,7 @@ import { saveFormAction, deleteFormAction } from '@/app/actions/formManagerActio
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { showAdminToast } from '../AdminToast';
+import { CustomDateTimePicker } from './CustomDateTimePicker';
 
 interface FormBuilderProps {
   initialForm?: FormRecord;
@@ -517,37 +518,14 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
                 </div>
               </div>
 
-              {/* Date et heure de clôture automatique */}
-              <div className="pt-3 border-t border-[#E6DFD5] space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="block text-xs font-bold text-[#18181B] flex items-center gap-1.5">
-                    <span>Date et heure de fin (Clôture automatique hh:mm:ss)</span>
-                    {closesAt && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#DC2626]/10 text-[#DC2626]">
-                        Programmé
-                      </span>
-                    )}
-                  </label>
-                  {closesAt && (
-                    <button
-                      type="button"
-                      onClick={() => setClosesAt('')}
-                      className="text-xs text-[#DC2626] hover:underline self-start sm:self-auto"
-                    >
-                      Supprimer l’échéance (Illimité)
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="datetime-local"
-                  step="1"
+              {/* Date et heure de clôture automatique personnalisée */}
+              <div className="pt-3 border-t border-[#E6DFD5]">
+                <CustomDateTimePicker
                   value={closesAt}
-                  onChange={(e) => setClosesAt(e.target.value)}
-                  className="w-full min-h-[42px] px-3 py-2 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-1 focus:ring-[#3B33FF]"
+                  onChange={setClosesAt}
+                  label="Date et heure de fin (Clôture automatique hh:mm:ss)"
+                  helperText="Dès que cette date et cette heure précise (hh:mm:ss) sont atteintes, le formulaire se clôture automatiquement et refuse toute nouvelle candidature."
                 />
-                <p className="text-[11px] text-[#71717A] leading-relaxed">
-                  Dès que cette date et cette heure précise (hh:mm:ss) sont atteintes, le formulaire se clôture automatiquement et refuse toute nouvelle candidature.
-                </p>
               </div>
             </div>
           )}
