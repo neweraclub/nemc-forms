@@ -153,6 +153,12 @@ export async function getAdminSubmissions(slug: string): Promise<{
 }> {
   const serviceClient = createServiceRoleServerClient() || createAnonServerClient();
 
+  const cleanSlug = (slug || '').trim().toLowerCase();
+  let decodedSlug = cleanSlug;
+  try {
+    decodedSlug = decodeURIComponent(cleanSlug);
+  } catch {}
+
   let form: FormRecord | null = null;
   let fields: FormFieldRecord[] = [];
   let submissions: SubmissionRecord[] = [];
@@ -161,7 +167,7 @@ export async function getAdminSubmissions(slug: string): Promise<{
     const { data: formData } = await serviceClient
       .from('forms')
       .select('*')
-      .eq('slug', slug)
+      .or(`slug.eq.${cleanSlug},slug.eq.${decodedSlug}`)
       .maybeSingle();
 
     if (formData) {
@@ -191,13 +197,35 @@ export async function getAdminSubmissions(slug: string): Promise<{
     console.warn('Admin getAdminSubmissions query notice:', e);
   }
 
-  // Fallback to unified Supabase cloud storage registry
-  if (!form) {
-    const all = await getAdminFormsWithFields();
-    const found = all.find((item) => item.form.slug?.toLowerCase() === slug.toLowerCase());
-    if (found) {
-      form = found.form;
-      fields = found.fields;
+  // Fallback to unified Supabase cloud storage registry if form not in DB or fields are empty
+  if (!form || fields.length === 0) {
+    try {
+      const cloudForms = await fetchCloudStoredForms();
+      if (cloudForms) {
+        const found = cloudForms.find((item) => {
+          const s = (item.form?.slug || '').trim().toLowerCase();
+          let sDec = s;
+          try {
+            sDec = decodeURIComponent(s);
+          } catch {}
+          const id = (item.form?.id || '').trim().toLowerCase();
+          return (
+            s === cleanSlug ||
+            s === decodedSlug ||
+            sDec === cleanSlug ||
+            sDec === decodedSlug ||
+            id === cleanSlug ||
+            id === decodedSlug
+          );
+        });
+
+        if (found) {
+          form = found.form;
+          fields = (found.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback to cloud registry in getAdminSubmissions error:', e);
     }
   }
 

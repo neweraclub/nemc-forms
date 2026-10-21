@@ -57,6 +57,9 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
     if (initialFields && initialFields.length > 0) {
       return initialFields;
     }
+    if (isEditing) {
+      return initialFields || [];
+    }
     return [
       {
         id: 'f_1',
@@ -102,6 +105,35 @@ export function FormBuilder({ initialForm, initialFields = [], isEditing = false
       },
     ];
   });
+
+  // Sync state if form/fields are loaded asynchronously
+  useEffect(() => {
+    if (isEditing && initialFields) {
+      setFields(initialFields);
+    }
+  }, [initialFields, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && initialForm) {
+      setTitle(initialForm.title || '');
+      setSlug(initialForm.slug || '');
+      setDescription(initialForm.description || '');
+      setLayout(initialForm.layout || 'stepped');
+      setStatus(initialForm.status || 'open');
+      setMaxResponses(initialForm.max_responses ? String(initialForm.max_responses) : '');
+      if (initialForm.closes_at) {
+        try {
+          const d = new Date(initialForm.closes_at);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          setClosesAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
+        } catch {
+          setClosesAt('');
+        }
+      } else {
+        setClosesAt('');
+      }
+    }
+  }, [initialForm, isEditing]);
 
   // Slug auto-generation helper from title
   const handleTitleChange = (val: string) => {

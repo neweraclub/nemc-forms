@@ -101,7 +101,12 @@ export function CustomDateTimePicker({
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeekIndex = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7; // 0 = Lun, 6 = Dim
 
+  const isPrevMonthDisabled =
+    viewYear < now.getFullYear() ||
+    (viewYear === now.getFullYear() && viewMonth <= now.getMonth());
+
   const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return;
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((y) => y - 1);
@@ -120,6 +125,10 @@ export function CustomDateTimePicker({
   };
 
   const selectDay = (day: number) => {
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const targetDate = new Date(viewYear, viewMonth, day).getTime();
+    if (targetDate < todayStart) return;
+
     setDraftDate((prev) => ({
       ...prev,
       year: viewYear,
@@ -129,9 +138,29 @@ export function CustomDateTimePicker({
   };
 
   const applyDateTime = () => {
+    let finalHours = draftDate.hours;
+    let finalMinutes = draftDate.minutes;
+    let finalSeconds = draftDate.seconds;
+
+    const selectedDateTime = new Date(
+      draftDate.year,
+      draftDate.month,
+      draftDate.day,
+      finalHours,
+      finalMinutes,
+      finalSeconds
+    );
+
+    // If selected time on today has already elapsed, auto-advance to end of day
+    if (selectedDateTime <= new Date()) {
+      finalHours = 23;
+      finalMinutes = 59;
+      finalSeconds = 59;
+    }
+
     const formatted = `${draftDate.year}-${pad2(draftDate.month + 1)}-${pad2(draftDate.day)}T${pad2(
-      draftDate.hours
-    )}:${pad2(draftDate.minutes)}:${pad2(draftDate.seconds)}`;
+      finalHours
+    )}:${pad2(finalMinutes)}:${pad2(finalSeconds)}`;
     onChange(formatted);
     setIsOpen(false);
   };
@@ -315,8 +344,13 @@ export function CustomDateTimePicker({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg hover:bg-[#FAF8F5] text-[#18181B] transition font-bold"
-              title="Mois précédent"
+              disabled={isPrevMonthDisabled}
+              className={`p-1.5 rounded-lg transition font-bold ${
+                isPrevMonthDisabled
+                  ? 'opacity-25 text-[#A1A1AA] cursor-not-allowed'
+                  : 'hover:bg-[#FAF8F5] text-[#18181B]'
+              }`}
+              title={isPrevMonthDisabled ? 'Mois passés inaccessibles' : 'Mois précédent'}
             >
               ◀
             </button>
@@ -362,13 +396,20 @@ export function CustomDateTimePicker({
               const isToday =
                 now.getDate() === day && now.getMonth() === viewMonth && now.getFullYear() === viewYear;
 
+              const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+              const dayDate = new Date(viewYear, viewMonth, day).getTime();
+              const isPast = dayDate < todayStart;
+
               return (
                 <button
                   key={day}
                   type="button"
-                  onClick={() => selectDay(day)}
+                  disabled={isPast}
+                  onClick={() => !isPast && selectDay(day)}
                   className={`h-8 sm:h-9 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
-                    isSelected
+                    isPast
+                      ? 'opacity-20 text-[#A1A1AA] cursor-not-allowed pointer-events-none line-through bg-transparent'
+                      : isSelected
                       ? 'brand-gradient-btn text-white font-bold shadow-xs scale-105'
                       : isToday
                       ? 'border border-[#3B33FF] text-[#3B33FF] bg-[#EEF2FF] hover:bg-[#E0E7FF]'

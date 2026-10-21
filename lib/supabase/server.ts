@@ -207,16 +207,36 @@ export async function getFormBySlug(slug: string): Promise<{
   }
 
   // 2. Authoritative Supabase Cloud Storage Registry
-  if (!form) {
+  if (!form || fields.length === 0) {
     try {
       const cloud = await fetchCloudStoredForms();
       if (cloud !== null) {
-        const found = cloud.find(
-          (item) => item.form.slug?.toLowerCase() === slug.toLowerCase() || item.form.id === slug
-        );
+        const cleanSlug = (slug || '').trim().toLowerCase();
+        let decodedSlug = cleanSlug;
+        try {
+          decodedSlug = decodeURIComponent(cleanSlug);
+        } catch {}
+
+        const found = cloud.find((item) => {
+          const s = (item.form?.slug || '').trim().toLowerCase();
+          let sDec = s;
+          try {
+            sDec = decodeURIComponent(s);
+          } catch {}
+          const id = (item.form?.id || '').trim().toLowerCase();
+          return (
+            s === cleanSlug ||
+            s === decodedSlug ||
+            sDec === cleanSlug ||
+            sDec === decodedSlug ||
+            id === cleanSlug ||
+            id === decodedSlug
+          );
+        });
+
         if (found) {
           form = found.form;
-          fields = found.fields;
+          fields = (found.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0));
         }
       }
     } catch {

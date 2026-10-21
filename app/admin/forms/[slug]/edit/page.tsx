@@ -9,7 +9,11 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 
 export default async function EditFormPage({ params }: PageProps) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  let slug = rawSlug;
+  try {
+    slug = decodeURIComponent(rawSlug);
+  } catch {}
   const { form, fields } = await getAdminSubmissions(slug);
 
   if (!form) {
