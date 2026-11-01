@@ -108,6 +108,9 @@ export async function getAdminFormsWithFields(): Promise<AdminFormWithFields[]> 
         existing.form.custom_email_html = item.form.custom_email_html;
         existing.form.custom_email_subject = item.form.custom_email_subject;
       }
+      if (!existing.form.target_roles && item.form.target_roles) {
+        existing.form.target_roles = item.form.target_roles;
+      }
     } else {
       formsMap.set(item.form.slug, {
         form: item.form,

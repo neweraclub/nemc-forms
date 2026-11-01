@@ -207,41 +207,57 @@ export async function getFormBySlug(slug: string): Promise<{
   }
 
   // 2. Authoritative Supabase Cloud Storage Registry
-  if (!form || fields.length === 0) {
-    try {
-      const cloud = await fetchCloudStoredForms();
-      if (cloud !== null) {
-        const cleanSlug = (slug || '').trim().toLowerCase();
-        let decodedSlug = cleanSlug;
+  try {
+    const cloud = await fetchCloudStoredForms();
+    if (cloud !== null) {
+      const cleanSlug = (slug || '').trim().toLowerCase();
+      let decodedSlug = cleanSlug;
+      try {
+        decodedSlug = decodeURIComponent(cleanSlug);
+      } catch {}
+
+      const found = cloud.find((item) => {
+        const s = (item.form?.slug || '').trim().toLowerCase();
+        let sDec = s;
         try {
-          decodedSlug = decodeURIComponent(cleanSlug);
+          sDec = decodeURIComponent(s);
         } catch {}
+        const id = (item.form?.id || '').trim().toLowerCase();
+        return (
+          s === cleanSlug ||
+          s === decodedSlug ||
+          sDec === cleanSlug ||
+          sDec === decodedSlug ||
+          id === cleanSlug ||
+          id === decodedSlug
+        );
+      });
 
-        const found = cloud.find((item) => {
-          const s = (item.form?.slug || '').trim().toLowerCase();
-          let sDec = s;
-          try {
-            sDec = decodeURIComponent(s);
-          } catch {}
-          const id = (item.form?.id || '').trim().toLowerCase();
-          return (
-            s === cleanSlug ||
-            s === decodedSlug ||
-            sDec === cleanSlug ||
-            sDec === decodedSlug ||
-            id === cleanSlug ||
-            id === decodedSlug
-          );
-        });
-
-        if (found) {
+      if (found) {
+        if (!form) {
           form = found.form;
           fields = (found.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+        } else {
+          if (!form.target_roles && found.form.target_roles) {
+            form.target_roles = found.form.target_roles;
+          }
+          if (found.fields && found.fields.length > 0) {
+            fields = fields.map((f) => {
+              const cloudF = found.fields.find((cf) => cf.key === f.key || cf.id === f.id);
+              return {
+                ...f,
+                target_roles: f.target_roles || cloudF?.target_roles || null,
+              };
+            });
+            if (fields.length === 0) {
+              fields = (found.fields || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+            }
+          }
         }
       }
-    } catch {
-      // ignore
     }
+  } catch {
+    // ignore
   }
 
   if (!form) {

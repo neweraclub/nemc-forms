@@ -78,8 +78,33 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
     setSavedTime(null);
   };
 
+  // Target roles configuration
+  const hasRoles = Boolean(form.target_roles && form.target_roles.length > 0);
+  const selectedRoleId = (answers['_target_role'] as string) || '';
+  const selectedRole = form.target_roles?.find((r) => r.id === selectedRoleId);
+
   // Determine which fields are visible given current answers
   const visibleFields = fields.filter((f) => isFieldVisible(f, answers));
+
+  // Role Selection Handler
+  const handleRoleSelect = (roleId: string) => {
+    const chosen = form.target_roles?.find((r) => r.id === roleId);
+    const updated = {
+      ...answers,
+      _target_role: roleId,
+      _target_role_label: chosen ? chosen.name : roleId,
+    };
+    setAnswers(updated);
+    saveToLocalStorage(updated);
+
+    if (errors['_target_role']) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next['_target_role'];
+        return next;
+      });
+    }
+  };
 
   // Mobile 3-by-3 Chunking
   const totalMobileSteps = Math.max(1, Math.ceil(visibleFields.length / CHUNK_SIZE));
@@ -163,6 +188,11 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
     e.preventDefault();
     const stepErrors: Record<string, string> = {};
 
+    // Validate role selection on first step
+    if (safeMobileStep === 0 && hasRoles && !answers['_target_role']) {
+      stepErrors['_target_role'] = 'Veuillez sélectionner votre profil / catégorie pour continuer.';
+    }
+
     for (const field of currentMobileFields) {
       const err = validateField(field);
       if (err) {
@@ -199,6 +229,12 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
     // Validate all visible fields
     const clientErrors: Record<string, string> = {};
+
+    // Validate role selection
+    if (hasRoles && !answers['_target_role']) {
+      clientErrors['_target_role'] = 'Veuillez sélectionner votre profil / catégorie pour continuer.';
+    }
+
     for (const field of visibleFields) {
       const err = validateField(field);
       if (err) {
@@ -208,10 +244,16 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
     if (Object.keys(clientErrors).length > 0) {
       setErrors(clientErrors);
-      // For mobile: jump to the chunk containing the first error
-      const firstErrorIndex = visibleFields.findIndex((f) => clientErrors[f.key]);
-      if (firstErrorIndex !== -1) {
-        setMobileStep(Math.floor(firstErrorIndex / CHUNK_SIZE));
+      // If role error, scroll to it
+      if (clientErrors['_target_role']) {
+        const el = document.getElementById('field__target_role');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // For mobile: jump to the chunk containing the first error
+        const firstErrorIndex = visibleFields.findIndex((f) => clientErrors[f.key]);
+        if (firstErrorIndex !== -1) {
+          setMobileStep(Math.floor(firstErrorIndex / CHUNK_SIZE));
+        }
       }
       setGeneralError('Veuillez corriger les champs requis indiqués ci-dessous.');
       return;
@@ -281,6 +323,13 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
           <h1 className="text-2xl sm:text-3xl font-bold text-[#18181B] tracking-tight mb-3">
             Formulaire envoyé avec succès
           </h1>
+
+          {Boolean(answers['_target_role_label']) && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FAF8F5] border border-[#E6DFD5] text-[#18181B] mb-3">
+              <span className="text-[#71717A]">Profil enregistré :</span>
+              <span className="font-bold text-[#3B33FF]">{String(answers['_target_role_label'])}</span>
+            </div>
+          )}
 
           <p className="text-[#3F3F46] text-sm sm:text-base leading-relaxed mb-8">
             {submissionMessage}
@@ -567,6 +616,134 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
     return true;
   };
 
+  // Target Role Selector Component
+  const renderRoleSelector = (isMobile: boolean = false) => {
+    if (!hasRoles || !form.target_roles || form.target_roles.length === 0) return null;
+    const errorMsg = errors['_target_role'];
+
+    return (
+      <div
+        id="field__target_role"
+        className={`rounded-xl p-4 sm:p-5 transition-all ${
+          errorMsg
+            ? 'bg-[#FEF2F2] border-2 border-[#DC2626]'
+            : 'bg-[#FAF8F5] border border-[#E6DFD5]'
+        } ${isMobile ? 'mb-5' : 'mb-6 shadow-xs'}`}
+      >
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#3B33FF]/10 text-[#3B33FF] flex items-center justify-center font-bold text-sm">
+              🎯
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-[#18181B] tracking-tight">
+                Profil / Catégorie de participant <span className="text-[#E53888] font-normal text-xs">*</span>
+              </h3>
+              <p className="text-[11px] text-[#71717A]">
+                Sélectionnez votre statut pour afficher les questions correspondantes
+              </p>
+            </div>
+          </div>
+          {selectedRole && (
+            <span
+              className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 hidden sm:inline-block"
+              style={{
+                backgroundColor: `${selectedRole.color || '#3B33FF'}15`,
+                borderColor: `${selectedRole.color || '#3B33FF'}40`,
+                color: selectedRole.color || '#3B33FF',
+              }}
+            >
+              {selectedRole.name}
+            </span>
+          )}
+        </div>
+
+        {errorMsg && (
+          <p className="text-xs text-[#DC2626] font-semibold mt-1 mb-2">
+            ⚠️ {errorMsg}
+          </p>
+        )}
+
+        {/* Dropdown for standard selection */}
+        <div className="mt-3">
+          <label htmlFor={`target_role_select_${isMobile ? 'm' : 'd'}`} className="sr-only">
+            Sélectionnez votre profil
+          </label>
+          <select
+            id={`target_role_select_${isMobile ? 'm' : 'd'}`}
+            value={selectedRoleId}
+            onChange={(e) => handleRoleSelect(e.target.value)}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 text-sm sm:text-base font-semibold rounded-lg border bg-white text-[#18181B] transition focus:ring-2 focus:ring-[#3B33FF]/20 focus:border-[#3B33FF] ${
+              errorMsg ? 'border-[#DC2626] bg-[#FEF2F2]/40' : 'border-[#D4D4D8]'
+            }`}
+          >
+            <option value="">-- Sélectionnez votre profil dans la liste --</option>
+            {form.target_roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name} {r.description ? `(${r.description})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Quick visual selection tiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+          {form.target_roles.map((r) => {
+            const isSelected = selectedRoleId === r.id;
+            const roleColor = r.color || '#3B33FF';
+            return (
+              <button
+                type="button"
+                key={r.id}
+                onClick={() => handleRoleSelect(r.id)}
+                className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                  isSelected
+                    ? 'bg-white shadow-sm ring-2'
+                    : 'bg-white/80 hover:bg-white hover:border-[#A1A1AA] border-[#E6DFD5]'
+                }`}
+                style={{
+                  borderColor: isSelected ? roleColor : undefined,
+                  boxShadow: isSelected ? `0 0 0 1px ${roleColor}` : undefined,
+                }}
+              >
+                <span
+                  className="w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 border"
+                  style={{
+                    backgroundColor: isSelected ? roleColor : `${roleColor}33`,
+                    borderColor: roleColor,
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-bold text-[#18181B] truncate">
+                    {r.name}
+                  </p>
+                  {r.description && (
+                    <p className="text-[11px] text-[#71717A] line-clamp-1">
+                      {r.description}
+                    </p>
+                  )}
+                </div>
+                {isSelected && (
+                  <svg
+                    className="w-4 h-4 shrink-0 text-[#10B981]"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       {/* Pinned Top Brand Gradient Thread */}
@@ -645,9 +822,35 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         )}
 
         <form onSubmit={isLastMobileStep ? handleSubmit : handleNextMobileStep} noValidate>
-          <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 shadow-xs mb-5 space-y-5">
-            {currentMobileFields.map((field) => renderField(field))}
-          </div>
+          {/* Role selector on Step 0 */}
+          {safeMobileStep === 0 && renderRoleSelector(true)}
+
+          {/* Role pill on subsequent steps */}
+          {safeMobileStep > 0 && selectedRole && (
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E6DFD5] mb-4 text-xs">
+              <span className="text-[#71717A]">Profil sélectionné :</span>
+              <span
+                className="font-bold px-2 py-0.5 rounded-full border text-[11px]"
+                style={{
+                  backgroundColor: `${selectedRole.color || '#3B33FF'}15`,
+                  borderColor: `${selectedRole.color || '#3B33FF'}40`,
+                  color: selectedRole.color || '#3B33FF',
+                }}
+              >
+                {selectedRole.name}
+              </span>
+            </div>
+          )}
+
+          {currentMobileFields.length > 0 ? (
+            <div className="bg-white border border-[#E6DFD5] rounded-xl p-5 shadow-xs mb-5 space-y-5">
+              {currentMobileFields.map((field) => renderField(field))}
+            </div>
+          ) : (
+            <div className="bg-white border border-[#E6DFD5] rounded-xl p-6 text-center text-xs text-[#71717A] mb-5">
+              Sélectionnez votre profil ci-dessus pour afficher les questions correspondantes.
+            </div>
+          )}
 
           {/* Stepped Navigation Buttons */}
           <div className="flex items-center justify-between gap-3">
@@ -747,6 +950,22 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
                   </p>
                 )}
 
+                {hasRoles && selectedRole && (
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] flex items-center justify-between text-xs">
+                    <span className="text-[#71717A] font-medium">Votre profil :</span>
+                    <span
+                      className="font-bold px-2.5 py-0.5 rounded-full border text-xs"
+                      style={{
+                        backgroundColor: `${selectedRole.color || '#3B33FF'}15`,
+                        borderColor: `${selectedRole.color || '#3B33FF'}40`,
+                        color: selectedRole.color || '#3B33FF',
+                      }}
+                    >
+                      {selectedRole.name}
+                    </span>
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-[#E6DFD5] space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold text-[#18181B]">
                     <span>Progression</span>
@@ -808,19 +1027,35 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
             {/* RIGHT SIDE: Questions 2-Column Grid (~62% width) */}
             <div className="col-span-7 bg-white border border-[#E6DFD5] rounded-xl p-6 sm:p-8 shadow-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {visibleFields.map((field) => {
-                  const isCompact = isCompactField(field);
-                  return (
-                    <div
-                      key={field.id}
-                      className={isCompact ? 'sm:col-span-1' : 'sm:col-span-2'}
-                    >
-                      {renderField(field)}
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Role Selector Header */}
+              {renderRoleSelector(false)}
+
+              {hasRoles && !selectedRoleId && (
+                <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] text-xs text-[#52525B] mb-5 flex items-center gap-2.5">
+                  <span className="text-base">💡</span>
+                  <span>Veuillez sélectionner votre profil ci-dessus pour découvrir les questions personnalisées.</span>
+                </div>
+              )}
+
+              {visibleFields.length === 0 ? (
+                <div className="p-10 text-center text-sm text-[#71717A] bg-[#FAF8F5]/50 border border-dashed border-[#E6DFD5] rounded-xl my-4">
+                  👆 Veuillez choisir votre profil ci-dessus pour afficher vos questions.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {visibleFields.map((field) => {
+                    const isCompact = isCompactField(field);
+                    return (
+                      <div
+                        key={field.id}
+                        className={isCompact ? 'sm:col-span-1' : 'sm:col-span-2'}
+                      >
+                        {renderField(field)}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="mt-8 pt-6 border-t border-[#E6DFD5] flex items-center justify-between">
                 <span className="text-xs text-[#71717A]">

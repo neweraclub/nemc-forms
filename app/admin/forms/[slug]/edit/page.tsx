@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getAdminSubmissions } from '@/lib/supabase/admin';
+import { getTargetRolesAction } from '@/app/actions/roleActions';
+import { getQuestionBankAction } from '@/app/actions/questionBankActions';
 import { FormBuilder } from '../../FormBuilder';
 
 interface PageProps {
@@ -14,7 +16,14 @@ export default async function EditFormPage({ params }: PageProps) {
   try {
     slug = decodeURIComponent(rawSlug);
   } catch {}
-  const { form, fields } = await getAdminSubmissions(slug);
+
+  const [submissionsRes, rolesRes, bankRes] = await Promise.all([
+    getAdminSubmissions(slug),
+    getTargetRolesAction(),
+    getQuestionBankAction(),
+  ]);
+
+  const { form, fields } = submissionsRes;
 
   if (!form) {
     notFound();
@@ -22,7 +31,13 @@ export default async function EditFormPage({ params }: PageProps) {
 
   return (
     <div className="py-2">
-      <FormBuilder initialForm={form} initialFields={fields} isEditing={true} />
+      <FormBuilder
+        initialForm={form}
+        initialFields={fields}
+        isEditing={true}
+        availableRoles={rolesRes.roles || []}
+        questionBank={bankRes.questions || []}
+      />
     </div>
   );
 }

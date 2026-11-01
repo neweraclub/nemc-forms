@@ -65,6 +65,20 @@ export async function submitFormAction(
       };
     }
 
+    // Role verification if form has targeted roles configured
+    if (form.target_roles && form.target_roles.length > 0) {
+      const selectedRoleId = String(rawAnswers['_target_role'] || '').trim();
+      const matchedRole = form.target_roles.find((r) => r.id === selectedRoleId);
+      if (!matchedRole) {
+        return {
+          success: false,
+          errors: { _target_role: 'Veuillez sélectionner votre profil / catégorie pour continuer.' },
+          generalError: 'Veuillez sélectionner votre profil ou statut dans la liste.',
+        };
+      }
+      rawAnswers['_target_role_label'] = matchedRole.name;
+    }
+
     // 4. Server-side validation using dynamic Zod schema
     const schema = buildFormZodSchema(fields, rawAnswers);
     const parseResult = schema.safeParse(rawAnswers);

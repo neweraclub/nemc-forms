@@ -96,7 +96,19 @@ export function formatAnswersSummary(
   fields: FormFieldRecord[],
   answers: Record<string, unknown>
 ): Array<{ label: string; value: string; raw: unknown }> {
-  return fields
+  const items: Array<{ label: string; value: string; raw: unknown }> = [];
+
+  // If user selected a specific target audience / role, include it at the top of the summary
+  const roleLabel = answers['_target_role_label'] || answers['_target_role'];
+  if (roleLabel) {
+    items.push({
+      label: 'Profil / Catégorie',
+      value: String(roleLabel),
+      raw: roleLabel,
+    });
+  }
+
+  const fieldItems = fields
     .map((field) => {
       const rawVal = answers[field.key];
       let displayVal = '—';
@@ -130,6 +142,8 @@ export function formatAnswersSummary(
       };
     })
     .filter((item) => item.value !== '—' || answers[item.label] !== undefined);
+
+  return [...items, ...fieldItems];
 }
 
 /**
@@ -359,12 +373,17 @@ export function renderCustomEmailHtml(
   }
   const firstName = detectedFullName ? detectedFullName.split(' ')[0] : 'Candidat';
   const email = String(answers.email || answers.adresse_email || '');
+  const roleValue = String(answers['_target_role_label'] || answers['_target_role'] || '');
 
   rendered = rendered
     .replace(/\{\{nom\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
     .replace(/\{\{full_name\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
     .replace(/\{\{prenom\}\}/gi, escapeHtml(firstName))
     .replace(/\{\{email\}\}/gi, escapeHtml(email))
+    .replace(/\{\{role\}\}/gi, escapeHtml(roleValue))
+    .replace(/\{\{profil\}\}/gi, escapeHtml(roleValue))
+    .replace(/\{\{target_role\}\}/gi, escapeHtml(roleValue))
+    .replace(/\{\{categorie\}\}/gi, escapeHtml(roleValue))
     .replace(/\{\{confirmation_id\}\}/gi, escapeHtml(submissionId.slice(0, 8).toUpperCase()))
     .replace(/\{\{titre\}\}/gi, escapeHtml(form.title))
     .replace(/\{\{form_title\}\}/gi, escapeHtml(form.title))

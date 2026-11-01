@@ -5,6 +5,15 @@ import { FormFieldRecord } from '@/types/form';
  * Evaluates whether a conditional field is active given the current answers.
  */
 export function isFieldVisible(field: FormFieldRecord, answers: Record<string, unknown>): boolean {
+  // 1. Role-based targeting check
+  if (field.target_roles && field.target_roles.length > 0 && !field.target_roles.includes('all')) {
+    const selectedRole = answers['_target_role'] || answers['role'];
+    if (!selectedRole || !field.target_roles.includes(String(selectedRole))) {
+      return false;
+    }
+  }
+
+  // 2. Conditional visibility check (show_if)
   if (!field.show_if) {
     return true;
   }
@@ -221,6 +230,10 @@ export function buildFormZodSchema(
 
     shape[field.key] = fieldValidator;
   }
+
+  // Allow system & role fields
+  shape['_target_role'] = z.string().optional();
+  shape['_target_role_label'] = z.string().optional();
 
   // Add honeypot key: must be absent or empty string
   shape['_hp'] = z.string().max(0, 'Spam detection triggered').optional().or(z.literal(''));

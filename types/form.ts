@@ -38,6 +38,37 @@ export interface FieldShowIf {
   in?: Array<string | number>;
 }
 
+export interface FormRole {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface TargetRoleDefinition {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon?: string;
+  created_at?: string;
+}
+
+export interface BankQuestionRecord {
+  id: string;
+  category: string;
+  type: FieldType;
+  key: string;
+  label: string;
+  help_text?: string | null;
+  placeholder?: string | null;
+  required: boolean;
+  options?: FieldOption[] | null;
+  validation?: FieldValidation | null;
+  created_at?: string;
+}
+
 export interface FormFieldRecord {
   id: string;
   form_id: string;
@@ -51,6 +82,7 @@ export interface FormFieldRecord {
   options?: FieldOption[] | null;
   validation?: FieldValidation | null;
   show_if?: FieldShowIf | null;
+  target_roles?: string[] | null; // IDs of roles this question applies to. If empty or null or ['all'], applies to all roles!
   created_at?: string;
 }
 
@@ -70,6 +102,7 @@ export interface FormRecord {
   custom_email_subject?: string | null;
   custom_email_html?: string | null;
   layout: FormLayout;
+  target_roles?: FormRole[] | null; // Roles defined for this form
   created_at?: string;
   updated_at?: string;
 }
