@@ -105,36 +105,7 @@ export function FormBuilder({
     if (initialFields && initialFields.length > 0) {
       return initialFields;
     }
-    if (isEditing) {
-      return initialFields || [];
-    }
-    // Default 3 common questions for new forms
-    return [
-      {
-        id: 'f_1',
-        type: 'short_text',
-        key: 'nom_complet',
-        label: 'Nom complet',
-        required: true,
-        target_roles: ['all'],
-      },
-      {
-        id: 'f_2',
-        type: 'email',
-        key: 'email',
-        label: 'Adresse email',
-        required: true,
-        target_roles: ['all'],
-      },
-      {
-        id: 'f_3',
-        type: 'phone',
-        key: 'phone',
-        label: 'Numéro de téléphone (WhatsApp)',
-        required: true,
-        target_roles: ['all'],
-      },
-    ];
+    return [];
   });
 
   const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
@@ -218,7 +189,7 @@ export function FormBuilder({
     setTargetRoles((prev) => prev.filter((r) => r.id !== roleId));
     // Also remove questions strictly assigned to this role
     setFields((prev) =>
-      prev.filter((f) => !f.target_roles?.includes(roleId) || f.target_roles?.includes('all'))
+      prev.filter((f) => !f.target_roles?.includes(roleId))
     );
     showAdminToast({
       type: 'info',
@@ -227,8 +198,8 @@ export function FormBuilder({
     });
   };
 
-  // Add question to a specific pipeline target ('all' or roleId)
-  const addFieldToTarget = (target: string = 'all', type: FieldType = 'short_text') => {
+  // Add question to a specific role pipeline
+  const addFieldToTarget = (roleId: string, type: FieldType = 'short_text') => {
     const key = `question_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 5)}`;
     let defaultLabel = 'Nouvelle question';
     let defaultOptions: FieldOption[] | undefined = undefined;
@@ -250,15 +221,15 @@ export function FormBuilder({
       label: defaultLabel,
       required: true,
       options: defaultOptions,
-      target_roles: target === 'all' ? ['all'] : [target],
+      target_roles: [roleId],
     };
 
     setFields((prev) => [...prev, newField]);
     setExpandedFieldId(newField.id || null);
   };
 
-  // Insert question from Bank into a target pipeline
-  const insertFromBank = (bankQuestion: BankQuestionRecord, target: string = 'all') => {
+  // Insert question from Bank into a target role pipeline
+  const insertFromBank = (bankQuestion: BankQuestionRecord, roleId: string) => {
     const uniqueKey = `${bankQuestion.key}_${Date.now().toString(36).slice(-3)}`;
     const newField: Partial<FormFieldRecord> = {
       id: `f_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -270,14 +241,12 @@ export function FormBuilder({
       required: bankQuestion.required,
       options: bankQuestion.options ? [...bankQuestion.options] : [],
       validation: bankQuestion.validation ? { ...bankQuestion.validation } : {},
-      target_roles: target === 'all' ? ['all'] : [target],
+      target_roles: [roleId],
     };
 
     setFields((prev) => [...prev, newField]);
     const targetName =
-      target === 'all'
-        ? 'Questions Communes'
-        : targetRoles.find((r) => r.id === target)?.name || 'ce rôle';
+      targetRoles.find((r) => r.id === roleId)?.name || 'ce profil';
     showAdminToast({
       type: 'success',
       title: 'Question Ajoutée',
@@ -441,11 +410,6 @@ export function FormBuilder({
       b.key.toLowerCase().includes(bankSearch.toLowerCase());
     return matchCat && matchSearch;
   });
-
-  // Filter common fields
-  const commonFields = fields.filter(
-    (f) => !f.target_roles || f.target_roles.length === 0 || f.target_roles.includes('all')
-  );
 
   return (
     <div className="space-y-8 w-full max-w-full">
@@ -808,53 +772,45 @@ export function FormBuilder({
         </div>
 
         {/* Horizontal Columns Canvas (Board) */}
-        <div className="flex items-start gap-5 overflow-x-auto pb-6 pt-1 scrollbar-thin">
-          {/* Column 1: Questions Communes (Always present) */}
-          <PipelineColumn
-            id="all"
-            title="Questions Communes"
-            subtitle="Posées à TOUS les répondants"
-            icon="🌐"
-            color="#3B33FF"
-            fields={commonFields}
-            isDropActive={activeDropPipeline === 'all'}
-            onDragOver={(e) => handleDragOver(e, 'all')}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, 'all')}
-            onAddField={(type) => addFieldToTarget('all', type)}
-            onUpdateField={updateField}
-            onRemoveField={removeField}
-            onMoveField={moveField}
-            expandedFieldId={expandedFieldId}
-            setExpandedFieldId={setExpandedFieldId}
-          />
-
-          {/* Dynamic Columns for Selected Roles */}
-          {targetRoles.map((role) => {
-            const roleFields = fields.filter((f) => f.target_roles?.includes(role.id));
-            return (
-              <PipelineColumn
-                key={role.id}
-                id={role.id}
-                title={role.name}
-                subtitle={role.description || 'Questions spécifiques à ce profil'}
-                icon={role.icon || '🎯'}
-                color={role.color || '#3B33FF'}
-                fields={roleFields}
-                isDropActive={activeDropPipeline === role.id}
-                onDragOver={(e) => handleDragOver(e, role.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, role.id)}
-                onAddField={(type) => addFieldToTarget(role.id, type)}
-                onUpdateField={updateField}
-                onRemoveField={removeField}
-                onMoveField={moveField}
-                expandedFieldId={expandedFieldId}
-                setExpandedFieldId={setExpandedFieldId}
-              />
-            );
-          })}
-        </div>
+        {targetRoles.length === 0 ? (
+          <div className="p-12 text-center bg-white border-2 border-dashed border-[#E6DFD5] rounded-2xl max-w-xl mx-auto my-4 space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-[#8B3EE1]/10 text-[#8B3EE1] flex items-center justify-center text-2xl font-bold">
+              🎯
+            </div>
+            <h3 className="text-base font-bold text-[#18181B]">Aucun profil cible sélectionné</h3>
+            <p className="text-xs text-[#71717A] max-w-md mx-auto">
+              Cochez ci-dessus les catégories concernées (ex. Étudiant, Médecin Résident, Professeur...) pour faire apparaître leur tableau de questions et y insérer vos questions par glisser-déposer.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-start gap-5 overflow-x-auto pb-6 pt-1 scrollbar-thin">
+            {/* Dynamic Columns for Selected Roles */}
+            {targetRoles.map((role) => {
+              const roleFields = fields.filter((f) => f.target_roles?.includes(role.id));
+              return (
+                <PipelineColumn
+                  key={role.id}
+                  id={role.id}
+                  title={role.name}
+                  subtitle={role.description || 'Questions spécifiques à ce profil'}
+                  icon={role.icon || '🎯'}
+                  color={role.color || '#3B33FF'}
+                  fields={roleFields}
+                  isDropActive={activeDropPipeline === role.id}
+                  onDragOver={(e) => handleDragOver(e, role.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, role.id)}
+                  onAddField={(type) => addFieldToTarget(role.id, type)}
+                  onUpdateField={updateField}
+                  onRemoveField={removeField}
+                  onMoveField={moveField}
+                  expandedFieldId={expandedFieldId}
+                  setExpandedFieldId={setExpandedFieldId}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ===================================================================== */}
@@ -963,30 +919,28 @@ export function FormBuilder({
                         <div className="flex items-center justify-between pt-1.5 border-t border-[#E6DFD5]/60 text-[11px]">
                           <span className="text-[#71717A] text-[10px]">⠿ Glisser vers colonne</span>
 
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => insertFromBank(bq, 'all')}
-                              className="px-2 py-0.5 rounded bg-[#3B33FF]/10 text-[#3B33FF] hover:bg-[#3B33FF]/20 font-bold text-[10px] transition cursor-pointer"
-                            >
-                              + Communes
-                            </button>
-
-                            {targetRoles.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => insertFromBank(bq, r.id)}
-                                className="px-2 py-0.5 rounded font-bold text-[10px] transition cursor-pointer"
-                                style={{
-                                  backgroundColor: `${r.color || '#8B3EE1'}15`,
-                                  color: r.color || '#8B3EE1',
-                                }}
-                                title={`Ajouter au profil ${r.name}`}
-                              >
-                                + {r.name.split(' ')[0]}
-                              </button>
-                            ))}
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            {targetRoles.length === 0 ? (
+                              <span className="text-[10px] text-[#A1A1AA] italic">
+                                Cochez un rôle ci-dessus
+                              </span>
+                            ) : (
+                              targetRoles.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => insertFromBank(bq, r.id)}
+                                  className="px-2 py-0.5 rounded font-bold text-[10px] transition cursor-pointer"
+                                  style={{
+                                    backgroundColor: `${r.color || '#8B3EE1'}15`,
+                                    color: r.color || '#8B3EE1',
+                                  }}
+                                  title={`Ajouter au profil ${r.name}`}
+                                >
+                                  + {r.name.split(' ')[0]}
+                                </button>
+                              ))
+                            )}
                           </div>
                         </div>
                       </div>

@@ -47,3 +47,4 @@ ON CONFLICT (email) DO UPDATE SET
     role = EXCLUDED.role,
     is_active = true,
     updated_at = now();
+

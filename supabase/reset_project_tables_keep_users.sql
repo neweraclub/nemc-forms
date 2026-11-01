@@ -130,3 +130,4 @@ CREATE TABLE public.submissions (
 CREATE INDEX idx_submissions_form_created ON public.submissions(form_id, created_at DESC);
 CREATE INDEX idx_submissions_ip_hash ON public.submissions(ip_hash, created_at DESC);
 ALTER TABLE public.submissions DISABLE ROW LEVEL SECURITY;
+
