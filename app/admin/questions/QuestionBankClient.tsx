@@ -22,19 +22,78 @@ interface QuestionBankClientProps {
   initialQuestions: BankQuestionRecord[];
 }
 
-const FIELD_TYPE_LABELS: Record<FieldType, { label: string; color: string }> = {
-  short_text: { label: 'Texte court', color: '#3B33FF' },
-  long_text: { label: 'Paragraphe', color: '#8B3EE1' },
-  email: { label: 'Adresse email', color: '#2563EB' },
-  phone: { label: 'Téléphone WhatsApp', color: '#059669' },
-  number: { label: 'Nombre', color: '#D97706' },
-  radio: { label: 'Choix unique', color: '#7C3AED' },
-  checkboxes: { label: 'Cases à cocher', color: '#4F46E5' },
-  select: { label: 'Menu déroulant', color: '#0D9488' },
-  date: { label: 'Date', color: '#EA580C' },
-  file: { label: 'Fichier / Justificatif', color: '#BE185D' },
-  consent: { label: 'Consentement', color: '#15803D' },
+const PREDEFINED_CATEGORIES = [
+  'Identité & Contact',
+  'Cursus & Médical',
+  'Engagement & Projet',
+  'Logistique & Présence',
+  'Justificatifs & Documents',
+  'Conditions & Consentement',
+  'Général',
+];
+
+const FIELD_TYPE_DESCRIPTIONS: Record<
+  FieldType,
+  { label: string; desc: string; color: string }
+> = {
+  short_text: {
+    label: 'Texte court',
+    desc: 'Une seule ligne de texte (ex : Nom, prénom, ville, spécialité)',
+    color: '#3B33FF',
+  },
+  long_text: {
+    label: 'Paragraphe long',
+    desc: 'Zone de texte sur plusieurs lignes (ex : Motivation, remarques)',
+    color: '#8B3EE1',
+  },
+  email: {
+    label: 'Adresse email',
+    desc: "Champ avec vérification automatique du format de l'email",
+    color: '#2563EB',
+  },
+  phone: {
+    label: 'Téléphone WhatsApp',
+    desc: 'Numéro de téléphone avec indicatif pays',
+    color: '#059669',
+  },
+  number: {
+    label: 'Nombre / Âge',
+    desc: 'Accepte uniquement une valeur numérique (ex : Âge, promotion)',
+    color: '#D97706',
+  },
+  radio: {
+    label: 'Choix unique (Boutons radio)',
+    desc: 'Le candidat sélectionne une seule option parmi une liste visible',
+    color: '#7C3AED',
+  },
+  checkboxes: {
+    label: 'Choix multiples (Cases à cocher)',
+    desc: 'Le candidat peut cocher plusieurs options à la fois',
+    color: '#4F46E5',
+  },
+  select: {
+    label: 'Menu déroulant',
+    desc: 'Liste compacte déroulante avec un seul choix possible',
+    color: '#0D9488',
+  },
+  date: {
+    label: 'Date',
+    desc: 'Sélecteur de date avec calendrier (ex : Date de naissance)',
+    color: '#EA580C',
+  },
+  file: {
+    label: 'Fichier / Justificatif',
+    desc: 'Téléversement de document (PDF, photo, certificat médical)',
+    color: '#BE185D',
+  },
+  consent: {
+    label: 'Case de consentement',
+    desc: "Case à cocher d'approbation du règlement ou des conditions",
+    color: '#15803D',
+  },
 };
+
+const FIELD_TYPE_LABELS = FIELD_TYPE_DESCRIPTIONS;
 
 export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps) {
   const [questions, setQuestions] = useState<BankQuestionRecord[]>(initialQuestions);
@@ -55,13 +114,17 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
   const [placeholder, setPlaceholder] = useState('');
   const [required, setRequired] = useState(true);
   const [options, setOptions] = useState<FieldOption[]>([]);
+  const [showAdvancedKey, setShowAdvancedKey] = useState(false);
 
   // Delete State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Categories list extracted from data
+  // Categories list extracted from predefined + existing data
   const categories = Array.from(
-    new Set(['Identité & Contact', 'Cursus & Profession', 'Motivation & Objectifs', 'Justificatifs', 'Conditions & Éthique', ...questions.map((q) => q.category).filter(Boolean)])
+    new Set([
+      ...PREDEFINED_CATEGORIES,
+      ...questions.map((q) => q.category).filter((c): c is string => Boolean(c)),
+    ])
   );
 
   const openCreateModal = () => {
@@ -74,6 +137,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     setPlaceholder('');
     setRequired(true);
     setOptions([]);
+    setShowAdvancedKey(false);
     setIsModalOpen(true);
   };
 
@@ -87,18 +151,21 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     setPlaceholder(q.placeholder || '');
     setRequired(q.required);
     setOptions(q.options || []);
+    setShowAdvancedKey(false);
     setIsModalOpen(true);
   };
 
   const handleLabelChange = (val: string) => {
     setLabel(val);
-    if (!editingQuestion) {
+    if (!editingQuestion || !key || key.startsWith('q_')) {
       const generated = val
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9_]/g, '_')
-        .slice(0, 25);
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 30);
       setKey(generated);
     }
   };
@@ -126,12 +193,24 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     if (!label.trim()) return;
 
     startTransition(async () => {
+      const finalKey =
+        key.trim().toLowerCase().replace(/[^a-z0-9_]/g, '') ||
+        label
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_|_$/g, '')
+          .slice(0, 30) ||
+        `q_${Date.now().toString(36)}`;
+
       const payload = {
         id: editingQuestion ? editingQuestion.id : undefined,
         label: label.trim(),
-        key: key.trim() || label.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 25),
+        key: finalKey,
         type,
-        category: category.trim(),
+        category: category.trim() || 'Identité & Contact',
         help_text: helpText.trim() || null,
         placeholder: placeholder.trim() || null,
         required,
@@ -406,34 +485,43 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                 {/* Type */}
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-[#18181B]">
-                    Type de réponse <span className="text-[#DC2626]">*</span>
+                    Type de réponse attendue <span className="text-[#DC2626]">*</span>
                   </label>
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as FieldType)}
                     className="w-full px-3 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-xl bg-white focus:border-[#3B33FF]"
                   >
-                    {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
+                    {Object.entries(FIELD_TYPE_DESCRIPTIONS).map(([t, info]) => (
                       <option key={t} value={t}>
                         {info.label}
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-[#71717A] leading-tight">
+                    {FIELD_TYPE_DESCRIPTIONS[type]?.desc}
+                  </p>
                 </div>
 
-                {/* Category */}
+                {/* Category Dropdown */}
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-[#18181B]">
                     Catégorie thématique <span className="text-[#DC2626]">*</span>
                   </label>
-                  <input
-                    type="text"
-                    required
+                  <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Ex. Identité, Cursus, Motivation..."
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
-                  />
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-[#D4D4D8] rounded-xl bg-white focus:border-[#3B33FF]"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-[#71717A] leading-tight">
+                    Classement de la question dans la banque.
+                  </p>
                 </div>
               </div>
 
@@ -450,42 +538,15 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                   placeholder="Ex. Votre spécialité médicale, Numéro de téléphone WhatsApp..."
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
                 />
-              </div>
-
-              {/* Key & Required */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-[#18181B]">
-                    Clé de variable (publipostage)
-                  </label>
-                  <input
-                    type="text"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                    placeholder="variable_unique"
-                    className="w-full px-3 py-2 text-xs font-mono border border-[#D4D4D8] rounded-xl bg-[#FAF8F5]"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={required}
-                      onChange={(e) => setRequired(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8]"
-                    />
-                    <span className="text-xs font-bold text-[#18181B]">
-                      Question obligatoire par défaut
-                    </span>
-                  </label>
-                </div>
+                <p className="text-[11px] text-[#71717A] leading-tight">
+                  La question telle qu&apos;elle sera affichée pour les candidats.
+                </p>
               </div>
 
               {/* Help text */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-[#18181B]">
-                  Texte d’aide ou indication (facultatif)
+                  Texte d’aide ou indication <span className="text-[11px] font-normal text-[#71717A]">(facultatif)</span>
                 </label>
                 <input
                   type="text"
@@ -494,6 +555,70 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                   placeholder="Ex. Précisez votre service ou votre année universitaire..."
                   className="w-full px-3.5 py-2 text-xs border border-[#D4D4D8] rounded-xl"
                 />
+                <p className="text-[11px] text-[#71717A] leading-tight">
+                  Conseil affiché sous la question pour guider le candidat.
+                </p>
+              </div>
+
+              {/* Required Checkbox */}
+              <div className="p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-[#18181B] block">
+                    Réponse obligatoire
+                  </span>
+                  <span className="text-[11px] text-[#71717A] block">
+                    Le candidat ne pourra pas soumettre le formulaire sans répondre.
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={required}
+                    onChange={(e) => setRequired(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8]"
+                  />
+                  <span className="text-xs font-bold text-[#3B33FF]">
+                    {required ? 'Obligatoire' : 'Facultatif'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Automated Excel & Email Key */}
+              <div className="p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#18181B]">
+                      Identifiant automatique (Excel &amp; Email) :
+                    </span>
+                    <code className="text-xs font-mono font-bold text-[#3B33FF] bg-white border border-[#D4D4D8] px-2 py-0.5 rounded">
+                      {key || 'automatique'}
+                    </code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedKey(!showAdvancedKey)}
+                    className="text-[11px] font-semibold text-[#71717A] hover:text-[#18181B] underline cursor-pointer"
+                  >
+                    {showAdvancedKey ? 'Fermer' : 'Modifier'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#71717A] leading-relaxed">
+                  Généré automatiquement à partir de votre intitulé. Il sert uniquement au système pour nommer la colonne dans vos exports Excel et insérer la réponse du candidat dans les accusés emails automatiques.
+                </p>
+                {showAdvancedKey && (
+                  <div className="pt-2 border-t border-[#E6DFD5] space-y-1 animate-in fade-in duration-100">
+                    <label className="block text-[11px] font-bold text-[#18181B]">
+                      Personnaliser l&apos;identifiant interne :
+                    </label>
+                    <input
+                      type="text"
+                      value={key}
+                      onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      placeholder="nom_court_variable"
+                      className="w-full px-3 py-1.5 text-xs font-mono border border-[#D4D4D8] rounded-lg bg-white"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Options if select/radio/checkboxes */}

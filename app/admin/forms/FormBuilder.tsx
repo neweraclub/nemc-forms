@@ -1288,13 +1288,14 @@ function PipelineColumn({
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-[#18181B] mb-0.5">
-                          Variable clé :
+                        <label className="block text-[11px] font-bold text-[#18181B] mb-0.5" title="Nom de la colonne Excel et variable email (ex: {{nom}})">
+                          Code Excel &amp; Email :
                         </label>
                         <input
                           type="text"
                           value={field.key || ''}
-                          onChange={(e) => onUpdateField(fieldId, { key: e.target.value })}
+                          onChange={(e) => onUpdateField(fieldId, { key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                          placeholder="auto"
                           className="w-full px-2 py-1 text-xs font-mono border border-[#D4D4D8] rounded-lg bg-[#FAF8F5]"
                         />
                       </div>
