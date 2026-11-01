@@ -114,7 +114,6 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
   const [placeholder, setPlaceholder] = useState('');
   const [required, setRequired] = useState(true);
   const [options, setOptions] = useState<FieldOption[]>([]);
-  const [showAdvancedKey, setShowAdvancedKey] = useState(false);
 
   // Delete State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -137,7 +136,6 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     setPlaceholder('');
     setRequired(true);
     setOptions([]);
-    setShowAdvancedKey(false);
     setIsModalOpen(true);
   };
 
@@ -151,7 +149,6 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     setPlaceholder(q.placeholder || '');
     setRequired(q.required);
     setOptions(q.options || []);
-    setShowAdvancedKey(false);
     setIsModalOpen(true);
   };
 
@@ -393,13 +390,14 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                       {q.label}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <code className="text-[10px] font-mono text-[#71717A] bg-[#FAF8F5] px-1 py-0.5 rounded border border-[#E6DFD5]">
-                        &#123;&#123;{q.key}&#125;&#125;
-                      </code>
                       {q.required ? (
-                        <span className="text-[10px] font-bold text-[#DC2626]">Obligatoire</span>
+                        <span className="text-[10px] font-bold text-[#DC2626] bg-[#DC2626]/10 px-2 py-0.5 rounded">
+                          Obligatoire
+                        </span>
                       ) : (
-                        <span className="text-[10px] text-[#71717A]">Facultatif</span>
+                        <span className="text-[10px] text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E6DFD5]">
+                          Facultatif
+                        </span>
                       )}
                     </div>
                   </div>
@@ -581,44 +579,6 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                     {required ? 'Obligatoire' : 'Facultatif'}
                   </span>
                 </label>
-              </div>
-
-              {/* Automated Excel & Email Key */}
-              <div className="p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#18181B]">
-                      Identifiant automatique (Excel &amp; Email) :
-                    </span>
-                    <code className="text-xs font-mono font-bold text-[#3B33FF] bg-white border border-[#D4D4D8] px-2 py-0.5 rounded">
-                      {key || 'automatique'}
-                    </code>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedKey(!showAdvancedKey)}
-                    className="text-[11px] font-semibold text-[#71717A] hover:text-[#18181B] underline cursor-pointer"
-                  >
-                    {showAdvancedKey ? 'Fermer' : 'Modifier'}
-                  </button>
-                </div>
-                <p className="text-[11px] text-[#71717A] leading-relaxed">
-                  Généré automatiquement à partir de votre intitulé. Il sert uniquement au système pour nommer la colonne dans vos exports Excel et insérer la réponse du candidat dans les accusés emails automatiques.
-                </p>
-                {showAdvancedKey && (
-                  <div className="pt-2 border-t border-[#E6DFD5] space-y-1 animate-in fade-in duration-100">
-                    <label className="block text-[11px] font-bold text-[#18181B]">
-                      Personnaliser l&apos;identifiant interne :
-                    </label>
-                    <input
-                      type="text"
-                      value={key}
-                      onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder="nom_court_variable"
-                      className="w-full px-3 py-1.5 text-xs font-mono border border-[#D4D4D8] rounded-lg bg-white"
-                    />
-                  </div>
-                )}
               </div>
 
               {/* Options if select/radio/checkboxes */}

@@ -915,9 +915,6 @@ export function FormBuilder({
                             <FieldTypeIcon type={bq.type} className="w-3 h-3" />
                             <span>{typeInfo.label}</span>
                           </span>
-                          <span className="text-[10px] text-[#A1A1AA] font-mono truncate max-w-[90px]">
-                            {bq.key}
-                          </span>
                         </div>
 
                         <h4 className="text-xs font-bold text-[#18181B] leading-snug line-clamp-2">
@@ -1269,36 +1266,21 @@ function PipelineColumn({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-[#18181B] mb-0.5">
-                          Type :
-                        </label>
-                        <select
-                          value={field.type}
-                          onChange={(e) => onUpdateField(fieldId, { type: e.target.value as FieldType })}
-                          className="w-full px-2 py-1 text-xs border border-[#D4D4D8] rounded-lg bg-white"
-                        >
-                          {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
-                            <option key={t} value={t}>
-                              {info.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-[#18181B] mb-0.5" title="Nom de la colonne Excel et variable email (ex: {{nom}})">
-                          Code Excel &amp; Email :
-                        </label>
-                        <input
-                          type="text"
-                          value={field.key || ''}
-                          onChange={(e) => onUpdateField(fieldId, { key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                          placeholder="auto"
-                          className="w-full px-2 py-1 text-xs font-mono border border-[#D4D4D8] rounded-lg bg-[#FAF8F5]"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#18181B] mb-0.5">
+                        Type de réponse :
+                      </label>
+                      <select
+                        value={field.type}
+                        onChange={(e) => onUpdateField(fieldId, { type: e.target.value as FieldType })}
+                        className="w-full px-2.5 py-1.5 text-xs border border-[#D4D4D8] rounded-lg bg-white"
+                      >
+                        {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
+                          <option key={t} value={t}>
+                            {info.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
