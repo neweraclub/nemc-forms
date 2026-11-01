@@ -85,15 +85,19 @@ export async function persistFormWithFields(
       if (fullForm.custom_email_html) {
         formPayload.custom_email_html = fullForm.custom_email_html;
       }
+      if (fullForm.target_roles) {
+        formPayload.target_roles = fullForm.target_roles;
+      }
 
       let { error: formErr } = await serviceClient
         .from('forms')
         .upsert(formPayload, { onConflict: 'slug' });
 
-      // If failed due to unknown columns, strip email columns and retry
+      // If failed due to unknown columns, strip new columns and retry
       if (formErr && (formErr.message?.includes('column') || formErr.code === 'PGRST204')) {
         delete formPayload.custom_email_subject;
         delete formPayload.custom_email_html;
+        delete formPayload.target_roles;
         const retry = await serviceClient
           .from('forms')
           .upsert(formPayload, { onConflict: 'slug' });
@@ -102,22 +106,32 @@ export async function persistFormWithFields(
 
       if (!formErr) {
         await serviceClient.from('form_fields').delete().eq('form_id', fullForm.id);
-        const { error: fieldsErr } = await serviceClient.from('form_fields').insert(
-          fullFields.map((f) => ({
-            id: f.id,
-            form_id: f.form_id,
-            position: f.position,
-            type: f.type,
-            key: f.key,
-            label: f.label,
-            help_text: f.help_text,
-            placeholder: f.placeholder,
-            required: f.required,
-            options: f.options || [],
-            validation: f.validation || {},
-            show_if: f.show_if || null,
-          }))
-        );
+        const fieldRows = fullFields.map((f) => ({
+          id: f.id,
+          form_id: f.form_id,
+          position: f.position,
+          type: f.type,
+          key: f.key,
+          label: f.label,
+          help_text: f.help_text,
+          placeholder: f.placeholder,
+          required: f.required,
+          options: f.options || [],
+          validation: f.validation || {},
+          show_if: f.show_if || null,
+          target_roles: f.target_roles || null,
+        }));
+
+        let { error: fieldsErr } = await serviceClient.from('form_fields').insert(fieldRows);
+        if (fieldsErr && fieldsErr.message?.includes('target_roles')) {
+          const fallbackRows = fieldRows.map((r) => {
+            const copy: Record<string, unknown> = { ...r };
+            delete copy.target_roles;
+            return copy;
+          });
+          const retryFields = await serviceClient.from('form_fields').insert(fallbackRows);
+          fieldsErr = retryFields.error;
+        }
         if (fieldsErr) {
           console.warn('Supabase DB form_fields insert warning:', fieldsErr.message);
         }

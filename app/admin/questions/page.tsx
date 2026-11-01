@@ -15,3 +15,4 @@ export default async function AdminQuestionsPage() {
     <QuestionBankClient initialQuestions={res.questions || []} />
   );
 }
+
