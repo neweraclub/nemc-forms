@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { deleteFormAction } from '@/app/actions/formManagerActions';
 import { useRouter } from 'next/navigation';
 import { showAdminToast } from './AdminToast';
+import { Sparkles, AlertTriangle } from 'lucide-react';
 
 interface FormRowActionsProps {
   slug: string;
@@ -70,7 +71,8 @@ export function FormRowActions({
           }`}
           title={hasAiEmail ? 'Gérer le modèle d’email IA associé' : 'Créer et associer un modèle d’email IA'}
         >
-          <span>✨ Email IA</span>
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Email IA</span>
           {hasAiEmail ? (
             <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5]"></span>
           ) : (
@@ -178,7 +180,7 @@ export function FormRowActions({
             {/* Error Message if deletion fails */}
             {errorMessage && (
               <div className="p-3 bg-[#FEF2F2] border border-[#FEE2E2] rounded-lg text-xs text-[#DC2626] font-medium flex items-center gap-2">
-                <span>⚠️</span>
+                <AlertTriangle className="w-4 h-4 text-[#DC2626] shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}

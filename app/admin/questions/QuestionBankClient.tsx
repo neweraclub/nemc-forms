@@ -4,23 +4,36 @@ import React, { useState, useTransition } from 'react';
 import { BankQuestionRecord, FieldType, FieldOption } from '@/types/form';
 import { saveQuestionBankAction, deleteQuestionBankAction } from '@/app/actions/questionBankActions';
 import { showAdminToast } from '../AdminToast';
+import { FieldTypeIcon } from '@/components/DynamicIcon';
+import {
+  Search,
+  Edit3,
+  Trash2,
+  X,
+  AlertTriangle,
+  Plus,
+  HelpCircle,
+  CheckSquare,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
 
 interface QuestionBankClientProps {
   initialQuestions: BankQuestionRecord[];
 }
 
-const FIELD_TYPE_LABELS: Record<FieldType, { label: string; icon: string; color: string }> = {
-  short_text: { label: 'Texte court', icon: '📝', color: '#3B33FF' },
-  long_text: { label: 'Paragraphe', icon: '📄', color: '#8B3EE1' },
-  email: { label: 'Adresse email', icon: '✉️', color: '#2563EB' },
-  phone: { label: 'Téléphone WhatsApp', icon: '📞', color: '#059669' },
-  number: { label: 'Nombre', icon: '🔢', color: '#D97706' },
-  radio: { label: 'Choix unique', icon: '🔘', color: '#7C3AED' },
-  checkboxes: { label: 'Cases à cocher', icon: '☑️', color: '#4F46E5' },
-  select: { label: 'Menu déroulant', icon: '▾', color: '#0D9488' },
-  date: { label: 'Date', icon: '📅', color: '#EA580C' },
-  file: { label: 'Fichier / Justificatif', icon: '📎', color: '#BE185D' },
-  consent: { label: 'Consentement', icon: '⚖️', color: '#15803D' },
+const FIELD_TYPE_LABELS: Record<FieldType, { label: string; color: string }> = {
+  short_text: { label: 'Texte court', color: '#3B33FF' },
+  long_text: { label: 'Paragraphe', color: '#8B3EE1' },
+  email: { label: 'Adresse email', color: '#2563EB' },
+  phone: { label: 'Téléphone WhatsApp', color: '#059669' },
+  number: { label: 'Nombre', color: '#D97706' },
+  radio: { label: 'Choix unique', color: '#7C3AED' },
+  checkboxes: { label: 'Cases à cocher', color: '#4F46E5' },
+  select: { label: 'Menu déroulant', color: '#0D9488' },
+  date: { label: 'Date', color: '#EA580C' },
+  file: { label: 'Fichier / Justificatif', color: '#BE185D' },
+  consent: { label: 'Consentement', color: '#15803D' },
 };
 
 export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps) {
@@ -259,7 +272,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
       {/* Questions Grid */}
       {filteredQuestions.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-[#D4D4D8] space-y-3">
-          <span className="text-3xl">🔍</span>
+          <Search className="w-8 h-8 text-zinc-400 mx-auto" />
           <h3 className="text-sm font-bold text-[#18181B]">Aucune question trouvée</h3>
           <p className="text-xs text-[#71717A] max-w-sm mx-auto">
             Aucune question type ne correspond à vos filtres. Cliquez sur &quot;Créer une Question Type&quot; pour en ajouter une nouvelle.
@@ -270,7 +283,6 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           {filteredQuestions.map((q) => {
             const typeInfo = FIELD_TYPE_LABELS[q.type] || {
               label: q.type,
-              icon: '❓',
               color: '#71717A',
             };
             return (
@@ -288,7 +300,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                         borderColor: `${typeInfo.color}30`,
                       }}
                     >
-                      <span>{typeInfo.icon}</span>
+                      <FieldTypeIcon type={q.type} className="w-3.5 h-3.5" />
                       <span>{typeInfo.label}</span>
                     </span>
 
@@ -314,15 +326,17 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                   </div>
 
                   {q.help_text && (
-                    <p className="text-xs text-[#52525B] italic leading-relaxed line-clamp-2">
-                      💡 {q.help_text}
+                    <p className="text-xs text-[#52525B] italic leading-relaxed line-clamp-2 flex items-start gap-1">
+                      <HelpCircle className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
+                      <span>{q.help_text}</span>
                     </p>
                   )}
 
                   {q.options && q.options.length > 0 && (
-                    <div className="text-[11px] text-[#71717A] flex items-center gap-1">
-                      <span>🔘 {q.options.length} option(s) configurée(s) :</span>
-                      <span className="font-semibold text-[#18181B]">
+                    <div className="text-[11px] text-[#71717A] flex items-center gap-1.5">
+                      <CheckSquare className="w-3 h-3 text-[#3B33FF] shrink-0" />
+                      <span>{q.options.length} option(s) :</span>
+                      <span className="font-semibold text-[#18181B] truncate">
                         {q.options.slice(0, 2).map((o) => o.label).join(', ')}
                         {q.options.length > 2 && '...'}
                       </span>
@@ -338,17 +352,18 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                     <button
                       type="button"
                       onClick={() => openEditModal(q)}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#18181B] transition cursor-pointer"
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#18181B] transition cursor-pointer flex items-center gap-1"
                     >
-                      ✏️ Modifier
+                      <Edit3 className="w-3 h-3 text-[#71717A]" />
+                      <span>Modifier</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeleteTargetId(q.id)}
-                      className="px-2 py-1 text-xs font-semibold rounded-lg text-[#DC2626] hover:bg-[#FEF2F2] border border-transparent hover:border-[#FECACA] transition cursor-pointer"
+                      className="p-1.5 text-xs font-semibold rounded-lg text-[#DC2626] hover:bg-[#FEF2F2] border border-transparent hover:border-[#FECACA] transition cursor-pointer"
                       title="Supprimer cette question type"
                     >
-                      🗑️
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -372,7 +387,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD5]">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🧩</span>
+                <Layers className="w-5 h-5 text-[#3B33FF]" />
                 <h3 className="text-base sm:text-lg font-bold text-[#18181B]">
                   {editingQuestion ? 'Modifier la Question Type' : 'Nouvelle Question Type'}
                 </h3>
@@ -380,9 +395,9 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-xs font-bold text-[#71717A] hover:text-[#18181B] p-1.5 cursor-pointer"
+                className="p-1.5 text-xs font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -400,7 +415,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                   >
                     {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
                       <option key={t} value={t}>
-                        {info.icon} {info.label}
+                        {info.label}
                       </option>
                     ))}
                   </select>
@@ -509,9 +524,9 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                         <button
                           type="button"
                           onClick={() => removeOption(idx)}
-                          className="text-xs text-[#DC2626] p-1 cursor-pointer"
+                          className="text-xs text-[#DC2626] p-1 cursor-pointer hover:opacity-80"
                         >
-                          ✕
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -553,8 +568,8 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center text-xl">
-              ⚠️
+            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-[#DC2626]" />
             </div>
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-[#18181B]">

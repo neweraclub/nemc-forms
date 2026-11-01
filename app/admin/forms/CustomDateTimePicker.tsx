@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Calendar } from 'lucide-react';
 
 interface CustomDateTimePickerProps {
   value: string; // Expected: "YYYY-MM-DDTHH:mm:ss" or ISO string
@@ -265,11 +266,11 @@ export function CustomDateTimePicker({
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-sm ${
+            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               value ? 'bg-[#3B33FF] text-white shadow-xs' : 'bg-[#FAF8F5] text-[#71717A] border border-[#E6DFD5]'
             }`}
           >
-            📅
+            <Calendar className="w-4 h-4" />
           </div>
           <div className="truncate">
             {formattedDisplay ? (

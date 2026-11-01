@@ -4,6 +4,16 @@ import React, { useState, useTransition } from 'react';
 import { TargetRoleDefinition, FormRecord } from '@/types/form';
 import { saveTargetRoleAction, deleteTargetRoleAction } from '@/app/actions/roleActions';
 import { showAdminToast } from '../AdminToast';
+import { RoleIcon } from '@/components/DynamicIcon';
+import {
+  Check,
+  Edit3,
+  Trash2,
+  X,
+  AlertTriangle,
+  Users,
+  ClipboardList,
+} from 'lucide-react';
 
 interface RolesManagerClientProps {
   initialRoles: TargetRoleDefinition[];
@@ -21,7 +31,20 @@ const PRESET_COLORS = [
   { name: 'Rouge Urgence (Bénévole)', value: '#EF4444' },
 ];
 
-const PRESET_ICONS = ['🩺', '🎓', '👨‍🏫', '🔬', '🤝', '🏥', '⚕️', '📋', '💉', '🌟', '👤', '💡'];
+const PRESET_ICONS = [
+  'stethoscope',
+  'graduation-cap',
+  'user-check',
+  'microscope',
+  'team',
+  'hospital',
+  'caduceus',
+  'clipboard',
+  'syringe',
+  'pill',
+  'award',
+  'target',
+];
 
 export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerClientProps) {
   const [roles, setRoles] = useState<TargetRoleDefinition[]>(initialRoles);
@@ -35,7 +58,7 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#3B33FF');
-  const [icon, setIcon] = useState('🩺');
+  const [icon, setIcon] = useState('stethoscope');
 
   // Delete Confirmation State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -45,7 +68,7 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
     setName('');
     setDescription('');
     setColor('#3B33FF');
-    setIcon('🩺');
+    setIcon('stethoscope');
     setIsModalOpen(true);
   };
 
@@ -54,7 +77,7 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
     setName(r.name);
     setDescription(r.description || '');
     setColor(r.color || '#3B33FF');
-    setIcon(r.icon || '🩺');
+    setIcon(r.icon || 'stethoscope');
     setIsModalOpen(true);
   };
 
@@ -172,10 +195,10 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-2xs border border-black/5"
-                      style={{ backgroundColor: `${role.color || '#3B33FF'}15` }}
+                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-2xs border border-black/5"
+                      style={{ backgroundColor: `${role.color || '#3B33FF'}15`, color: role.color || '#3B33FF' }}
                     >
-                      {role.icon || '🎯'}
+                      <RoleIcon name={role.icon} className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-[#18181B] leading-tight">
@@ -209,8 +232,9 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
               <div className="pt-4 mt-4 border-t border-[#E6DFD5] flex items-center justify-between gap-2">
                 <span className="text-[11px] font-semibold text-[#52525B]">
                   {formsCount > 0 ? (
-                    <span className="text-[#3B33FF]">
-                      📋 Utilisé dans {formsCount} formulaire(s)
+                    <span className="text-[#3B33FF] flex items-center gap-1">
+                      <ClipboardList className="w-3.5 h-3.5" />
+                      <span>Utilisé dans {formsCount} formulaire(s)</span>
                     </span>
                   ) : (
                     <span className="text-[#71717A]">Non encore assigné</span>
@@ -221,17 +245,18 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
                   <button
                     type="button"
                     onClick={() => openEditModal(role)}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#18181B] transition cursor-pointer"
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#18181B] transition cursor-pointer flex items-center gap-1"
                   >
-                    ✏️ Modifier
+                    <Edit3 className="w-3 h-3 text-[#71717A]" />
+                    <span>Modifier</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteTargetId(role.id)}
-                    className="px-2 py-1 text-xs font-semibold rounded-lg text-[#DC2626] hover:bg-[#FEF2F2] border border-transparent hover:border-[#FECACA] transition cursor-pointer"
+                    className="p-1.5 text-xs font-semibold rounded-lg text-[#DC2626] hover:bg-[#FEF2F2] border border-transparent hover:border-[#FECACA] transition cursor-pointer"
                     title="Supprimer ce rôle"
                   >
-                    🗑️
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -255,10 +280,10 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
             <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD5]">
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
-                  style={{ backgroundColor: `${color}20` }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: `${color}20`, color: color }}
                 >
-                  {icon}
+                  <RoleIcon name={icon} className="w-4 h-4" />
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-[#18181B]">
                   {editingRole ? 'Modifier le Public Cible' : 'Nouveau Public Cible / Rôle'}
@@ -267,9 +292,9 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-xs font-bold text-[#71717A] hover:text-[#18181B] p-1.5 cursor-pointer"
+                className="p-1.5 text-xs font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -325,7 +350,7 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
                       style={{ backgroundColor: c.value }}
                       title={c.name}
                     >
-                      {color === c.value && <span className="text-white text-xs font-bold">✓</span>}
+                      {color === c.value && <Check className="w-3.5 h-3.5 text-white" />}
                     </button>
                   ))}
                 </div>
@@ -342,13 +367,13 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
                       key={ic}
                       type="button"
                       onClick={() => setIcon(ic)}
-                      className={`w-9 h-9 rounded-xl border text-base flex items-center justify-center transition cursor-pointer ${
+                      className={`w-9 h-9 rounded-xl border flex items-center justify-center transition cursor-pointer ${
                         icon === ic
-                          ? 'border-[#3B33FF] bg-[#3B33FF]/10 ring-1 ring-[#3B33FF]'
-                          : 'border-[#E6DFD5] bg-[#FAF8F5] hover:bg-[#F4F0EA]'
+                          ? 'border-[#3B33FF] bg-[#3B33FF]/10 ring-1 ring-[#3B33FF] text-[#3B33FF]'
+                          : 'border-[#E6DFD5] bg-[#FAF8F5] hover:bg-[#F4F0EA] text-[#71717A]'
                       }`}
                     >
-                      {ic}
+                      <RoleIcon name={ic} className="w-4 h-4" />
                     </button>
                   ))}
                 </div>
@@ -388,8 +413,8 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center text-xl">
-              ⚠️
+            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-[#DC2626]" />
             </div>
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-[#18181B]">

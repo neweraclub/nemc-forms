@@ -109,7 +109,7 @@ Design quality:
 - Header & Official Logo (MANDATORY IN EVERY EMAIL):
   Insert the official New Era Medical Club logo at the top of the email card:
   <img src="https://aysysyrjqhqrcqoinbgx.supabase.co/storage/v1/object/public/Html_forms/logo_light_mode.png" alt="Club Médical New Era" width="130" style="display:block; max-width:140px; height:auto; margin:0 auto 14px auto; border:0;" />
-- Wordmark: "NEW ERA MEDICAL CLUB" in bold tracking 0.1em with decorative diamond motifs (✦ ✦ ✦ ✦ ✦).
+- Wordmark: "NEW ERA MEDICAL CLUB" in bold tracking 0.1em.
 - Contact Inquiries: If any contact email is provided for questions, ALWAYS use "contact@new-era-medical-club-univ-ouargla.dz".
 - Footer: "NEW ERA CLUB · PAVING THE FUTURE OF MEDICINE" & "© 2026 New Era Club. Tous droits réservés."
 

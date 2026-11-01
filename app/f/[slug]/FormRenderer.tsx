@@ -6,6 +6,7 @@ import { FormFieldRecord, FormRecord } from '@/types/form';
 import { isFieldVisible } from '@/lib/schema-builder';
 import { submitFormAction } from '@/app/actions/submitForm';
 import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
+import { Target, AlertTriangle, HelpCircle } from 'lucide-react';
 
 interface FormRendererProps {
   form: FormRecord;
@@ -633,7 +634,7 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#3B33FF]/10 text-[#3B33FF] flex items-center justify-center font-bold text-sm">
-              🎯
+              <Target className="w-4 h-4 text-[#3B33FF]" />
             </span>
             <div>
               <h3 className="text-sm font-bold text-[#18181B] tracking-tight">
@@ -659,8 +660,9 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         </div>
 
         {errorMsg && (
-          <p className="text-xs text-[#DC2626] font-semibold mt-1 mb-2">
-            ⚠️ {errorMsg}
+          <p className="text-xs text-[#DC2626] font-semibold mt-1 mb-2 flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>{errorMsg}</span>
           </p>
         )}
 
@@ -1032,14 +1034,15 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
               {hasRoles && !selectedRoleId && (
                 <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] text-xs text-[#52525B] mb-5 flex items-center gap-2.5">
-                  <span className="text-base">💡</span>
+                  <HelpCircle className="w-4 h-4 text-[#3B33FF] shrink-0" />
                   <span>Veuillez sélectionner votre profil ci-dessus pour découvrir les questions personnalisées.</span>
                 </div>
               )}
 
               {visibleFields.length === 0 ? (
-                <div className="p-10 text-center text-sm text-[#71717A] bg-[#FAF8F5]/50 border border-dashed border-[#E6DFD5] rounded-xl my-4">
-                  👆 Veuillez choisir votre profil ci-dessus pour afficher vos questions.
+                <div className="p-10 text-center text-sm text-[#71717A] bg-[#FAF8F5]/50 border border-dashed border-[#E6DFD5] rounded-xl my-4 space-y-1">
+                  <p className="font-bold text-[#18181B]">Veuillez choisir votre profil ci-dessus</p>
+                  <p className="text-xs">Les questions associées à votre statut apparaîtront ici.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

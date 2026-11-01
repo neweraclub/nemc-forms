@@ -423,7 +423,7 @@ export async function diagnoseSmtpConnection(): Promise<SmtpDiagnosticResult> {
   logs.push(`[SMTP Config] Adresse Reply-To : ${replyTo}`);
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    logs.push('[Diagnostic] ❌ Paramètres SMTP incomplets dans les variables d’environnement.');
+    logs.push('[Diagnostic] [Erreur] Paramètres SMTP incomplets dans les variables d’environnement.');
     return {
       success: false,
       configured: false,
@@ -440,7 +440,7 @@ export async function diagnoseSmtpConnection(): Promise<SmtpDiagnosticResult> {
 
   const transport = createEmailTransport(true);
   if (!transport) {
-    logs.push('[Diagnostic] ❌ Échec de création du transporteur Nodemailer.');
+    logs.push('[Diagnostic] [Erreur] Échec de création du transporteur Nodemailer.');
     return {
       success: false,
       configured: false,
@@ -458,7 +458,7 @@ export async function diagnoseSmtpConnection(): Promise<SmtpDiagnosticResult> {
   try {
     logs.push('[Diagnostic] Tentative de connexion et vérification SMTP (transporter.verify)...');
     const verifyResult = await transport.verify();
-    logs.push(`[Diagnostic] ✅ Connexion SMTP validée avec succès ! Réponse du serveur: ${JSON.stringify(verifyResult)}`);
+    logs.push(`[Diagnostic] [Succès] Connexion SMTP validée avec succès ! Réponse du serveur: ${JSON.stringify(verifyResult)}`);
     return {
       success: true,
       configured: true,
@@ -474,7 +474,7 @@ export async function diagnoseSmtpConnection(): Promise<SmtpDiagnosticResult> {
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logs.push(`[Diagnostic] ❌ Erreur lors de la vérification SMTP: ${errorMsg}`);
+    logs.push(`[Diagnostic] [Erreur] Erreur lors de la vérification SMTP: ${errorMsg}`);
     return {
       success: false,
       configured: true,
@@ -541,7 +541,7 @@ export async function sendDirectTestEmail(
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    debugLogs.push(`❌ Échec de transmission SMTP: ${msg}`);
+    debugLogs.push(`[Erreur] Échec de transmission SMTP: ${msg}`);
     console.error(`[Test Mail Error] Failed to send to ${toEmail}:`, msg);
     return { success: false, error: msg, debugLogs };
   }

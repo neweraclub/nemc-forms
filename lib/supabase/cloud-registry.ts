@@ -263,7 +263,7 @@ export async function saveCloudRoles(roles: TargetRoleDefinition[]): Promise<boo
           name: r.name,
           description: r.description || null,
           color: r.color || '#3B33FF',
-          icon: r.icon || '🎯',
+          icon: r.icon || 'target',
           created_at: r.created_at || new Date().toISOString(),
         })),
         { onConflict: 'id' }

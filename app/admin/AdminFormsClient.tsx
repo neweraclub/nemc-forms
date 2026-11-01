@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminFormSummary } from '@/lib/supabase/admin';
 import { FormRowActions } from './FormRowActions';
+import { ClipboardList, Sparkles, Mail } from 'lucide-react';
 
 interface AdminFormsClientProps {
   initialForms: AdminFormSummary[];
@@ -75,8 +76,8 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
       <div className="divide-y divide-[#E6DFD5]">
         {forms.length === 0 ? (
           <div className="p-12 text-center animate-in fade-in duration-300">
-            <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E6DFD5] flex items-center justify-center mx-auto mb-3 text-xl shadow-2xs">
-              📋
+            <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E6DFD5] flex items-center justify-center mx-auto mb-3 shadow-2xs text-[#71717A]">
+              <ClipboardList className="w-6 h-6 text-[#71717A]" />
             </div>
             <h3 className="text-base font-semibold text-[#18181B]">Aucun formulaire actif</h3>
             <p className="text-xs text-[#52525B] max-w-sm mx-auto mt-1 mb-4">
@@ -127,16 +128,17 @@ export function AdminFormsClient({ initialForms }: AdminFormsClientProps) {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#4338CA] border border-[#C7D2FE] hover:bg-[#E0E7FF] transition shadow-2xs"
                         title="Courriel IA personnalisé actif — Cliquez pour l'ouvrir dans le Studio IA"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] animate-pulse"></span>
-                        <span>✨ Modèle Email IA Lié</span>
+                        <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
+                        <span>Modèle Email IA Lié</span>
                       </Link>
                     ) : (
                       <Link
                         href={`/admin/emails?slug=${form.slug}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#71717A] border border-[#E4E4E7] hover:bg-[#E4E4E7] hover:text-[#18181B] transition"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-[#F4F4F5] text-[#71717A] border border-[#E4E4E7] hover:bg-[#E4E4E7] hover:text-[#18181B] transition"
                         title="Aucun modèle IA lié — Cliquez pour créer un modèle dans le Studio IA"
                       >
-                        <span>✉️ Modèle standard</span>
+                        <Mail className="w-3 h-3 text-[#71717A]" />
+                        <span>Modèle standard</span>
                         <span className="text-[10px] text-[#4F46E5] font-semibold ml-0.5">+ Lier IA</span>
                       </Link>
                     )}

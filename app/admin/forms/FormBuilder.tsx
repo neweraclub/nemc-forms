@@ -17,6 +17,21 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { showAdminToast } from '../AdminToast';
 import { CustomDateTimePicker } from './CustomDateTimePicker';
+import { RoleIcon, FieldTypeIcon } from '@/components/DynamicIcon';
+import {
+  Package,
+  Settings,
+  AlertTriangle,
+  X,
+  Check,
+  Target,
+  Inbox,
+  Trash2,
+  Edit3,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+} from 'lucide-react';
 
 interface FormBuilderProps {
   initialForm?: FormRecord;
@@ -28,18 +43,18 @@ interface FormBuilderProps {
 
 const FIXED_OFFICIAL_EMAIL = 'event@new-era-medical-club-univ-ouargla.dz';
 
-const FIELD_TYPE_LABELS: Record<FieldType, { label: string; icon: string; color: string }> = {
-  short_text: { label: 'Texte court', icon: '📝', color: '#3B33FF' },
-  long_text: { label: 'Paragraphe', icon: '📄', color: '#8B3EE1' },
-  email: { label: 'Adresse email', icon: '✉️', color: '#2563EB' },
-  phone: { label: 'Téléphone WhatsApp', icon: '📞', color: '#059669' },
-  number: { label: 'Nombre', icon: '🔢', color: '#D97706' },
-  radio: { label: 'Choix unique', icon: '🔘', color: '#7C3AED' },
-  checkboxes: { label: 'Cases à cocher', icon: '☑️', color: '#4F46E5' },
-  select: { label: 'Menu déroulant', icon: '▾', color: '#0D9488' },
-  date: { label: 'Date', icon: '📅', color: '#EA580C' },
-  file: { label: 'Fichier / Justificatif', icon: '📎', color: '#BE185D' },
-  consent: { label: 'Consentement', icon: '⚖️', color: '#15803D' },
+const FIELD_TYPE_LABELS: Record<FieldType, { label: string; color: string }> = {
+  short_text: { label: 'Texte court', color: '#3B33FF' },
+  long_text: { label: 'Paragraphe', color: '#8B3EE1' },
+  email: { label: 'Adresse email', color: '#2563EB' },
+  phone: { label: 'Téléphone WhatsApp', color: '#059669' },
+  number: { label: 'Nombre', color: '#D97706' },
+  radio: { label: 'Choix unique', color: '#7C3AED' },
+  checkboxes: { label: 'Cases à cocher', color: '#4F46E5' },
+  select: { label: 'Menu déroulant', color: '#0D9488' },
+  date: { label: 'Date', color: '#EA580C' },
+  file: { label: 'Fichier / Justificatif', color: '#BE185D' },
+  consent: { label: 'Consentement', color: '#15803D' },
 };
 
 export function FormBuilder({
@@ -447,7 +462,7 @@ export function FormBuilder({
             className="px-3.5 py-2.5 rounded-xl border border-[#E6DFD5] bg-white text-xs font-bold text-[#18181B] hover:bg-[#FAF8F5] transition shadow-2xs flex items-center gap-2 cursor-pointer"
             title="Ouvrir la banque de questions prêtes à l'emploi"
           >
-            <span>📦</span>
+            <Package className="w-4 h-4 text-[#3B33FF]" />
             <span>Banque de questions ({bank.length})</span>
           </button>
 
@@ -485,9 +500,12 @@ export function FormBuilder({
 
       {error && (
         <div className="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-2xl text-xs text-[#DC2626] font-semibold flex items-center justify-between shadow-xs">
-          <span>⚠️ {error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-xs font-bold p-1">
-            ✕
+          <span className="flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-[#DC2626] shrink-0" />
+            <span>{error}</span>
+          </span>
+          <button type="button" onClick={() => setError(null)} className="text-xs font-bold p-1 hover:opacity-80">
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -539,9 +557,9 @@ export function FormBuilder({
               onChange={(e) => setStatus(e.target.value as FormStatus)}
               className="w-full min-h-[46px] px-3.5 py-2.5 text-sm font-semibold text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
             >
-              <option value="open">🟢 Ouvert (Accepte les réponses)</option>
-              <option value="draft">🟡 Brouillon (Non accessible)</option>
-              <option value="closed">🔴 Clôturé (Formulaire fermé)</option>
+              <option value="open">Ouvert (Accepte les réponses)</option>
+              <option value="draft">Brouillon (Non accessible)</option>
+              <option value="closed">Clôturé (Formulaire fermé)</option>
             </select>
           </div>
 
@@ -664,9 +682,10 @@ export function FormBuilder({
           <Link
             href="/admin/roles"
             target="_blank"
-            className="text-xs font-semibold text-[#8B3EE1] hover:underline inline-flex items-center gap-1 shrink-0"
+            className="text-xs font-semibold text-[#8B3EE1] hover:underline inline-flex items-center gap-1.5 shrink-0"
           >
-            <span>⚙️ Gérer le catalogue des rôles</span>
+            <Settings className="w-3.5 h-3.5" />
+            <span>Gérer le catalogue des rôles</span>
             <span>↗</span>
           </Link>
         </div>
@@ -699,10 +718,10 @@ export function FormBuilder({
               >
                 <div className="flex items-start gap-2.5 min-w-0">
                   <span
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 font-bold"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold"
                     style={{ backgroundColor: `${roleColor}15`, color: roleColor }}
                   >
-                    {role.icon || '🎯'}
+                    <RoleIcon name={role.icon} className="w-4 h-4" />
                   </span>
                   <div className="min-w-0">
                     <span className="text-xs sm:text-sm font-bold text-[#18181B] block truncate">
@@ -720,7 +739,7 @@ export function FormBuilder({
                   }`}
                   style={{ backgroundColor: isEnabled ? roleColor : 'transparent' }}
                 >
-                  ✓
+                  <Check className="w-3 h-3" />
                 </span>
               </button>
             );
@@ -729,16 +748,16 @@ export function FormBuilder({
 
         {targetRoles.length === 0 ? (
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-dashed border-[#E6DFD5] text-xs text-[#52525B] flex items-center gap-2">
-            <span>ℹ️</span>
+            <Target className="w-4 h-4 text-[#8B3EE1] shrink-0" />
             <span>
-              <strong>Formulaire Standard :</strong> Aucun profil particulier sélectionné. Toutes les questions créées ci-dessous seront communes à tous les répondants.
+              <strong>Sélectionnez au moins un rôle :</strong> Cochez les profils ciblés ci-dessus pour ouvrir leurs tableaux de questions dédiés.
             </span>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-xs text-[#52525B] bg-[#8B3EE1]/5 p-3 rounded-xl border border-[#8B3EE1]/15">
-            <span>🎯</span>
+            <Target className="w-4 h-4 text-[#8B3EE1] shrink-0" />
             <span>
-              <strong>{targetRoles.length} parcours actif(s) :</strong> Les candidats verront un menu déroulant sur le formulaire public pour choisir leur profil, et répondront aux questions communes + celles spécifiques à leur profil.
+              <strong>{targetRoles.length} parcours actif(s) :</strong> Les candidats verront un sélecteur sur le formulaire public pour choisir leur profil, et accéderont aux questions assignées à ce rôle.
             </span>
           </div>
         )}
@@ -766,7 +785,7 @@ export function FormBuilder({
             onClick={() => setBankDrawerOpen(true)}
             className="px-4 py-2 rounded-xl border border-[#3B33FF]/30 bg-[#3B33FF]/5 text-xs font-bold text-[#3B33FF] hover:bg-[#3B33FF]/10 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
           >
-            <span>📦</span>
+            <Package className="w-4 h-4 text-[#3B33FF]" />
             <span>Ouvrir la Banque de questions ({bank.length})</span>
           </button>
         </div>
@@ -774,8 +793,8 @@ export function FormBuilder({
         {/* Horizontal Columns Canvas (Board) */}
         {targetRoles.length === 0 ? (
           <div className="p-12 text-center bg-white border-2 border-dashed border-[#E6DFD5] rounded-2xl max-w-xl mx-auto my-4 space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-[#8B3EE1]/10 text-[#8B3EE1] flex items-center justify-center text-2xl font-bold">
-              🎯
+            <div className="w-12 h-12 mx-auto rounded-xl bg-[#8B3EE1]/10 text-[#8B3EE1] flex items-center justify-center">
+              <Target className="w-6 h-6 text-[#8B3EE1]" />
             </div>
             <h3 className="text-base font-bold text-[#18181B]">Aucun profil cible sélectionné</h3>
             <p className="text-xs text-[#71717A] max-w-md mx-auto">
@@ -793,7 +812,7 @@ export function FormBuilder({
                   id={role.id}
                   title={role.name}
                   subtitle={role.description || 'Questions spécifiques à ce profil'}
-                  icon={role.icon || '🎯'}
+                  icon={<RoleIcon name={role.icon} className="w-4 h-4" />}
                   color={role.color || '#3B33FF'}
                   fields={roleFields}
                   isDropActive={activeDropPipeline === role.id}
@@ -831,7 +850,7 @@ export function FormBuilder({
               <div className="p-5 border-b border-[#E6DFD5] bg-[#FAF8F5]">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-xl">📦</span>
+                    <Package className="w-5 h-5 text-[#3B33FF]" />
                     <div>
                       <h3 className="text-base font-bold text-[#18181B]">Banque de Questions</h3>
                       <p className="text-xs text-[#71717A]">{bank.length} questions réutilisables</p>
@@ -842,7 +861,7 @@ export function FormBuilder({
                     onClick={() => setBankDrawerOpen(false)}
                     className="w-8 h-8 rounded-lg border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs flex items-center justify-center font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
                   >
-                    ✕
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -884,7 +903,6 @@ export function FormBuilder({
                   filteredBank.map((bq) => {
                     const typeInfo = FIELD_TYPE_LABELS[bq.type] || {
                       label: bq.type,
-                      icon: '📝',
                       color: '#3B33FF',
                     };
                     return (
@@ -897,13 +915,13 @@ export function FormBuilder({
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <span
-                              className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1 mb-1"
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1.5 mb-1"
                               style={{
                                 backgroundColor: `${typeInfo.color}15`,
                                 color: typeInfo.color,
                               }}
                             >
-                              <span>{typeInfo.icon}</span>
+                              <FieldTypeIcon type={bq.type} className="w-3 h-3" />
                               <span>{typeInfo.label}</span>
                             </span>
                             <h4 className="text-xs font-bold text-[#18181B] leading-snug">
@@ -917,7 +935,7 @@ export function FormBuilder({
 
                         {/* Quick insertion toolbar */}
                         <div className="flex items-center justify-between pt-1.5 border-t border-[#E6DFD5]/60 text-[11px]">
-                          <span className="text-[#71717A] text-[10px]">⠿ Glisser vers colonne</span>
+                          <span className="text-[#71717A] text-[10px]">Glisser vers colonne</span>
 
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
                             {targetRoles.length === 0 ? (
@@ -954,9 +972,10 @@ export function FormBuilder({
                 <Link
                   href="/admin/questions"
                   target="_blank"
-                  className="text-xs font-bold text-[#3B33FF] hover:underline flex items-center gap-1"
+                  className="text-xs font-bold text-[#3B33FF] hover:underline flex items-center gap-1.5"
                 >
-                  <span>⚙️ Configurer la banque</span>
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>Configurer la banque</span>
                   <span>↗</span>
                 </Link>
                 <button
@@ -978,7 +997,10 @@ export function FormBuilder({
       {isEditing && initialForm?.slug && (
         <div className="p-5 border border-[#FECACA] bg-[#FEF2F2] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h4 className="text-sm font-bold text-[#991B1B]">⚠️ Zone de danger : Supprimer ce formulaire</h4>
+            <h4 className="text-sm font-bold text-[#991B1B] flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-[#DC2626]" />
+              <span>Zone de danger : Supprimer ce formulaire</span>
+            </h4>
             <p className="text-xs text-[#B91C1C] mt-0.5">
               Cette action supprimera définitivement le formulaire et toutes les candidatures associées.
             </p>
@@ -1005,8 +1027,8 @@ export function FormBuilder({
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center text-xl font-bold">
-              ⚠️
+            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-[#DC2626]" />
             </div>
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-[#18181B]">
@@ -1050,7 +1072,7 @@ interface PipelineColumnProps {
   id: string;
   title: string;
   subtitle: string;
-  icon: string;
+  icon?: React.ReactNode;
   color: string;
   fields: Array<Partial<FormFieldRecord>>;
   isDropActive: boolean;
@@ -1102,7 +1124,7 @@ function PipelineColumn({
         <div className="flex items-center justify-between gap-2 pt-1">
           <div className="flex items-center gap-2">
             <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 font-bold"
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold"
               style={{ backgroundColor: `${color}15`, color: color }}
             >
               {icon}
@@ -1124,7 +1146,7 @@ function PipelineColumn({
       <div className="p-3.5 space-y-2.5 flex-1 min-h-[220px]">
         {fields.length === 0 ? (
           <div className="p-8 text-center border-2 border-dashed border-[#D4D4D8] rounded-xl space-y-2 bg-white/60">
-            <span className="text-2xl opacity-60">📥</span>
+            <Inbox className="w-8 h-8 text-zinc-400 mx-auto" />
             <p className="text-xs font-bold text-[#18181B]">Glissez une question ici</p>
             <p className="text-[10px] text-[#71717A]">
               Ou cliquez ci-dessous pour ajouter une question à ce parcours.
@@ -1136,7 +1158,6 @@ function PipelineColumn({
             const isExpanded = expandedFieldId === fieldId;
             const typeInfo = FIELD_TYPE_LABELS[field.type || 'short_text'] || {
               label: field.type || 'Texte',
-              icon: '📝',
               color: '#3B33FF',
             };
 
@@ -1158,7 +1179,7 @@ function PipelineColumn({
                         color: typeInfo.color,
                       }}
                     >
-                      <span>{typeInfo.icon}</span>
+                      <FieldTypeIcon type={field.type || 'short_text'} className="w-3 h-3" />
                       <span>{typeInfo.label}</span>
                     </span>
                     <span className="text-xs font-bold text-[#18181B] truncate">
@@ -1172,30 +1193,34 @@ function PipelineColumn({
                       disabled={idx === 0}
                       onClick={() => onMoveField(fieldId, 'up')}
                       className="w-5 h-5 rounded border border-[#E6DFD5] text-[10px] flex items-center justify-center disabled:opacity-30 hover:bg-[#FAF8F5] cursor-pointer"
+                      title="Monter"
                     >
-                      ↑
+                      <ArrowUp className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
                       disabled={idx === fields.length - 1}
                       onClick={() => onMoveField(fieldId, 'down')}
                       className="w-5 h-5 rounded border border-[#E6DFD5] text-[10px] flex items-center justify-center disabled:opacity-30 hover:bg-[#FAF8F5] cursor-pointer"
+                      title="Descendre"
                     >
-                      ↓
+                      <ArrowDown className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setExpandedFieldId(isExpanded ? null : fieldId)}
-                      className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] cursor-pointer"
+                      className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] cursor-pointer flex items-center gap-1"
                     >
-                      {isExpanded ? 'Réduire' : 'Éditer'}
+                      <Edit3 className="w-2.5 h-2.5" />
+                      <span>{isExpanded ? 'Réduire' : 'Éditer'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveField(fieldId)}
-                      className="w-5 h-5 rounded text-[#DC2626] hover:bg-[#FEF2F2] text-[11px] flex items-center justify-center cursor-pointer font-bold"
+                      className="w-5 h-5 rounded text-[#DC2626] hover:bg-[#FEF2F2] flex items-center justify-center cursor-pointer"
+                      title="Supprimer"
                     >
-                      ✕
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -1227,7 +1252,7 @@ function PipelineColumn({
                         >
                           {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
                             <option key={t} value={t}>
-                              {info.icon} {info.label}
+                              {info.label}
                             </option>
                           ))}
                         </select>
@@ -1311,9 +1336,9 @@ function PipelineColumn({
                                 const newOpts = (field.options || []).filter((_, i) => i !== optIdx);
                                 onUpdateField(fieldId, { options: newOpts });
                               }}
-                              className="text-[#DC2626] text-xs font-bold px-1"
+                              className="text-[#DC2626] text-xs font-bold px-1 hover:opacity-80"
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                         ))}
@@ -1335,9 +1360,8 @@ function PipelineColumn({
             onClick={() => setShowAddMenu(!showAddMenu)}
             className="w-full py-2 px-3 text-xs font-bold rounded-xl border border-dashed border-[#3B33FF]/40 text-[#3B33FF] hover:bg-[#3B33FF]/5 transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <span>+</span>
+            <Plus className="w-3.5 h-3.5" />
             <span>Ajouter une question</span>
-            <span className="text-[10px]">▾</span>
           </button>
 
           {showAddMenu && (
@@ -1356,7 +1380,7 @@ function PipelineColumn({
                     }}
                     className="p-1.5 rounded-lg text-left hover:bg-[#FAF8F5] flex items-center gap-1.5 text-xs font-medium cursor-pointer transition"
                   >
-                    <span>{info.icon}</span>
+                    <FieldTypeIcon type={t} className="w-3.5 h-3.5 text-[#3B33FF]" />
                     <span className="truncate">{info.label}</span>
                   </button>
                 ))}

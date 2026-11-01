@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FormFieldRecord, FormRecord, SubmissionRecord } from '@/types/form';
+import { X } from 'lucide-react';
 
 interface SubmissionsExplorerProps {
   form: FormRecord;
@@ -212,7 +213,7 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
                 onClick={() => setSelectedSubmission(null)}
                 className="w-8 h-8 rounded-lg border border-[#E6DFD5] flex items-center justify-center text-[#52525B] hover:bg-[#FAF8F5]"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

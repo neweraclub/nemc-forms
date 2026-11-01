@@ -52,7 +52,7 @@ export async function saveTargetRoleAction(
       name: roleData.name.trim(),
       description: (roleData.description || '').trim(),
       color: roleData.color || '#3B33FF',
-      icon: roleData.icon || '🎯',
+      icon: roleData.icon || 'target',
       created_at: roleData.created_at || new Date().toISOString(),
     };
 

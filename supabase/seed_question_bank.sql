@@ -76,3 +76,4 @@ ON CONFLICT (id) DO UPDATE SET
     placeholder = EXCLUDED.placeholder,
     required = EXCLUDED.required,
     options = EXCLUDED.options;
+

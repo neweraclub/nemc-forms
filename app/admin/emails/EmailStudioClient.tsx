@@ -20,6 +20,7 @@ import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
 import { SmtpDiagnosticResult } from '@/lib/mailer';
 import { showAdminToast } from '../AdminToast';
+import { Folder, X, Sparkles, Check, AlertTriangle, Edit3, Eye, Settings, Tag, Smartphone, Monitor, Cloud, Save, Ban, Link2, Wrench, FlaskConical, Trash2, HelpCircle } from 'lucide-react';
 
 export interface EmailStudioClientProps {
   formsWithFields?: AdminFormWithFields[];
@@ -208,7 +209,7 @@ export function EmailStudioClient({
       });
       setStatusMessage({
         type: 'success',
-        text: `✓ Modèle inséré avec succès dans le bucket 'Html_forms' (${res.path}).`,
+        text: `Modèle inséré avec succès dans le bucket 'Html_forms' (${res.path}).`,
       });
       refreshStorageList();
     } else {
@@ -250,7 +251,7 @@ export function EmailStudioClient({
       });
       setStatusMessage({
         type: 'success',
-        text: `✓ Modèle '${fileName}' chargé avec succès depuis le bucket 'Html_forms'.`,
+        text: `Modèle '${fileName}' chargé avec succès depuis le bucket 'Html_forms'.`,
       });
       setStorageDrawerOpen(false);
     } else {
@@ -277,7 +278,7 @@ export function EmailStudioClient({
       });
       setStatusMessage({
         type: 'success',
-        text: `✓ Modèle '${deletedName}' supprimé définitivement du bucket 'Html_forms'.`,
+        text: `Modèle '${deletedName}' supprimé définitivement du bucket 'Html_forms'.`,
       });
     } else {
       setStatusMessage({
@@ -509,7 +510,7 @@ export function EmailStudioClient({
             onClick={() => setStorageDrawerOpen(true)}
             className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5] transition flex items-center gap-1.5 shadow-2xs"
           >
-            <span>📁 Modèles du Bucket</span>
+            <span className="flex items-center gap-1.5"><Folder className="w-4 h-4 text-[#3B33FF]" /> <span>Modèles du Bucket</span></span>
             <span className="px-1.5 py-0.2 bg-[#FAF6EE] text-[#3B33FF] rounded text-[10px] font-bold border border-[#E6DFD5]">
               {storageTemplates.length}
             </span>
@@ -553,9 +554,9 @@ export function EmailStudioClient({
           <button
             type="button"
             onClick={() => setStatusMessage(null)}
-            className="text-xs font-bold opacity-60 hover:opacity-100"
+            className="text-xs font-bold opacity-60 hover:opacity-100 p-0.5"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -599,7 +600,7 @@ export function EmailStudioClient({
                   const hasCustom = Boolean(f.custom_email_html && f.custom_email_html.trim().length > 0);
                   return (
                     <option key={f.id} value={f.slug}>
-                      {f.title} {hasCustom ? '✨ [Modèle IA lié]' : ''}
+                      {f.title} {hasCustom ? '[Modèle IA lié]' : ''}
                     </option>
                   );
                 })}
@@ -613,11 +614,11 @@ export function EmailStudioClient({
                   <span>&bull;</span>
                   {hasEmailField ? (
                     <span className="text-[#15803D] font-semibold flex items-center gap-1">
-                      <span>✓</span> Champ email détecté
+                      <span className="flex items-center gap-1 text-green-700"><Check className="w-3.5 h-3.5" /> <span>Champ email détecté</span></span>
                     </span>
                   ) : (
                     <span className="text-[#DC2626] font-bold flex items-center gap-1 bg-[#FEF2F2] px-1.5 py-0.5 rounded border border-[#FECACA]">
-                      <span>⚠️</span> Aucun champ email
+                      <span className="flex items-center gap-1 text-amber-700"><AlertTriangle className="w-3.5 h-3.5" /> <span>Aucun champ email</span></span>
                     </span>
                   )}
                 </div>
@@ -626,7 +627,7 @@ export function EmailStudioClient({
               {!hasEmailField && (
                 <div className="p-3.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs space-y-2.5 shadow-2xs">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-base shrink-0 mt-0.5">⚠️</span>
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div className="space-y-1 min-w-0 flex-1">
                       <p className="font-bold text-[#78350F] text-xs">
                         Aucun champ &laquo; Adresse email &raquo; dans ce formulaire
@@ -640,7 +641,7 @@ export function EmailStudioClient({
                     href={`/admin/forms/${selectedFormSlug}/edit`}
                     className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-lg text-xs transition shadow-xs cursor-pointer text-center"
                   >
-                    <span>✏️ Ajouter l&apos;email au formulaire</span>
+                    <span className="flex items-center gap-1.5"><Edit3 className="w-3.5 h-3.5" /> <span>Ajouter l&apos;email au formulaire</span></span>
                   </a>
                 </div>
               )}
@@ -672,7 +673,7 @@ export function EmailStudioClient({
                     }}
                     className="px-2.5 py-1 bg-white hover:bg-[#F5F3FF] border border-[#C7D2FE] text-[#4338CA] font-semibold text-[11px] rounded-md shadow-2xs transition shrink-0"
                   >
-                    👁️ Charger dans l&apos;éditeur
+                    Charger dans l&apos;éditeur
                   </button>
                 </div>
               )}
@@ -748,7 +749,7 @@ export function EmailStudioClient({
                             isChecked ? 'bg-[#3B33FF] text-white' : 'border border-[#D4D4D8] bg-white'
                           }`}
                         >
-                          {isChecked ? '✓' : ''}
+                          {isChecked ? 'Oui' : ''}
                         </span>
                         <span>{f.label}</span>
                         <code className="text-[10px] text-[#3B33FF] font-mono bg-[#3B33FF]/5 px-1 py-0.5 rounded border border-[#3B33FF]/20">
@@ -761,7 +762,7 @@ export function EmailStudioClient({
               )}
 
               <p className="text-[11px] text-[#71717A] pt-0.5">
-                💡 Seules ces variables réelles sélectionnées seront transmises à Gemini. Aucune variable fictive par défaut n&apos;est injectée.
+                Seules ces variables réelles sélectionnées seront transmises à Gemini. Aucune variable fictive par défaut n&apos;est injectée.
               </p>
             </div>
           </div>
@@ -837,7 +838,7 @@ export function EmailStudioClient({
                 className="w-full flex items-center justify-between py-2 text-xs font-semibold text-[#52525B] hover:text-[#18181B] transition"
               >
                 <span className="flex items-center gap-1.5">
-                  <span>⚙️ Options avancées</span>
+                  <span className="flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> <span>Options avancées</span></span>
                   <span className="text-[10px] text-[#71717A] font-normal">
                     (Bouton CTA, Alerte importante, Thème graphique)
                   </span>
@@ -1022,7 +1023,7 @@ export function EmailStudioClient({
                   </>
                 ) : (
                   <>
-                    <span>✨</span>
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>Générer l&apos;email avec Gemini AI</span>
                   </>
                 )}
@@ -1041,7 +1042,7 @@ export function EmailStudioClient({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#E6DFD5]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3B33FF]/15 to-[#8B3EE1]/15 text-[#3B33FF] flex items-center justify-center text-lg shadow-inner">
-                    ✨
+                    
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-[#18181B] tracking-tight flex items-center gap-2">
@@ -1078,7 +1079,7 @@ export function EmailStudioClient({
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#3B33FF] font-semibold text-xs rounded-lg transition shadow-2xs cursor-pointer shrink-0"
                   >
-                    <span>👁️ Charger le modèle actif</span>
+                    <span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> <span>Charger le modèle actif</span></span>
                   </button>
                 )}
               </div>
@@ -1145,7 +1146,7 @@ export function EmailStudioClient({
                       </>
                     ) : (
                       <>
-                        <span>✨</span>
+                        <Sparkles className="w-3.5 h-3.5" />
                         <span>Générer le modèle HTML maintenant</span>
                       </>
                     )}
@@ -1156,17 +1157,17 @@ export function EmailStudioClient({
               {/* Quality & Production Guarantees Badges */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                 <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
-                  <div className="text-base mb-1">🏷️</div>
+                  <Tag className="w-4 h-4 text-zinc-500 mb-1" />
                   <div className="text-xs font-bold text-[#18181B]">Variables Réelles</div>
                   <p className="text-[10px] text-[#71717A] mt-0.5">Publipostage strict sans variables inventées</p>
                 </div>
                 <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
-                  <div className="text-base mb-1">📱</div>
+                  <Smartphone className="w-4 h-4 text-zinc-500 mb-1" />
                   <div className="text-xs font-bold text-[#18181B]">HTML Tabulaire</div>
                   <p className="text-[10px] text-[#71717A] mt-0.5">Compatible Gmail, Outlook, Apple &amp; mobile</p>
                 </div>
                 <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6DFD5]">
-                  <div className="text-base mb-1">☁️</div>
+                  <Cloud className="w-4 h-4 text-zinc-500 mb-1" />
                   <div className="text-xs font-bold text-[#18181B]">Stockage Cloud</div>
                   <p className="text-[10px] text-[#71717A] mt-0.5">Persistance immédiate dans Supabase</p>
                 </div>
@@ -1225,7 +1226,7 @@ export function EmailStudioClient({
                           }`}
                         title="Vue Ordinateur"
                       >
-                        🖥️
+                        Grand écran
                       </button>
                       <button
                         type="button"
@@ -1234,7 +1235,7 @@ export function EmailStudioClient({
                           }`}
                         title="Vue Mobile"
                       >
-                        📱
+                        Mobile
                       </button>
                     </div>
                   )}
@@ -1294,7 +1295,7 @@ export function EmailStudioClient({
                     disabled={isRefining || !userSuggestion.trim()}
                     className="min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
                   >
-                    {isRefining ? 'Ajustement...' : 'Appliquer l’ajustement ✨'}
+                    {isRefining ? 'Ajustement...' : 'Appliquer l’ajustement'}
                   </button>
                 </div>
 
@@ -1323,7 +1324,7 @@ export function EmailStudioClient({
               <div className="p-4 sm:p-5 border-t border-[#E6DFD5] bg-[#FAF8F5] space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="text-xs font-bold text-[#18181B] flex items-center gap-1.5">
-                    <span>💾 Sauvegarde Cloud &amp; Liaison Formulaire</span>
+                    <span className="flex items-center gap-1.5"><Save className="w-4 h-4 text-[#3B33FF]" /> <span>Sauvegarde Cloud &amp; Liaison Formulaire</span></span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#3B33FF]/10 text-[#3B33FF]">
                       Bucket Html_forms
                     </span>
@@ -1354,7 +1355,7 @@ export function EmailStudioClient({
                         disabled={isSavingToStorage || !emailResult?.html}
                         className="min-h-[38px] px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#18181B] text-white hover:bg-[#27272A] transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
                       >
-                        {isSavingToStorage ? 'Insertion...' : '💾 Insérer'}
+                        {isSavingToStorage ? 'Insertion...' : 'Insérer'}
                       </button>
                     </div>
                   </div>
@@ -1373,7 +1374,7 @@ export function EmailStudioClient({
                     {!hasEmailField ? (
                       <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-lg text-xs space-y-2">
                         <div className="flex items-start gap-2">
-                          <span className="text-base shrink-0">🚫</span>
+                          <Ban className="w-4 h-4 text-zinc-400 shrink-0" />
                           <div>
                             <p className="font-bold text-[#7F1D1D]">
                               Inutile d&apos;associer ce formulaire : aucun champ &laquo; Adresse email &raquo;
@@ -1388,7 +1389,7 @@ export function EmailStudioClient({
                             href={`/admin/forms/${selectedFormSlug}/edit`}
                             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-xs rounded-lg shadow-xs transition text-center cursor-pointer"
                           >
-                            ✏️ Modifier le formulaire et ajouter l&apos;email
+                            Modifier le formulaire et ajouter l&apos;email
                           </a>
                         </div>
                       </div>
@@ -1403,7 +1404,7 @@ export function EmailStudioClient({
                           disabled={isAttaching || !selectedFormSlug}
                           className="brand-gradient-btn min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-xs disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          {isAttaching ? 'Liaison en cours...' : '🔗 Appliquer'}
+                          {isAttaching ? 'Liaison en cours...' : 'Appliquer'}
                         </button>
                       </div>
                     )}
@@ -1428,7 +1429,7 @@ export function EmailStudioClient({
                           : 'bg-[#FAF8F5] text-[#52525B] border-[#E6DFD5] hover:bg-[#F4F4F5]'
                         }`}
                     >
-                      <span>🛠️ Mode Debug SMTP</span>
+                      <span className="flex items-center gap-1.5"><Wrench className="w-4 h-4 text-zinc-600" /> <span>Mode Debug SMTP</span></span>
                       <span>{showDebugConsole ? '▲' : '▼'}</span>
                     </button>
                   </div>
@@ -1463,8 +1464,8 @@ export function EmailStudioClient({
                     <div className="flex items-center justify-between gap-2 font-semibold">
                       <span>
                         {testDeliveryStatus.success
-                          ? '✅ Courriel de test transmis avec succès au serveur SMTP !'
-                          : '❌ Échec de transmission du courriel :'}
+                          ? '[Succès] Courriel de test transmis avec succès au serveur SMTP !'
+                          : '[Erreur] Échec de transmission du courriel :'}
                       </span>
                       {testDeliveryStatus.messageId && (
                         <span className="font-mono text-[10px] text-[#15803D] opacity-80">
@@ -1501,7 +1502,7 @@ export function EmailStudioClient({
                         disabled={isDiagnosing}
                         className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[11px] font-sans font-semibold transition disabled:opacity-50"
                       >
-                        {isDiagnosing ? 'Test en cours...' : '🧪 Tester la connexion SMTP'}
+                        {isDiagnosing ? 'Test en cours...' : 'Tester la connexion SMTP'}
                       </button>
                     </div>
 
@@ -1531,12 +1532,12 @@ export function EmailStudioClient({
                     <div className="space-y-1 text-[11px] text-[#D4D4D8] max-h-40 overflow-y-auto bg-black/40 p-2.5 rounded border border-white/5">
                       <p className="text-[#71717A] text-[10px]">--- LOGS DU SERVEUR SMTP ---</p>
                       {testDebugLogs && testDebugLogs.map((log, idx) => (
-                        <p key={`test-log-${idx}`} className={log.includes('❌') ? 'text-[#F87171]' : log.includes('Succès') ? 'text-[#34D399]' : 'text-[#D4D4D8]'}>
+                        <p key={`test-log-${idx}`} className={log.includes('[Erreur]') ? 'text-[#F87171]' : log.includes('Succès') ? 'text-[#34D399]' : 'text-[#D4D4D8]'}>
                           {log}
                         </p>
                       ))}
                       {smtpDiagnostic && smtpDiagnostic.logs.map((log, idx) => (
-                        <p key={`diag-log-${idx}`} className={log.includes('❌') ? 'text-[#F87171]' : log.includes('✅') ? 'text-[#34D399]' : 'text-[#A1A1AA]'}>
+                        <p key={`diag-log-${idx}`} className={log.includes('[Erreur]') ? 'text-[#F87171]' : log.includes('[Succès]') ? 'text-[#34D399]' : 'text-[#A1A1AA]'}>
                           {log}
                         </p>
                       ))}
@@ -1569,7 +1570,7 @@ export function EmailStudioClient({
             <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD5]">
               <div>
                 <h3 className="text-base font-bold text-[#18181B] flex items-center gap-2">
-                  <span>📁 Modèles enregistrés dans Supabase Storage</span>
+                  <span className="flex items-center gap-1.5"><Folder className="w-4 h-4 text-[#3B33FF]" /> <span>Modèles enregistrés dans Supabase Storage</span></span>
                   <span className="px-2 py-0.5 rounded text-xs font-mono bg-[#3B33FF]/10 text-[#3B33FF]">
                     bucket: Html_forms
                   </span>
@@ -1581,9 +1582,9 @@ export function EmailStudioClient({
               <button
                 type="button"
                 onClick={() => setStorageDrawerOpen(false)}
-                className="text-xs font-bold text-[#71717A] hover:text-[#18181B] p-1.5"
+                className="p-1.5 text-xs font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1623,7 +1624,7 @@ export function EmailStudioClient({
                         className="px-2.5 py-1.5 text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition"
                         title="Supprimer du bucket"
                       >
-                        🗑️
+                        
                       </button>
                     </div>
                   </div>
