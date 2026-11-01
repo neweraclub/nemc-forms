@@ -31,6 +31,11 @@ import {
   ArrowUp,
   ArrowDown,
   Plus,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+  ExternalLink,
 } from 'lucide-react';
 
 interface FormBuilderProps {
@@ -113,7 +118,7 @@ export function FormBuilder({
   const bank = questionBank || [];
   const [bankSearch, setBankSearch] = useState('');
   const [bankCategory, setBankCategory] = useState('all');
-  const [bankDrawerOpen, setBankDrawerOpen] = useState(false);
+  const [showBankShelf, setShowBankShelf] = useState(true);
 
   // Fields State
   const [fields, setFields] = useState<Array<Partial<FormFieldRecord>>>(() => {
@@ -455,12 +460,18 @@ export function FormBuilder({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Question Bank Drawer Trigger */}
+          {/* Question Bank Anchor Trigger */}
           <button
             type="button"
-            onClick={() => setBankDrawerOpen(true)}
+            onClick={() => {
+              setShowBankShelf(true);
+              const el = document.getElementById('question-bank-dock');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
             className="px-3.5 py-2.5 rounded-xl border border-[#E6DFD5] bg-white text-xs font-bold text-[#18181B] hover:bg-[#FAF8F5] transition shadow-2xs flex items-center gap-2 cursor-pointer"
-            title="Ouvrir la banque de questions prêtes à l'emploi"
+            title="Aller à la Banque de questions"
           >
             <Package className="w-4 h-4 text-[#3B33FF]" />
             <span>Banque de questions ({bank.length})</span>
@@ -764,7 +775,7 @@ export function FormBuilder({
       </div>
 
       {/* ===================================================================== */}
-      {/* SECTION 3: PARCOURS & QUESTIONS (The visual Miro/Figma Board!)       */}
+      {/* SECTION 3: BANQUE DE QUESTIONS & PARCOURS DE QUESTIONS                */}
       {/* ===================================================================== */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -776,19 +787,196 @@ export function FormBuilder({
               <span>Parcours de questions ({fields.length} question{fields.length > 1 ? 's' : ''} au total)</span>
             </h2>
             <p className="text-xs text-[#71717A] mt-0.5">
-              Organisez vos questions par colonne. Glissez-déposez pour réordonner ou insérez directement depuis la Banque de Questions.
+              Glissez-déposez les questions depuis la Banque ci-dessous directement dans vos colonnes cibles, ou créez vos questions.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setBankDrawerOpen(true)}
-            className="px-4 py-2 rounded-xl border border-[#3B33FF]/30 bg-[#3B33FF]/5 text-xs font-bold text-[#3B33FF] hover:bg-[#3B33FF]/10 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+            onClick={() => setShowBankShelf(!showBankShelf)}
+            className="px-3.5 py-2 rounded-xl border border-[#3B33FF]/30 bg-[#3B33FF]/5 text-xs font-bold text-[#3B33FF] hover:bg-[#3B33FF]/10 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
           >
             <Package className="w-4 h-4 text-[#3B33FF]" />
-            <span>Ouvrir la Banque de questions ({bank.length})</span>
+            <span>{showBankShelf ? 'Masquer la banque' : `Afficher la banque (${bank.length})`}</span>
+            {showBankShelf ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
+
+        {/* ===================================================================== */}
+        {/* INLINE QUESTION BANK DOCK (Above Pipelines - No Windows or Overlays)  */}
+        {/* ===================================================================== */}
+        {showBankShelf && (
+          <div
+            id="question-bank-dock"
+            className="bg-white border-2 border-[#3B33FF]/25 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5 animate-in fade-in duration-150"
+          >
+            {/* Header / Search / Filter toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#E6DFD5]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#3B33FF]/10 text-[#3B33FF] flex items-center justify-center shrink-0">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[#18181B]">
+                      Banque de Questions ({filteredBank.length})
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#059669]/10 text-[#059669] border border-[#059669]/20">
+                      Glisser-Déposer activé
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#71717A]">
+                    Glissez une question ci-dessous dans une colonne, ou cliquez sur <strong>+ [Rôle]</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {/* Search */}
+                <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+                  <Search className="w-3.5 h-3.5 text-[#71717A] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={bankSearch}
+                    onChange={(e) => setBankSearch(e.target.value)}
+                    placeholder="Filtrer les questions..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-[#FAF8F5] border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF] focus:bg-white"
+                  />
+                  {bankSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setBankSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#71717A] hover:text-[#18181B]"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <Link
+                  href="/admin/questions"
+                  target="_blank"
+                  className="px-2.5 py-1.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] hover:bg-white text-xs font-semibold text-[#52525B] hover:text-[#18181B] transition flex items-center gap-1.5 shrink-0"
+                  title="Gérer ou ajouter de nouvelles questions au catalogue"
+                >
+                  <Settings className="w-3.5 h-3.5 text-[#71717A]" />
+                  <span>Gérer la banque</span>
+                  <ExternalLink className="w-3 h-3 text-[#A1A1AA]" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {bankCategories.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setBankCategory(c)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                    bankCategory === c
+                      ? 'bg-[#18181B] text-white shadow-2xs'
+                      : 'bg-[#FAF8F5] text-[#71717A] border border-[#E6DFD5] hover:bg-white hover:text-[#18181B]'
+                  }`}
+                >
+                  {c === 'all' ? 'Toutes les catégories' : c}
+                </button>
+              ))}
+            </div>
+
+            {/* Questions Grid/Shelf */}
+            {filteredBank.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#71717A] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E6DFD5]">
+                Aucune question ne correspond à votre recherche.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto pr-1 scrollbar-thin">
+                {filteredBank.map((bq) => {
+                  const typeInfo = FIELD_TYPE_LABELS[bq.type] || {
+                    label: bq.type,
+                    color: '#3B33FF',
+                  };
+                  return (
+                    <div
+                      key={bq.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, bq)}
+                      className="bg-[#FAF8F5]/80 hover:bg-white border border-[#E6DFD5] hover:border-[#3B33FF] rounded-xl p-3 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing transition space-y-2 select-none flex flex-col justify-between group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                            style={{
+                              backgroundColor: `${typeInfo.color}15`,
+                              color: typeInfo.color,
+                            }}
+                          >
+                            <FieldTypeIcon type={bq.type} className="w-3 h-3" />
+                            <span>{typeInfo.label}</span>
+                          </span>
+                          <span className="text-[10px] text-[#A1A1AA] font-mono truncate max-w-[90px]">
+                            {bq.key}
+                          </span>
+                        </div>
+
+                        <h4 className="text-xs font-bold text-[#18181B] leading-snug line-clamp-2">
+                          {bq.label}
+                        </h4>
+
+                        {bq.help_text && (
+                          <p className="text-[10px] text-[#71717A] line-clamp-1 italic">
+                            {bq.help_text}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-2 border-t border-[#E6DFD5]/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="inline-flex items-center gap-1 font-semibold text-[#3B33FF] group-hover:translate-y-0.5 transition-transform">
+                            <GripVertical className="w-3 h-3 text-[#A1A1AA]" />
+                            <span>Glisser vers le bas ↓</span>
+                          </span>
+                          {bq.required && (
+                            <span className="text-[9px] font-bold text-[#DC2626] bg-[#DC2626]/10 px-1 py-0.2 rounded">
+                              Requis
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Quick Role Add Buttons */}
+                        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                          {targetRoles.length === 0 ? (
+                            <span className="text-[10px] text-[#A1A1AA] italic">
+                              Cochez un rôle ci-dessus
+                            </span>
+                          ) : (
+                            targetRoles.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => insertFromBank(bq, r.id)}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-bold transition hover:opacity-90 cursor-pointer"
+                                style={{
+                                  backgroundColor: `${r.color || '#3B33FF'}15`,
+                                  color: r.color || '#3B33FF',
+                                  border: `1px solid ${r.color || '#3B33FF'}30`,
+                                }}
+                                title={`Ajouter au profil ${r.name}`}
+                              >
+                                + {r.name.split(' ')[0]}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Horizontal Columns Canvas (Board) */}
         {targetRoles.length === 0 ? (
@@ -831,165 +1019,6 @@ export function FormBuilder({
           </div>
         )}
       </div>
-
-      {/* ===================================================================== */}
-      {/* SLIDING DRAWER: QUESTION BANK                                         */}
-      {/* ===================================================================== */}
-      {bankDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-2xs transition-opacity animate-in fade-in duration-200"
-            onClick={() => setBankDrawerOpen(false)}
-          />
-
-          {/* Sliding Panel */}
-          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white border-l border-[#E6DFD5] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-250">
-              {/* Drawer Header */}
-              <div className="p-5 border-b border-[#E6DFD5] bg-[#FAF8F5]">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <Package className="w-5 h-5 text-[#3B33FF]" />
-                    <div>
-                      <h3 className="text-base font-bold text-[#18181B]">Banque de Questions</h3>
-                      <p className="text-xs text-[#71717A]">{bank.length} questions réutilisables</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setBankDrawerOpen(false)}
-                    className="w-8 h-8 rounded-lg border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs flex items-center justify-center font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Search */}
-                <input
-                  type="text"
-                  value={bankSearch}
-                  onChange={(e) => setBankSearch(e.target.value)}
-                  placeholder="Rechercher une question..."
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
-                />
-
-                {/* Category Chips */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 scrollbar-none">
-                  {bankCategories.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setBankCategory(c)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition cursor-pointer ${
-                        bankCategory === c
-                          ? 'bg-[#18181B] text-white shadow-2xs'
-                          : 'bg-white text-[#71717A] border border-[#E6DFD5] hover:bg-[#FAF8F5]'
-                      }`}
-                    >
-                      {c === 'all' ? 'Toutes' : c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Drawer Body: Questions List */}
-              <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
-                {filteredBank.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-[#71717A]">
-                    Aucune question trouvée.
-                  </div>
-                ) : (
-                  filteredBank.map((bq) => {
-                    const typeInfo = FIELD_TYPE_LABELS[bq.type] || {
-                      label: bq.type,
-                      color: '#3B33FF',
-                    };
-                    return (
-                      <div
-                        key={bq.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, bq)}
-                        className="bg-white border border-[#E6DFD5] hover:border-[#3B33FF] rounded-xl p-3 shadow-2xs space-y-2 cursor-grab active:cursor-grabbing transition"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span
-                              className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1.5 mb-1"
-                              style={{
-                                backgroundColor: `${typeInfo.color}15`,
-                                color: typeInfo.color,
-                              }}
-                            >
-                              <FieldTypeIcon type={bq.type} className="w-3 h-3" />
-                              <span>{typeInfo.label}</span>
-                            </span>
-                            <h4 className="text-xs font-bold text-[#18181B] leading-snug">
-                              {bq.label}
-                            </h4>
-                          </div>
-                          <span className="text-[10px] text-[#71717A] font-mono">
-                            {bq.key}
-                          </span>
-                        </div>
-
-                        {/* Quick insertion toolbar */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-[#E6DFD5]/60 text-[11px]">
-                          <span className="text-[#71717A] text-[10px]">Glisser vers colonne</span>
-
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {targetRoles.length === 0 ? (
-                              <span className="text-[10px] text-[#A1A1AA] italic">
-                                Cochez un rôle ci-dessus
-                              </span>
-                            ) : (
-                              targetRoles.map((r) => (
-                                <button
-                                  key={r.id}
-                                  type="button"
-                                  onClick={() => insertFromBank(bq, r.id)}
-                                  className="px-2 py-0.5 rounded font-bold text-[10px] transition cursor-pointer"
-                                  style={{
-                                    backgroundColor: `${r.color || '#8B3EE1'}15`,
-                                    color: r.color || '#8B3EE1',
-                                  }}
-                                  title={`Ajouter au profil ${r.name}`}
-                                >
-                                  + {r.name.split(' ')[0]}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Drawer Footer */}
-              <div className="p-4 border-t border-[#E6DFD5] bg-[#FAF8F5] flex items-center justify-between">
-                <Link
-                  href="/admin/questions"
-                  target="_blank"
-                  className="text-xs font-bold text-[#3B33FF] hover:underline flex items-center gap-1.5"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>Configurer la banque</span>
-                  <span>↗</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setBankDrawerOpen(false)}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5]"
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ===================================================================== */}
       {/* DELETE FORM (Danger Zone)                                             */}
