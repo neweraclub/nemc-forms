@@ -59,7 +59,7 @@ export interface BankQuestionRecord {
   id: string;
   category: string;
   type: FieldType;
-  key: string;
+  key?: string;
   label: string;
   help_text?: string | null;
   placeholder?: string | null;

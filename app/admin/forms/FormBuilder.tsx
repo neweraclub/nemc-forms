@@ -427,7 +427,7 @@ export function FormBuilder({
     const matchSearch =
       !bankSearch.trim() ||
       b.label.toLowerCase().includes(bankSearch.toLowerCase()) ||
-      b.key.toLowerCase().includes(bankSearch.toLowerCase());
+      Boolean(b.key && b.key.toLowerCase().includes(bankSearch.toLowerCase()));
     return matchCat && matchSearch;
   });
 

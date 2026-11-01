@@ -64,7 +64,7 @@ export async function saveQuestionBankAction(
     if (existingIdx >= 0) {
       currentQuestions[existingIdx] = fullQuestion;
     } else {
-      currentQuestions.push(fullQuestion);
+      currentQuestions.unshift(fullQuestion);
     }
 
     const saved = await saveCloudQuestionBank(currentQuestions);
@@ -74,6 +74,7 @@ export async function saveQuestionBankAction(
 
     revalidatePath('/admin');
     revalidatePath('/admin/questions');
+    revalidatePath('/admin/forms/new');
     return { success: true, question: fullQuestion };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { BankQuestionRecord, FieldType, FieldOption } from '@/types/form';
 import { saveQuestionBankAction, deleteQuestionBankAction } from '@/app/actions/questionBankActions';
 import { showAdminToast } from '../AdminToast';
@@ -96,6 +97,7 @@ const FIELD_TYPE_DESCRIPTIONS: Record<
 const FIELD_TYPE_LABELS = FIELD_TYPE_DESCRIPTIONS;
 
 export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps) {
+  const router = useRouter();
   const [questions, setQuestions] = useState<BankQuestionRecord[]>(initialQuestions);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -142,7 +144,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
   const openEditModal = (q: BankQuestionRecord) => {
     setEditingQuestion(q);
     setLabel(q.label);
-    setKey(q.key);
+    setKey(q.key || '');
     setType(q.type);
     setCategory(q.category || 'Identité & Contact');
     setHelpText(q.help_text || '');
@@ -232,6 +234,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           message: `La question "${saved.label}" est désormais disponible dans la banque.`,
         });
         setIsModalOpen(false);
+        router.refresh();
       } else {
         showAdminToast({
           type: 'error',
@@ -253,6 +256,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           message: 'La question type a été retirée de la banque.',
         });
         setDeleteTargetId(null);
+        router.refresh();
       } else {
         showAdminToast({
           type: 'error',
@@ -267,7 +271,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     const matchesCategory = selectedCategory === 'all' || q.category === selectedCategory;
     const matchesSearch =
       q.label.toLowerCase().includes(search.toLowerCase()) ||
-      q.key.toLowerCase().includes(search.toLowerCase()) ||
+      Boolean(q.key && q.key.toLowerCase().includes(search.toLowerCase())) ||
       (q.help_text || '').toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });

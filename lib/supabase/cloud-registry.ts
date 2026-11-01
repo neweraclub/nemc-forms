@@ -395,29 +395,27 @@ export async function saveCloudQuestionBank(questions: BankQuestionRecord[]): Pr
   const client = createServiceClient();
 
   // 1. Save to Supabase PostgreSQL table public.question_bank
-  try {
-    if (questions.length > 0) {
-      const { error: upsertErr } = await client.from('question_bank').upsert(
-        questions.map((q) => ({
-          id: q.id,
-          label: q.label,
-          key: q.key,
-          type: q.type,
-          category: q.category || 'Général',
-          help_text: q.help_text || null,
-          placeholder: q.placeholder || null,
-          required: q.required ?? false,
-          options: q.options || [],
-          created_at: q.created_at || new Date().toISOString(),
-        })),
-        { onConflict: 'id' }
-      );
-      if (upsertErr) {
-        console.warn('saveCloudQuestionBank DB notice:', upsertErr.message);
-      }
+  if (questions.length > 0) {
+    const payload = questions.map((q) => ({
+      id: q.id,
+      label: q.label,
+      type: q.type,
+      category: q.category || 'Général',
+      help_text: q.help_text || null,
+      placeholder: q.placeholder || null,
+      required: q.required ?? false,
+      options: q.options || [],
+      created_at: q.created_at || new Date().toISOString(),
+    }));
+
+    const { error: upsertErr } = await client
+      .from('question_bank')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (upsertErr) {
+      console.error('saveCloudQuestionBank DB error:', upsertErr);
+      throw new Error(`Erreur base de données Supabase: ${upsertErr.message}`);
     }
-  } catch (err) {
-    console.warn('saveCloudQuestionBank DB notice:', err);
   }
 
   // 2. Sync to Supabase Storage
@@ -448,10 +446,10 @@ export async function deleteCloudQuestion(questionId: string): Promise<boolean> 
   const client = createServiceClient();
 
   // 1. Delete from PostgreSQL
-  try {
-    await client.from('question_bank').delete().eq('id', questionId);
-  } catch (err) {
-    console.warn('deleteCloudQuestion DB notice:', err);
+  const { error: delErr } = await client.from('question_bank').delete().eq('id', questionId);
+  if (delErr) {
+    console.error('deleteCloudQuestion DB error:', delErr);
+    throw new Error(`Erreur suppression Supabase: ${delErr.message}`);
   }
 
   // 2. Update storage
