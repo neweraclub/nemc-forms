@@ -1,75 +1,45 @@
 -- ==============================================================================
--- NEW ERA MEDICAL CLUB — Target Audiences / Roles & Question Bank Migration
+-- NEW ERA MEDICAL CLUB — Target Roles & Question Bank (No RLS)
 -- Migration: 002_target_roles_and_question_bank.sql
 -- ==============================================================================
 
--- 1. ADD target_roles TO FORMS TABLE
--- Stores target audience/role definitions configured for this form
-alter table if exists public.forms
-add column if not exists target_roles jsonb default '[]'::jsonb;
+-- 1. ADD target_roles COLUMNS
+ALTER TABLE IF EXISTS public.forms
+ADD COLUMN IF NOT EXISTS target_roles JSONB DEFAULT '[]'::jsonb;
 
--- 2. ADD target_roles TO FORM_FIELDS TABLE
--- Stores array of role IDs (or 'all') indicating which respondent profiles see this question
-alter table if exists public.form_fields
-add column if not exists target_roles text[] default null;
+ALTER TABLE IF EXISTS public.form_fields
+ADD COLUMN IF NOT EXISTS target_roles TEXT[] DEFAULT NULL;
 
--- 3. (OPTIONAL) TARGET ROLES CATALOG TABLE
--- For central persistence of audience types (e.g. Doctor "طبيب", Student "طالب", etc.)
-create table if not exists public.target_roles (
-    id text primary key,
-    name text not null,
-    description text,
-    color text default '#3B33FF',
-    icon text default '🎯',
-    created_at timestamptz not null default now()
+CREATE INDEX IF NOT EXISTS idx_form_fields_target_roles 
+ON public.form_fields USING gin (target_roles);
+
+-- 2. TARGET ROLES TABLE
+CREATE TABLE IF NOT EXISTS public.target_roles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    color TEXT DEFAULT '#3B33FF',
+    icon TEXT DEFAULT '🎯',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- RLS for target_roles
-alter table public.target_roles enable row level security;
-
-create policy "Public can read target roles"
-    on public.target_roles
-    for select
-    to anon, authenticated
-    using (true);
-
-create policy "Admins full access to target roles"
-    on public.target_roles
-    for all
-    to authenticated
-    using (true)
-    with check (true);
-
--- 4. (OPTIONAL) REUSABLE QUESTION BANK TABLE
--- For central persistence of preconfigured questions
-create table if not exists public.question_bank (
-    id text primary key,
-    label text not null,
-    key text not null,
-    type text not null,
-    category text default 'Général',
-    help_text text,
-    placeholder text,
-    required boolean default false,
-    options jsonb default '[]'::jsonb,
-    created_at timestamptz not null default now()
+-- 3. REUSABLE QUESTION BANK TABLE
+CREATE TABLE IF NOT EXISTS public.question_bank (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    key TEXT NOT NULL,
+    type TEXT NOT NULL,
+    category TEXT DEFAULT 'Général',
+    help_text TEXT,
+    placeholder TEXT,
+    required BOOLEAN DEFAULT false,
+    options JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- RLS for question_bank
-alter table public.question_bank enable row level security;
-
-create policy "Public can read question bank"
-    on public.question_bank
-    for select
-    to anon, authenticated
-    using (true);
-
-create policy "Admins full access to question bank"
-    on public.question_bank
-    for all
-    to authenticated
-    using (true)
-    with check (true);
-
--- Indexes for performance
-create index if not exists idx_form_fields_target_roles on public.form_fields using gin (target_roles);
+-- 4. DISABLE RLS ON ALL TABLES
+ALTER TABLE IF EXISTS public.forms DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.form_fields DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.target_roles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.question_bank DISABLE ROW LEVEL SECURITY;
