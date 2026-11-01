@@ -8,7 +8,7 @@ export interface AdminUserSession {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'superadmin' | 'admin' | 'professor';
+  role: 'superadmin' | 'admin' | 'dean' | 'professor';
 }
 
 const COOKIE_NAME = 'nemc_admin_session';
@@ -85,8 +85,13 @@ export async function authenticateAdmin(
           };
         }
 
-        // Check role: superadmin, admin or professor with management rights
-        if (user.role !== 'superadmin' && user.role !== 'admin' && user.role !== 'dean') {
+        // Check role: superadmin, admin, dean or professor
+        if (
+          user.role !== 'superadmin' &&
+          user.role !== 'admin' &&
+          user.role !== 'dean' &&
+          user.role !== 'professor'
+        ) {
           return {
             success: false,
             error: 'Accès restreint. Seuls les administrateurs ont accès au tableau de bord.',
@@ -103,7 +108,7 @@ export async function authenticateAdmin(
               email: user.email,
               first_name: user.first_name || 'Admin',
               last_name: user.last_name || 'NEMC',
-              role: 'superadmin',
+              role: (user.role as AdminUserSession['role']) || 'superadmin',
             },
           };
         }
