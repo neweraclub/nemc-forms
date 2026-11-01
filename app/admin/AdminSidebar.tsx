@@ -9,9 +9,11 @@ import { logoutAction } from '@/app/actions/authActions';
 
 interface AdminSidebarProps {
   user: AdminUserSession;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function AdminSidebar({ user }: AdminSidebarProps) {
+export function AdminSidebar({ user, collapsed = false, onToggleCollapse }: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
@@ -143,31 +145,49 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       {/* Main Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-[#E6DFD5] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-[#E6DFD5] flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-lg lg:shadow-none ${
+          collapsed
+            ? '-translate-x-full lg:-translate-x-full'
+            : mobileOpen
+            ? 'translate-x-0'
+            : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         <div>
           {/* Brand Header */}
           <div className="p-5 border-b border-[#E6DFD5]">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
-                <Image
-                  src="/logo_light_mode.png"
-                  alt="New Era Medical Club Logo"
-                  width={36}
-                  height={36}
-                  className="w-full h-full object-contain"
-                  priority
-                />
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#E6DFD5] bg-white p-1 shrink-0 flex items-center justify-center shadow-xs">
+                  <Image
+                    src="/logo_light_mode.png"
+                    alt="New Era Medical Club Logo"
+                    width={36}
+                    height={36}
+                    className="w-full h-full object-contain"
+                    priority
+                  />
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
+                    Club Médical
+                  </span>
+                  <span className="text-sm font-extrabold text-[#18181B] tracking-tight block">
+                    New Era
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#52525B] block">
-                  Club Médical
-                </span>
-                <span className="text-sm font-extrabold text-[#18181B] tracking-tight block">
-                  New Era
-                </span>
-              </div>
+
+              {onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="hidden lg:flex w-7 h-7 rounded-lg border border-[#E6DFD5] hover:bg-[#FAF8F5] text-xs items-center justify-center text-[#71717A] hover:text-[#18181B] transition cursor-pointer"
+                  title="Réduire le menu"
+                >
+                  ◀
+                </button>
+              )}
             </div>
             <h2 className="text-base font-bold text-[#18181B]">Espace Superadmin</h2>
             <div className="mt-1.5 inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#3B33FF]/10 text-[#3B33FF]">

@@ -13,8 +13,6 @@ import {
   FieldOption,
 } from '@/types/form';
 import { saveFormAction, deleteFormAction } from '@/app/actions/formManagerActions';
-import { saveTargetRoleAction } from '@/app/actions/roleActions';
-import { saveQuestionBankAction } from '@/app/actions/questionBankActions';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { showAdminToast } from '../AdminToast';
@@ -87,10 +85,8 @@ export function FormBuilder({
     }
   });
 
-  // Roles State (which roles this form is guided to)
-  const [allRoles, setAllRoles] = useState<TargetRoleDefinition[]>(() => {
-    return availableRoles && availableRoles.length > 0 ? availableRoles : DEFAULT_TARGET_ROLES;
-  });
+  // Target Roles State
+  const allRoles = availableRoles && availableRoles.length > 0 ? availableRoles : DEFAULT_TARGET_ROLES;
 
   const [targetRoles, setTargetRoles] = useState<FormRole[]>(() => {
     if (initialForm?.target_roles && initialForm.target_roles.length > 0) {
@@ -100,12 +96,10 @@ export function FormBuilder({
   });
 
   // Question Bank State
-  const [bank, setBank] = useState<BankQuestionRecord[]>(() => {
-    return questionBank && questionBank.length > 0 ? questionBank : DEFAULT_QUESTION_BANK;
-  });
+  const bank = questionBank && questionBank.length > 0 ? questionBank : DEFAULT_QUESTION_BANK;
   const [bankSearch, setBankSearch] = useState('');
   const [bankCategory, setBankCategory] = useState('all');
-  const [bankDrawerOpen, setBankDrawerOpen] = useState(true);
+  const [bankDrawerOpen, setBankDrawerOpen] = useState(false);
 
   // Fields State
   const [fields, setFields] = useState<Array<Partial<FormFieldRecord>>>(() => {
@@ -115,14 +109,13 @@ export function FormBuilder({
     if (isEditing) {
       return initialFields || [];
     }
+    // Default 3 common questions for new forms
     return [
       {
         id: 'f_1',
         type: 'short_text',
-        key: 'full_name',
+        key: 'nom_complet',
         label: 'Nom complet',
-        help_text: 'Prénom et nom de famille',
-        placeholder: 'Ex. Sarah Benali',
         required: true,
         target_roles: ['all'],
       },
@@ -131,8 +124,6 @@ export function FormBuilder({
         type: 'email',
         key: 'email',
         label: 'Adresse email',
-        help_text: 'Pour les communications et confirmations',
-        placeholder: 'sarah.benali@example.com',
         required: true,
         target_roles: ['all'],
       },
@@ -141,18 +132,12 @@ export function FormBuilder({
         type: 'phone',
         key: 'phone',
         label: 'Numéro de téléphone (WhatsApp)',
-        placeholder: '0550 00 00 00',
         required: true,
         target_roles: ['all'],
       },
     ];
   });
 
-  // Tab & View State
-  // activeTab can be 'settings' | 'common' | roleId
-  const [activeTab, setActiveTab] = useState<string>('settings');
-  const [viewMode, setViewMode] = useState<'board' | 'tabs'>('board');
-  const [showAddRoleDropdown, setShowAddRoleDropdown] = useState(false);
   const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
 
   // Drag and Drop State
@@ -181,22 +166,25 @@ export function FormBuilder({
         try {
           const d = new Date(initialForm.closes_at);
           const pad = (n: number) => String(n).padStart(2, '0');
-          setClosesAt(
-            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-          );
-        } catch {
-          setClosesAt('');
-        }
-      } else {
-        setClosesAt('');
+          setClosesAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
+        } catch {}
+      }
+      if (initialForm.send_receipt !== undefined) {
+        setSendReceipt(initialForm.send_receipt);
+      }
+      if (initialForm.custom_email_subject) {
+        setCustomEmailSubject(initialForm.custom_email_subject);
+      }
+      if (initialForm.custom_email_html) {
+        setCustomEmailHtml(initialForm.custom_email_html);
       }
     }
   }, [initialForm, isEditing]);
 
-  // Slug auto-generation helper from title
+  // Auto-generate slug from title
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    if (!isEditing && (!slug || slug === title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))) {
+    if (!isEditing || !slug) {
       const generated = val
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -208,8 +196,6 @@ export function FormBuilder({
   // Add a role to the form
   const addRoleToForm = (roleDef: TargetRoleDefinition) => {
     if (targetRoles.some((r) => r.id === roleDef.id)) {
-      setActiveTab(roleDef.id);
-      setShowAddRoleDropdown(false);
       return;
     }
     const newRole: FormRole = {
@@ -220,12 +206,10 @@ export function FormBuilder({
       icon: roleDef.icon,
     };
     setTargetRoles((prev) => [...prev, newRole]);
-    setActiveTab(newRole.id);
-    setShowAddRoleDropdown(false);
     showAdminToast({
       type: 'success',
       title: 'Public Cible Ajouté',
-      message: `Le parcours de questions pour "${newRole.name}" est créé.`,
+      message: `Le parcours de questions pour "${newRole.name}" est activé.`,
     });
   };
 
@@ -233,15 +217,14 @@ export function FormBuilder({
   const removeRoleFromForm = (roleId: string) => {
     const roleToRemove = targetRoles.find((r) => r.id === roleId);
     setTargetRoles((prev) => prev.filter((r) => r.id !== roleId));
-    // Also remove fields assigned strictly to this role
-    setFields((prev) => prev.filter((f) => !f.target_roles?.includes(roleId) || f.target_roles?.includes('all')));
-    if (activeTab === roleId) {
-      setActiveTab('common');
-    }
+    // Also remove questions strictly assigned to this role
+    setFields((prev) =>
+      prev.filter((f) => !f.target_roles?.includes(roleId) || f.target_roles?.includes('all'))
+    );
     showAdminToast({
       type: 'info',
       title: 'Public Cible Retiré',
-      message: `Le rôle "${roleToRemove?.name || roleId}" a été retiré de ce formulaire.`,
+      message: `Le parcours pour "${roleToRemove?.name || roleId}" a été désactivé.`,
     });
   };
 
@@ -273,12 +256,9 @@ export function FormBuilder({
 
     setFields((prev) => [...prev, newField]);
     setExpandedFieldId(newField.id || null);
-    if (target !== 'all') {
-      setActiveTab(target);
-    }
   };
 
-  // Insert a question from the Question Bank into a target pipeline
+  // Insert question from Bank into a target pipeline
   const insertFromBank = (bankQuestion: BankQuestionRecord, target: string = 'all') => {
     const uniqueKey = `${bankQuestion.key}_${Date.now().toString(36).slice(-3)}`;
     const newField: Partial<FormFieldRecord> = {
@@ -301,12 +281,12 @@ export function FormBuilder({
         : targetRoles.find((r) => r.id === target)?.name || 'ce rôle';
     showAdminToast({
       type: 'success',
-      title: 'Question Insérée',
+      title: 'Question Ajoutée',
       message: `"${bankQuestion.label}" a été ajoutée à ${targetName}.`,
     });
   };
 
-  // Drag and Drop handlers
+  // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, item: BankQuestionRecord) => {
     setDraggedBankItem(item);
     e.dataTransfer.setData('text/plain', item.id);
@@ -349,162 +329,175 @@ export function FormBuilder({
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (targetIdx < 0 || targetIdx >= fields.length) return;
 
-    const next = [...fields];
-    const temp = next[idx];
-    next[idx] = next[targetIdx];
-    next[targetIdx] = temp;
-    setFields(next);
+    setFields((prev) => {
+      const copy = [...prev];
+      const item = copy.splice(idx, 1)[0];
+      copy.splice(targetIdx, 0, item);
+      return copy;
+    });
   };
 
-  // Save Form Action
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Save Form
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
 
     if (!title.trim()) {
-      setError('Veuillez saisir un titre pour le formulaire.');
+      setError('Le titre du formulaire est obligatoire.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (!slug.trim()) {
-      setError('Veuillez saisir un slug URL valide.');
+      setError('L’adresse URL (slug) du formulaire est obligatoire.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (fields.length === 0) {
-      setError('Veuillez ajouter au moins une question.');
+      setError('Le formulaire doit comporter au moins une question.');
       return;
     }
 
     startTransition(async () => {
-      const formPayload: Omit<FormRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string } = {
-        id: initialForm?.id,
+      const payloadForm: Omit<FormRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string } = {
+        ...(initialForm?.id ? { id: initialForm.id } : {}),
         title: title.trim(),
         slug: slug.trim().toLowerCase(),
         description: description.trim() || null,
         status,
         layout,
-        confirmation_message: confirmationMessage.trim(),
+        confirmation_message: confirmationMessage,
         send_receipt: sendReceipt,
-        receipt_email_field: receiptEmailField.trim() || 'email',
-        custom_email_subject: customEmailSubject.trim() || null,
-        custom_email_html: customEmailHtml.trim() || null,
+        receipt_email_field: receiptEmailField,
         notify_emails: [FIXED_OFFICIAL_EMAIL],
         max_responses: maxResponses ? parseInt(maxResponses, 10) : null,
         closes_at: closesAt ? new Date(closesAt).toISOString() : null,
+        custom_email_subject: customEmailSubject.trim() || null,
+        custom_email_html: customEmailHtml.trim() || null,
         target_roles: targetRoles.length > 0 ? targetRoles : null,
       };
 
-      const fieldsPayload = fields.map((f, i) => ({
-        id: f.id,
-        position: i + 1,
-        type: f.type || 'short_text',
-        key: f.key || `field_${i + 1}`,
-        label: f.label || 'Sans titre',
-        help_text: f.help_text || null,
-        placeholder: f.placeholder || null,
-        required: f.required ?? false,
-        options: f.options || [],
-        validation: f.validation || {},
-        show_if: f.show_if || null,
-        target_roles: f.target_roles && f.target_roles.length > 0 ? f.target_roles : ['all'],
-      }));
+      const payloadFields: Array<Omit<FormFieldRecord, 'id' | 'form_id' | 'created_at'> & { id?: string }> =
+        fields.map((f, idx) => ({
+          ...(f.id && !f.id.startsWith('f_') ? { id: f.id } : {}),
+          position: idx + 1,
+          type: (f.type as FieldType) || 'short_text',
+          key: (f.key || `field_${idx}`).trim(),
+          label: (f.label || `Question ${idx + 1}`).trim(),
+          help_text: f.help_text?.trim() || null,
+          placeholder: f.placeholder?.trim() || null,
+          required: f.required ?? true,
+          options: f.options || [],
+          validation: f.validation || {},
+          show_if: f.show_if || null,
+          target_roles: f.target_roles && f.target_roles.length > 0 ? f.target_roles : null,
+        }));
 
-      const res = await saveFormAction(formPayload, fieldsPayload);
-      if (res.success) {
+      const res = await saveFormAction(payloadForm, payloadFields);
+
+      if (res.success && res.slug) {
         showAdminToast({
           type: 'success',
-          title: isEditing ? 'Formulaire mis à jour' : 'Formulaire créé',
-          message: `Le formulaire "${title}" a été enregistré avec succès dans Supabase.`,
+          title: isEditing ? 'Formulaire mis à jour' : 'Formulaire créé avec succès',
+          message: `Le formulaire "${title}" est enregistré.`,
         });
-        router.push('/admin');
+        router.push(`/admin`);
         router.refresh();
       } else {
         setError(res.error || 'Erreur lors de l’enregistrement.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
   };
 
-  // Close delete modal on Escape
-  useEffect(() => {
-    if (!showDeleteModal) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isDeleting) {
-        setShowDeleteModal(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDeleteModal, isDeleting]);
-
+  // Delete Form
   const handleDeleteForm = async () => {
     if (!initialForm?.slug) return;
-    setDeleteError(null);
     setIsDeleting(true);
+    setDeleteError(null);
+
     const res = await deleteFormAction(initialForm.slug);
-    setIsDeleting(false);
     if (res.success) {
-      setShowDeleteModal(false);
       showAdminToast({
         type: 'success',
         title: 'Formulaire supprimé',
-        message: `Le formulaire "${title}" a été supprimé définitivement.`,
+        message: 'Le formulaire a été supprimé définitivement.',
       });
       router.push('/admin');
       router.refresh();
     } else {
       setDeleteError(res.error || 'Erreur lors de la suppression.');
+      setIsDeleting(false);
     }
   };
 
-  // Filtered Question Bank
-  const filteredBank = bank.filter((item) => {
-    const matchesCat = bankCategory === 'all' || item.category === bankCategory;
-    const matchesSearch =
-      item.label.toLowerCase().includes(bankSearch.toLowerCase()) ||
-      item.key.toLowerCase().includes(bankSearch.toLowerCase());
-    return matchesCat && matchesSearch;
+  // Categories in question bank
+  const bankCategories = ['all', ...Array.from(new Set(bank.map((b) => b.category || 'Général')))];
+  const filteredBank = bank.filter((b) => {
+    const matchCat = bankCategory === 'all' || b.category === bankCategory;
+    const matchSearch =
+      !bankSearch.trim() ||
+      b.label.toLowerCase().includes(bankSearch.toLowerCase()) ||
+      b.key.toLowerCase().includes(bankSearch.toLowerCase());
+    return matchCat && matchSearch;
   });
 
-  const bankCategories = Array.from(new Set(['all', ...bank.map((q) => q.category).filter(Boolean)]));
-
-  // Field partitions
+  // Filter common fields
   const commonFields = fields.filter(
     (f) => !f.target_roles || f.target_roles.length === 0 || f.target_roles.includes('all')
   );
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E6DFD5]">
+    <div className="space-y-8 w-full max-w-full">
+      {/* ===================================================================== */}
+      {/* TOP HEADER & STICKY ACTION BAR                                        */}
+      {/* ===================================================================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E6DFD5] sticky top-0 bg-[#FAF6EE]/95 backdrop-blur-xs z-30 py-2">
         <div>
-          <Link href="/admin" className="text-xs font-semibold text-[#52525B] hover:text-[#18181B] inline-flex items-center gap-1">
+          <Link
+            href="/admin"
+            className="text-xs font-semibold text-[#52525B] hover:text-[#18181B] inline-flex items-center gap-1 mb-1 transition"
+          >
             <span>←</span> <span>Retour aux formulaires</span>
           </Link>
-          <div className="flex items-center gap-2.5 mt-1">
+          <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#18181B] tracking-tight">
-              {isEditing ? `Modifier : ${initialForm?.title}` : 'Créer un formulaire'}
+              {isEditing ? `Modifier : ${title || 'Formulaire'}` : 'Créer un formulaire'}
             </h1>
             {targetRoles.length > 0 && (
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#3B33FF]/10 text-[#3B33FF] border border-[#3B33FF]/20">
-                {targetRoles.length} public(s) ciblé(s)
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#8B3EE1]/10 text-[#8B3EE1] border border-[#8B3EE1]/20">
+                {targetRoles.length} profil(s) actif(s)
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-[#52525B] mt-0.5">
-            Constructeur interactif par parcours de rôles &amp; glisser-déposer de questions.
+          <p className="text-xs text-[#71717A] mt-0.5">
+            Configurez les détails du formulaire, sélectionnez les publics cibles, et organisez vos questions.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Question Bank Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setBankDrawerOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl border border-[#E6DFD5] bg-white text-xs font-bold text-[#18181B] hover:bg-[#FAF8F5] transition shadow-2xs flex items-center gap-2 cursor-pointer"
+            title="Ouvrir la banque de questions prêtes à l'emploi"
+          >
+            <span>📦</span>
+            <span>Banque de questions ({bank.length})</span>
+          </button>
+
           <Link
             href="/admin"
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-white border border-[#E6DFD5] text-[#52525B] hover:bg-[#FAF8F5] transition"
+            className="px-4 py-2.5 text-xs font-semibold rounded-xl bg-white border border-[#E6DFD5] text-[#52525B] hover:bg-[#FAF8F5] transition"
           >
             Annuler
           </Link>
+
           <button
-            type="submit"
+            type="button"
+            onClick={handleSave}
             disabled={isPending}
             className="brand-gradient-btn px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xs disabled:opacity-50 transition cursor-pointer flex items-center gap-2"
           >
@@ -512,7 +505,11 @@ export function FormBuilder({
               <>
                 <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 <span>Enregistrement...</span>
               </>
@@ -524,632 +521,507 @@ export function FormBuilder({
       </div>
 
       {error && (
-        <div className="p-3.5 bg-[#FEF2F2] border border-[#FECACA] rounded-xl text-xs text-[#DC2626] font-semibold flex items-center justify-between">
+        <div className="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-2xl text-xs text-[#DC2626] font-semibold flex items-center justify-between shadow-xs">
           <span>⚠️ {error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-xs font-bold p-1">✕</button>
+          <button type="button" onClick={() => setError(null)} className="text-xs font-bold p-1">
+            ✕
+          </button>
         </div>
       )}
 
       {/* ===================================================================== */}
-      {/* CHROME-STYLE TABS BAR                                                 */}
+      {/* SECTION 1: INFORMATIONS DU FORMULAIRE (Always upfront and clear!)     */}
       {/* ===================================================================== */}
-      <div className="bg-[#EFECE6] border border-[#E6DFD5] rounded-2xl overflow-hidden shadow-xs">
-        <div className="flex items-center gap-1 px-3 pt-3 bg-[#EFECE6] border-b border-[#E6DFD5] overflow-x-auto scrollbar-none">
-          {/* Tab 1: Form Settings */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-t-xl transition relative cursor-pointer ${
-              activeTab === 'settings'
-                ? 'bg-white text-[#18181B] shadow-2xs -mb-px border-t-2 border-t-[#3B33FF]'
-                : 'text-[#71717A] hover:bg-white/60 hover:text-[#18181B]'
-            }`}
-          >
-            <span>⚙️</span>
-            <span>1. Paramètres du formulaire</span>
-          </button>
+      <div className="bg-white border border-[#E6DFD5] rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD5]">
+          <div>
+            <h2 className="text-base font-bold text-[#18181B] flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-[#3B33FF]/10 text-[#3B33FF] flex items-center justify-center text-xs font-extrabold">
+                1
+              </span>
+              <span>Informations principales du formulaire</span>
+            </h2>
+            <p className="text-xs text-[#71717A] mt-0.5">
+              Définissez le titre, la description et l&apos;accessibilité de votre formulaire.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#FAF8F5] border border-[#E6DFD5] text-[#52525B]">
+            Étape 1 sur 3
+          </span>
+        </div>
 
-          {/* Tab 2: Common Questions (Everyone) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('common')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-t-xl transition relative cursor-pointer ${
-              activeTab === 'common'
-                ? 'bg-white text-[#18181B] shadow-2xs -mb-px border-t-2 border-t-[#3B33FF]'
-                : 'text-[#71717A] hover:bg-white/60 hover:text-[#18181B]'
-            }`}
-          >
-            <span>🌐</span>
-            <span>2. Questions Communes</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#18181B]/10 text-[#18181B] font-mono">
-              {commonFields.length}
-            </span>
-          </button>
-
-          {/* Dynamic Role Tabs */}
-          {targetRoles.map((role) => {
-            const roleFieldsCount = fields.filter((f) => f.target_roles?.includes(role.id)).length;
-            const isActive = activeTab === role.id;
-            return (
-              <div
-                key={role.id}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-t-xl transition group relative ${
-                  isActive
-                    ? 'bg-white text-[#18181B] shadow-2xs -mb-px border-t-2'
-                    : 'text-[#71717A] hover:bg-white/60 hover:text-[#18181B]'
-                }`}
-                style={isActive ? { borderTopColor: role.color || '#3B33FF' } : {}}
-              >
-                <button
-                  type="button"
-                  onClick={() => setActiveTab(role.id)}
-                  className="flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>{role.icon || '🎯'}</span>
-                  <span>{role.name}</span>
-                  <span
-                    className="text-[10px] px-1.5 py-0.2 rounded-full font-bold"
-                    style={{
-                      backgroundColor: `${role.color || '#3B33FF'}20`,
-                      color: role.color || '#3B33FF',
-                    }}
-                  >
-                    {roleFieldsCount}
-                  </span>
-                </button>
-
-                {/* Remove Role Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeRoleFromForm(role.id);
-                  }}
-                  className="w-4 h-4 rounded hover:bg-black/10 text-[10px] text-[#71717A] hover:text-[#DC2626] flex items-center justify-center cursor-pointer ml-1"
-                  title={`Retirer le rôle "${role.name}"`}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-
-          {/* Chrome "+" Button to Add a Role */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowAddRoleDropdown(!showAddRoleDropdown)}
-              className="w-7 h-7 rounded-lg bg-white/70 hover:bg-white text-[#18181B] text-base font-bold flex items-center justify-center transition shadow-2xs border border-[#E6DFD5] cursor-pointer ml-1"
-              title="Ajouter un public cible / rôle à ce formulaire"
-            >
-              +
-            </button>
-
-            {showAddRoleDropdown && (
-              <div className="absolute top-9 left-0 z-30 w-72 bg-white rounded-2xl border border-[#E6DFD5] shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-1.5 border-b border-[#E6DFD5]">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#71717A]">
-                    Sélectionner un Public Cible
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddRoleDropdown(false)}
-                    className="text-xs text-[#71717A] hover:text-[#18181B] p-0.5"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="space-y-1 max-h-56 overflow-y-auto">
-                  {allRoles.map((r) => {
-                    const isAlreadyAssigned = targetRoles.some((tr) => tr.id === r.id);
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        disabled={isAlreadyAssigned}
-                        onClick={() => addRoleToForm(r)}
-                        className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between gap-2 transition cursor-pointer ${
-                          isAlreadyAssigned
-                            ? 'opacity-40 bg-[#FAF8F5] cursor-not-allowed'
-                            : 'hover:bg-[#FAF8F5]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0"
-                            style={{ backgroundColor: `${r.color || '#3B33FF'}20` }}
-                          >
-                            {r.icon || '🎯'}
-                          </span>
-                          <div className="truncate">
-                            <span className="font-bold text-[#18181B] block truncate">{r.name}</span>
-                            <span className="text-[10px] text-[#71717A] block truncate">{r.description}</span>
-                          </div>
-                        </div>
-                        {isAlreadyAssigned ? (
-                          <span className="text-[10px] text-[#15803D] font-bold">✓ Ajouté</span>
-                        ) : (
-                          <span className="text-xs text-[#3B33FF] font-bold">+</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-2 border-t border-[#E6DFD5]">
-                  <Link
-                    href="/admin/roles"
-                    target="_blank"
-                    className="text-[11px] font-semibold text-[#3B33FF] hover:underline flex items-center gap-1"
-                  >
-                    <span>⚙️ Gérer tous les rôles &amp; catégories</span>
-                    <span>↗</span>
-                  </Link>
-                </div>
-              </div>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          {/* Title */}
+          <div className="md:col-span-8 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#18181B]">
+              Titre du formulaire <span className="text-[#E53888]">*</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="ex: Inscription : Conférence Médicale Annuelle 2026"
+              required
+              className="w-full min-h-[46px] px-4 py-2.5 text-base font-semibold text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF] focus:ring-2 focus:ring-[#3B33FF]/20"
+            />
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="ml-auto flex items-center gap-2 pr-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode(viewMode === 'board' ? 'tabs' : 'board')}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E6DFD5] text-[#18181B] shadow-2xs hover:bg-[#FAF8F5] transition flex items-center gap-1.5 cursor-pointer"
+          {/* Status */}
+          <div className="md:col-span-4 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#18181B]">
+              Statut
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as FormStatus)}
+              className="w-full min-h-[46px] px-3.5 py-2.5 text-sm font-semibold text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
             >
-              <span>{viewMode === 'board' ? '📑' : '📌'}</span>
-              <span>{viewMode === 'board' ? 'Vue Onglet Unique' : 'Vue Pipelines (Miro)'}</span>
-            </button>
+              <option value="open">🟢 Ouvert (Accepte les réponses)</option>
+              <option value="draft">🟡 Brouillon (Non accessible)</option>
+              <option value="closed">🔴 Clôturé (Formulaire fermé)</option>
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="md:col-span-12 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#18181B]">
+              Description ou consignes <span className="text-[#71717A] font-normal text-xs">(facultatif)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Indiquez les détails, consignes ou prérequis pour les participants..."
+              className="w-full px-4 py-2.5 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
+            />
           </div>
         </div>
 
-        {/* Tab Content Area */}
-        <div className="p-5 sm:p-7 bg-white">
-          {/* TAB 1: FORM SETTINGS */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6 max-w-4xl animate-in fade-in duration-150">
-              <div className="pb-3 border-b border-[#E6DFD5]">
-                <h2 className="text-base font-bold text-[#18181B] flex items-center gap-2">
-                  <span>⚙️ Informations générales du formulaire</span>
-                </h2>
-                <p className="text-xs text-[#52525B] mt-0.5">
-                  Titre, URL publique, format d&apos;affichage et dates de clôture automatique.
-                </p>
-              </div>
+        {/* Collapsible Advanced Settings */}
+        <div className="pt-2 border-t border-[#E6DFD5]">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-xs font-bold text-[#3B33FF] hover:underline flex items-center gap-1.5 cursor-pointer py-1"
+          >
+            <span>
+              {showAdvanced
+                ? '− Masquer les paramètres avancés'
+                : '+ Paramètres avancés (URL personnalisée, clôture automatique hh:mm:ss, accusé email...)'}
+            </span>
+          </button>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                    Titre du formulaire <span className="text-[#DC2626]">*</span>
+          {showAdvanced && (
+            <div className="mt-4 p-5 rounded-2xl bg-[#FAF8F5] border border-[#E6DFD5] space-y-5 animate-in fade-in duration-150">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Custom URL Slug */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#18181B]">
+                    Adresse URL publique (Slug) :
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Ex. Inscription : Conférence Médicale Annuelle 2026"
-                    className="w-full min-h-[44px] px-3.5 py-2 text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF] shadow-2xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                    Description ou consignes (facultatif)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ex. Ce formulaire s'adresse aux étudiants et praticiens désireux de participer..."
-                    className="w-full px-3.5 py-2 text-xs sm:text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Statut
-                    </label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as FormStatus)}
-                      className="w-full min-h-[42px] px-3 py-2 text-xs sm:text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
-                    >
-                      <option value="open">Ouvert (Accepte les réponses)</option>
-                      <option value="draft">Brouillon (Non accessible aux étudiants)</option>
-                      <option value="closed">Clôturé (Formulaire fermé)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                      Format d’affichage
-                    </label>
-                    <select
-                      value={layout}
-                      onChange={(e) => setLayout(e.target.value as FormLayout)}
-                      className="w-full min-h-[42px] px-3 py-2 text-xs sm:text-sm text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
-                    >
-                      <option value="stepped">Format optimisé (Mobile : 3 par 3 • PC : 2 côtés compact)</option>
-                      <option value="single">Page unique classique</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Email de réception verrouillé */}
-                <div className="p-3 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl text-xs text-[#52525B] flex items-center justify-between gap-2">
-                  <span>
-                    Email de réception des alertes (fixe et sécurisé) : <strong className="text-[#18181B] font-mono">{FIXED_OFFICIAL_EMAIL}</strong>
-                  </span>
-                  <span className="text-[10px] font-bold text-[#15803D] bg-[#DCFCE7] px-2 py-0.5 rounded-full border border-[#86EFAC]">
-                    ✓ Officiel Club
-                  </span>
-                </div>
-
-                {/* Collapsible Advanced Settings */}
-                <div className="pt-2 border-t border-[#E6DFD5]">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="text-xs font-semibold text-[#3B33FF] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>{showAdvanced ? '− Masquer les paramètres avancés' : '+ Afficher les paramètres avancés'}</span>
-                  </button>
-
-                  {showAdvanced && (
-                    <div className="mt-3 p-4 bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                          Adresse URL du formulaire
-                        </label>
-                        <div className="flex items-center">
-                          <span className="text-xs text-[#71717A] bg-white px-3 min-h-[42px] flex items-center border border-r-0 border-[#D4D4D8] rounded-l-xl select-none">
-                            /f/
-                          </span>
-                          <input
-                            type="text"
-                            required
-                            value={slug}
-                            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                            className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-r-xl"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                            Capacité maximale de candidatures (facultatif)
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={maxResponses}
-                            onChange={(e) => setMaxResponses(e.target.value)}
-                            placeholder="Illimité"
-                            className="w-full min-h-[42px] px-3 py-1.5 text-xs text-[#18181B] bg-white border border-[#D4D4D8] rounded-xl"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-[#18181B] mb-1">
-                            Accusé de réception par email
-                          </label>
-                          <label className="flex items-center cursor-pointer min-h-[42px]">
-                            <input
-                              type="checkbox"
-                              checked={sendReceipt}
-                              onChange={(e) => setSendReceipt(e.target.checked)}
-                              className="w-4 h-4 rounded text-[#3B33FF] border-[#D4D4D8]"
-                            />
-                            <span className="ml-2 text-xs text-[#18181B]">Envoyer un accusé au candidat</span>
-                          </label>
-                          {sendReceipt && !fields.some((f) => f.type === 'email') && (
-                            <p className="text-[11px] text-[#DC2626] font-semibold mt-1 flex items-center gap-1">
-                              <span>⚠️</span> Aucun champ &laquo; Adresse email &raquo; dans vos questions. Le candidat ne pourra pas recevoir d&apos;accusé.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Custom Date Time Picker */}
-                      <div className="pt-3 border-t border-[#E6DFD5]">
-                        <CustomDateTimePicker
-                          value={closesAt}
-                          onChange={setClosesAt}
-                          label="Date et heure de fin (Clôture automatique hh:mm:ss)"
-                          helperText="Dès que cette date et cette heure précise (hh:mm:ss) sont atteintes, le formulaire se clôture automatiquement."
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* QUESTIONS WORKSPACE: WITH LEFT BANK & ROLE PIPELINES              */}
-          {/* ================================================================= */}
-          {activeTab !== 'settings' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-150">
-              {/* LEFT COLUMN: QUESTION BANK & QUICK INSERT TOOL */}
-              <div
-                className={`${
-                  bankDrawerOpen ? 'lg:col-span-4' : 'lg:col-span-1'
-                } bg-[#FAF8F5] border border-[#E6DFD5] rounded-2xl p-4 transition-all duration-200 space-y-3.5`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">📦</span>
-                    {bankDrawerOpen && (
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#18181B]">
-                        Banque de Questions ({bank.length})
-                      </h3>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setBankDrawerOpen(!bankDrawerOpen)}
-                    className="text-xs text-[#71717A] hover:text-[#18181B] p-1 cursor-pointer"
-                    title={bankDrawerOpen ? 'Réduire' : 'Agrandir la banque'}
-                  >
-                    {bankDrawerOpen ? '◀' : '▶'}
-                  </button>
-                </div>
-
-                {bankDrawerOpen && (
-                  <>
-                    <p className="text-[11px] text-[#52525B]">
-                      Glissez-déposez n&apos;importe quelle question dans la colonne souhaitée.
-                    </p>
-
-                    {/* Search in bank */}
+                  <div className="flex items-center">
+                    <span className="px-3 py-2 text-xs bg-[#E6DFD5]/50 border border-r-0 border-[#D4D4D8] rounded-l-xl text-[#71717A] font-mono select-none">
+                      /f/
+                    </span>
                     <input
                       type="text"
-                      value={bankSearch}
-                      onChange={(e) => setBankSearch(e.target.value)}
-                      placeholder="Rechercher une question..."
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
+                      placeholder="mon-formulaire"
+                      className="w-full px-3 py-2 text-xs font-mono border border-[#D4D4D8] rounded-r-xl bg-white focus:border-[#3B33FF]"
                     />
+                  </div>
+                </div>
 
-                    {/* Category Filter Chips */}
-                    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-                      {bankCategories.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setBankCategory(c)}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap transition cursor-pointer ${
-                            bankCategory === c
-                              ? 'bg-[#18181B] text-white'
-                              : 'bg-white text-[#71717A] border border-[#E6DFD5] hover:bg-[#FAF8F5]'
-                          }`}
-                        >
-                          {c === 'all' ? 'Toutes' : c}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Draggable Question Cards List */}
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                      {filteredBank.map((bq) => {
-                        const typeInfo = FIELD_TYPE_LABELS[bq.type] || {
-                          label: bq.type,
-                          icon: '📝',
-                          color: '#3B33FF',
-                        };
-                        return (
-                          <div
-                            key={bq.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, bq)}
-                            className="p-2.5 bg-white border border-[#E6DFD5] hover:border-[#3B33FF] rounded-xl shadow-2xs hover:shadow-xs transition cursor-grab active:cursor-grabbing group space-y-1.5"
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span
-                                className="text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"
-                                style={{
-                                  backgroundColor: `${typeInfo.color}15`,
-                                  color: typeInfo.color,
-                                  border: `1px solid ${typeInfo.color}30`,
-                                }}
-                              >
-                                <span>{typeInfo.icon}</span>
-                                <span>{typeInfo.label}</span>
-                              </span>
-                              <span className="text-[9px] text-[#71717A] font-mono">
-                                &#123;&#123;{bq.key}&#125;&#125;
-                              </span>
-                            </div>
-
-                            <p className="text-xs font-semibold text-[#18181B] leading-tight line-clamp-2">
-                              {bq.label}
-                            </p>
-
-                            <div className="flex items-center justify-between pt-1 border-t border-[#E6DFD5]/40 text-[10px]">
-                              <span className="text-[#71717A] flex items-center gap-1">
-                                <span>⠿</span> Glisser
-                              </span>
-
-                              {/* One-click Add Dropdown */}
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => insertFromBank(bq, 'all')}
-                                  className="text-[10px] font-bold text-[#3B33FF] hover:underline"
-                                  title="Ajouter aux questions communes"
-                                >
-                                  + Communes
-                                </button>
-                                {activeTab !== 'settings' && activeTab !== 'common' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => insertFromBank(bq, activeTab)}
-                                    className="text-[10px] font-bold text-[#8B3EE1] hover:underline"
-                                    title="Ajouter au rôle actif"
-                                  >
-                                    + Rôle actif
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Quick Add Custom Question into Active Pipeline */}
-                    <div className="pt-2 border-t border-[#E6DFD5]">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          addFieldToTarget(activeTab === 'settings' ? 'all' : activeTab, 'short_text')
-                        }
-                        className="w-full py-2 px-3 text-xs font-bold rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#E6DFD5] text-[#18181B] transition shadow-2xs cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <span>+</span>
-                        <span>Créer une question personnalisée</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                {/* Max Responses */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#18181B]">
+                    Capacité maximale de candidatures :
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxResponses}
+                    onChange={(e) => setMaxResponses(e.target.value)}
+                    placeholder="Illimité (laisser vide)"
+                    className="w-full px-3 py-2 text-xs border border-[#D4D4D8] rounded-xl bg-white focus:border-[#3B33FF]"
+                  />
+                </div>
               </div>
 
-              {/* RIGHT WORKSPACE: ROLE PIPELINES & BOARD */}
-              <div
-                className={`${
-                  bankDrawerOpen ? 'lg:col-span-8' : 'lg:col-span-11'
-                } transition-all duration-200`}
-              >
-                {/* Board Multi-Column Pipeline View (Figma/Miro style as in screenshot!) */}
-                {viewMode === 'board' ? (
-                  <div className="flex items-start gap-4 overflow-x-auto pb-4 scrollbar-thin">
-                    {/* Column 1: Questions Communes (Tout le monde) */}
-                    <PipelineColumn
-                      id="all"
-                      title="Questions Communes"
-                      subtitle="Posées à tous les répondants"
-                      icon="🌐"
-                      color="#3B33FF"
-                      fields={commonFields}
-                      isDropActive={activeDropPipeline === 'all'}
-                      onDragOver={(e) => handleDragOver(e, 'all')}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, 'all')}
-                      onAddField={(type) => addFieldToTarget('all', type)}
-                      onUpdateField={updateField}
-                      onRemoveField={removeField}
-                      onMoveField={moveField}
-                      expandedFieldId={expandedFieldId}
-                      setExpandedFieldId={setExpandedFieldId}
-                    />
+              {/* Automatic Deadline */}
+              <div className="pt-3 border-t border-[#E6DFD5]">
+                <CustomDateTimePicker
+                  value={closesAt}
+                  onChange={setClosesAt}
+                  label="Date et heure de fin (Clôture automatique hh:mm:ss)"
+                  helperText="Dès que cette date et cette heure précise (hh:mm:ss) sont atteintes, le formulaire se clôture automatiquement et refuse toute nouvelle candidature."
+                />
+              </div>
 
-                    {/* Columns for each Role Pipeline */}
-                    {targetRoles.map((role) => {
-                      const roleFields = fields.filter((f) => f.target_roles?.includes(role.id));
-                      return (
-                        <PipelineColumn
-                          key={role.id}
-                          id={role.id}
-                          title={role.name}
-                          subtitle={role.description || 'Questions ciblées pour ce profil'}
-                          icon={role.icon || '🎯'}
-                          color={role.color || '#8B3EE1'}
-                          fields={roleFields}
-                          isDropActive={activeDropPipeline === role.id}
-                          onDragOver={(e) => handleDragOver(e, role.id)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, role.id)}
-                          onAddField={(type) => addFieldToTarget(role.id, type)}
-                          onUpdateField={updateField}
-                          onRemoveField={removeField}
-                          onMoveField={moveField}
-                          expandedFieldId={expandedFieldId}
-                          setExpandedFieldId={setExpandedFieldId}
-                        />
-                      );
-                    })}
-
-                    {/* Column N: Quick Add Role Button Card */}
-                    <div className="w-64 shrink-0 bg-[#FAF8F5] border-2 border-dashed border-[#D4D4D8] rounded-2xl p-6 text-center space-y-3 self-stretch flex flex-col items-center justify-center min-h-[300px]">
-                      <span className="text-2xl">👥</span>
-                      <h4 className="text-xs font-bold text-[#18181B]">
-                        Ajouter un autre profil / rôle
-                      </h4>
-                      <p className="text-[11px] text-[#71717A]">
-                        Créez un nouveau pipeline pour une catégorie de candidats.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddRoleDropdown(true)}
-                        className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-white border border-[#E6DFD5] text-[#3B33FF] shadow-2xs hover:bg-[#F4F0EA] transition cursor-pointer"
-                      >
-                        + Ajouter un Public Cible
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* Focused Single Tab View */
-                  <div className="space-y-4">
-                    {activeTab === 'common' && (
-                      <PipelineColumn
-                        id="all"
-                        title="Questions Communes (Posées à tous)"
-                        subtitle="Ces questions s'afficheront quel que soit le rôle choisi par le candidat"
-                        icon="🌐"
-                        color="#3B33FF"
-                        fields={commonFields}
-                        isDropActive={activeDropPipeline === 'all'}
-                        onDragOver={(e) => handleDragOver(e, 'all')}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, 'all')}
-                        onAddField={(type) => addFieldToTarget('all', type)}
-                        onUpdateField={updateField}
-                        onRemoveField={removeField}
-                        onMoveField={moveField}
-                        expandedFieldId={expandedFieldId}
-                        setExpandedFieldId={setExpandedFieldId}
-                        fullWidth
-                      />
-                    )}
-
-                    {targetRoles.map((role) => {
-                      if (activeTab !== role.id) return null;
-                      const roleFields = fields.filter((f) => f.target_roles?.includes(role.id));
-                      return (
-                        <PipelineColumn
-                          key={role.id}
-                          id={role.id}
-                          title={`Parcours Spécifique : ${role.name}`}
-                          subtitle={role.description || 'Questions posées exclusivement à ce profil'}
-                          icon={role.icon || '🎯'}
-                          color={role.color || '#8B3EE1'}
-                          fields={roleFields}
-                          isDropActive={activeDropPipeline === role.id}
-                          onDragOver={(e) => handleDragOver(e, role.id)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, role.id)}
-                          onAddField={(type) => addFieldToTarget(role.id, type)}
-                          onUpdateField={updateField}
-                          onRemoveField={removeField}
-                          onMoveField={moveField}
-                          expandedFieldId={expandedFieldId}
-                          setExpandedFieldId={setExpandedFieldId}
-                          fullWidth
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+              {/* Receipts & Email Alerts */}
+              <div className="pt-3 border-t border-[#E6DFD5] space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendReceipt}
+                    onChange={(e) => setSendReceipt(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#3B33FF]"
+                  />
+                  <span className="text-xs font-bold text-[#18181B]">
+                    Envoyer un accusé de réception par email au candidat
+                  </span>
+                </label>
+                <p className="text-[11px] text-[#71717A]">
+                  Email de notification interne du club : <strong>{FIXED_OFFICIAL_EMAIL}</strong>
+                </p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Delete Form Area (Zone de danger) */}
+      {/* ===================================================================== */}
+      {/* SECTION 2: PUBLICS CIBLES & RÔLES (Click to enable/disable pipelines)  */}
+      {/* ===================================================================== */}
+      <div className="bg-white border border-[#E6DFD5] rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E6DFD5]">
+          <div>
+            <h2 className="text-base font-bold text-[#18181B] flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-[#8B3EE1]/10 text-[#8B3EE1] flex items-center justify-center text-xs font-extrabold">
+                2
+              </span>
+              <span>À qui s&apos;adresse ce formulaire ? (Publics Cibles &amp; Rôles)</span>
+            </h2>
+            <p className="text-xs text-[#71717A] mt-0.5">
+              Cochez les catégories de personnes ciblées. Chaque profil sélectionné créera sa colonne de questions dédiée ci-dessous.
+            </p>
+          </div>
+
+          <Link
+            href="/admin/roles"
+            target="_blank"
+            className="text-xs font-semibold text-[#8B3EE1] hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            <span>⚙️ Gérer le catalogue des rôles</span>
+            <span>↗</span>
+          </Link>
+        </div>
+
+        {/* Roles Grid Selection */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {allRoles.map((role) => {
+            const isEnabled = targetRoles.some((r) => r.id === role.id);
+            const roleColor = role.color || '#3B33FF';
+            return (
+              <button
+                type="button"
+                key={role.id}
+                onClick={() => {
+                  if (isEnabled) {
+                    removeRoleFromForm(role.id);
+                  } else {
+                    addRoleToForm(role);
+                  }
+                }}
+                className={`p-3.5 rounded-xl border text-left transition flex items-start justify-between gap-3 cursor-pointer ${
+                  isEnabled
+                    ? 'bg-white shadow-sm ring-2'
+                    : 'bg-[#FAF8F5]/60 hover:bg-white border-[#E6DFD5]'
+                }`}
+                style={{
+                  borderColor: isEnabled ? roleColor : undefined,
+                  boxShadow: isEnabled ? `0 0 0 1px ${roleColor}` : undefined,
+                }}
+              >
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <span
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 font-bold"
+                    style={{ backgroundColor: `${roleColor}15`, color: roleColor }}
+                  >
+                    {role.icon || '🎯'}
+                  </span>
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm font-bold text-[#18181B] block truncate">
+                      {role.name}
+                    </span>
+                    <span className="text-[11px] text-[#71717A] block line-clamp-1">
+                      {role.description || 'Public cible'}
+                    </span>
+                  </div>
+                </div>
+
+                <span
+                  className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0 transition ${
+                    isEnabled ? 'text-white' : 'border border-[#D4D4D8] text-transparent'
+                  }`}
+                  style={{ backgroundColor: isEnabled ? roleColor : 'transparent' }}
+                >
+                  ✓
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {targetRoles.length === 0 ? (
+          <div className="p-4 rounded-xl bg-[#FAF8F5] border border-dashed border-[#E6DFD5] text-xs text-[#52525B] flex items-center gap-2">
+            <span>ℹ️</span>
+            <span>
+              <strong>Formulaire Standard :</strong> Aucun profil particulier sélectionné. Toutes les questions créées ci-dessous seront communes à tous les répondants.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-[#52525B] bg-[#8B3EE1]/5 p-3 rounded-xl border border-[#8B3EE1]/15">
+            <span>🎯</span>
+            <span>
+              <strong>{targetRoles.length} parcours actif(s) :</strong> Les candidats verront un menu déroulant sur le formulaire public pour choisir leur profil, et répondront aux questions communes + celles spécifiques à leur profil.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SECTION 3: PARCOURS & QUESTIONS (The visual Miro/Figma Board!)       */}
+      {/* ===================================================================== */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-[#18181B] flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-[#059669]/10 text-[#059669] flex items-center justify-center text-xs font-extrabold">
+                3
+              </span>
+              <span>Parcours de questions ({fields.length} question{fields.length > 1 ? 's' : ''} au total)</span>
+            </h2>
+            <p className="text-xs text-[#71717A] mt-0.5">
+              Organisez vos questions par colonne. Glissez-déposez pour réordonner ou insérez directement depuis la Banque de Questions.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setBankDrawerOpen(true)}
+            className="px-4 py-2 rounded-xl border border-[#3B33FF]/30 bg-[#3B33FF]/5 text-xs font-bold text-[#3B33FF] hover:bg-[#3B33FF]/10 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          >
+            <span>📦</span>
+            <span>Ouvrir la Banque de questions ({bank.length})</span>
+          </button>
+        </div>
+
+        {/* Horizontal Columns Canvas (Board) */}
+        <div className="flex items-start gap-5 overflow-x-auto pb-6 pt-1 scrollbar-thin">
+          {/* Column 1: Questions Communes (Always present) */}
+          <PipelineColumn
+            id="all"
+            title="Questions Communes"
+            subtitle="Posées à TOUS les répondants"
+            icon="🌐"
+            color="#3B33FF"
+            fields={commonFields}
+            isDropActive={activeDropPipeline === 'all'}
+            onDragOver={(e) => handleDragOver(e, 'all')}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, 'all')}
+            onAddField={(type) => addFieldToTarget('all', type)}
+            onUpdateField={updateField}
+            onRemoveField={removeField}
+            onMoveField={moveField}
+            expandedFieldId={expandedFieldId}
+            setExpandedFieldId={setExpandedFieldId}
+          />
+
+          {/* Dynamic Columns for Selected Roles */}
+          {targetRoles.map((role) => {
+            const roleFields = fields.filter((f) => f.target_roles?.includes(role.id));
+            return (
+              <PipelineColumn
+                key={role.id}
+                id={role.id}
+                title={role.name}
+                subtitle={role.description || 'Questions spécifiques à ce profil'}
+                icon={role.icon || '🎯'}
+                color={role.color || '#3B33FF'}
+                fields={roleFields}
+                isDropActive={activeDropPipeline === role.id}
+                onDragOver={(e) => handleDragOver(e, role.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, role.id)}
+                onAddField={(type) => addFieldToTarget(role.id, type)}
+                onUpdateField={updateField}
+                onRemoveField={removeField}
+                onMoveField={moveField}
+                expandedFieldId={expandedFieldId}
+                setExpandedFieldId={setExpandedFieldId}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SLIDING DRAWER: QUESTION BANK                                         */}
+      {/* ===================================================================== */}
+      {bankDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-2xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setBankDrawerOpen(false)}
+          />
+
+          {/* Sliding Panel */}
+          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-white border-l border-[#E6DFD5] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-250">
+              {/* Drawer Header */}
+              <div className="p-5 border-b border-[#E6DFD5] bg-[#FAF8F5]">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">📦</span>
+                    <div>
+                      <h3 className="text-base font-bold text-[#18181B]">Banque de Questions</h3>
+                      <p className="text-xs text-[#71717A]">{bank.length} questions réutilisables</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBankDrawerOpen(false)}
+                    className="w-8 h-8 rounded-lg border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs flex items-center justify-center font-bold text-[#71717A] hover:text-[#18181B] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Search */}
+                <input
+                  type="text"
+                  value={bankSearch}
+                  onChange={(e) => setBankSearch(e.target.value)}
+                  placeholder="Rechercher une question..."
+                  className="w-full px-3 py-2 text-xs bg-white border border-[#D4D4D8] rounded-xl focus:border-[#3B33FF]"
+                />
+
+                {/* Category Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 scrollbar-none">
+                  {bankCategories.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setBankCategory(c)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition cursor-pointer ${
+                        bankCategory === c
+                          ? 'bg-[#18181B] text-white shadow-2xs'
+                          : 'bg-white text-[#71717A] border border-[#E6DFD5] hover:bg-[#FAF8F5]'
+                      }`}
+                    >
+                      {c === 'all' ? 'Toutes' : c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Drawer Body: Questions List */}
+              <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
+                {filteredBank.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[#71717A]">
+                    Aucune question trouvée.
+                  </div>
+                ) : (
+                  filteredBank.map((bq) => {
+                    const typeInfo = FIELD_TYPE_LABELS[bq.type] || {
+                      label: bq.type,
+                      icon: '📝',
+                      color: '#3B33FF',
+                    };
+                    return (
+                      <div
+                        key={bq.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, bq)}
+                        className="bg-white border border-[#E6DFD5] hover:border-[#3B33FF] rounded-xl p-3 shadow-2xs space-y-2 cursor-grab active:cursor-grabbing transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1 mb-1"
+                              style={{
+                                backgroundColor: `${typeInfo.color}15`,
+                                color: typeInfo.color,
+                              }}
+                            >
+                              <span>{typeInfo.icon}</span>
+                              <span>{typeInfo.label}</span>
+                            </span>
+                            <h4 className="text-xs font-bold text-[#18181B] leading-snug">
+                              {bq.label}
+                            </h4>
+                          </div>
+                          <span className="text-[10px] text-[#71717A] font-mono">
+                            {bq.key}
+                          </span>
+                        </div>
+
+                        {/* Quick insertion toolbar */}
+                        <div className="flex items-center justify-between pt-1.5 border-t border-[#E6DFD5]/60 text-[11px]">
+                          <span className="text-[#71717A] text-[10px]">⠿ Glisser vers colonne</span>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => insertFromBank(bq, 'all')}
+                              className="px-2 py-0.5 rounded bg-[#3B33FF]/10 text-[#3B33FF] hover:bg-[#3B33FF]/20 font-bold text-[10px] transition cursor-pointer"
+                            >
+                              + Communes
+                            </button>
+
+                            {targetRoles.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => insertFromBank(bq, r.id)}
+                                className="px-2 py-0.5 rounded font-bold text-[10px] transition cursor-pointer"
+                                style={{
+                                  backgroundColor: `${r.color || '#8B3EE1'}15`,
+                                  color: r.color || '#8B3EE1',
+                                }}
+                                title={`Ajouter au profil ${r.name}`}
+                              >
+                                + {r.name.split(' ')[0]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="p-4 border-t border-[#E6DFD5] bg-[#FAF8F5] flex items-center justify-between">
+                <Link
+                  href="/admin/questions"
+                  target="_blank"
+                  className="text-xs font-bold text-[#3B33FF] hover:underline flex items-center gap-1"
+                >
+                  <span>⚙️ Configurer la banque</span>
+                  <span>↗</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setBankDrawerOpen(false)}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#E6DFD5] text-[#18181B] hover:bg-[#FAF8F5]"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* DELETE FORM (Danger Zone)                                             */}
+      {/* ===================================================================== */}
       {isEditing && initialForm?.slug && (
         <div className="p-5 border border-[#FECACA] bg-[#FEF2F2] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -1214,7 +1086,7 @@ export function FormBuilder({
           </div>
         </div>
       )}
-    </form>
+    </div>
   );
 }
 
@@ -1238,11 +1110,9 @@ interface PipelineColumnProps {
   onMoveField: (id: string, direction: 'up' | 'down') => void;
   expandedFieldId: string | null;
   setExpandedFieldId: (id: string | null) => void;
-  fullWidth?: boolean;
 }
 
 function PipelineColumn({
-  id,
   title,
   subtitle,
   icon,
@@ -1258,7 +1128,6 @@ function PipelineColumn({
   onMoveField,
   expandedFieldId,
   setExpandedFieldId,
-  fullWidth = false,
 }: PipelineColumnProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
 
@@ -1267,20 +1136,15 @@ function PipelineColumn({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`${
-        fullWidth ? 'w-full' : 'w-80 sm:w-96 shrink-0'
-      } rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-2xs ${
+      className={`w-80 sm:w-96 shrink-0 rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-2xs ${
         isDropActive
           ? 'ring-2 ring-[#3B33FF] bg-[#EEF2FF] border-[#3B33FF]'
-          : 'bg-[#FAF8F5]/80 border-[#E6DFD5]'
+          : 'bg-[#FAF8F5]/90 border-[#E6DFD5]'
       }`}
     >
-      {/* Top Header Card with Color Stripe */}
+      {/* Top Header with Color Stripe */}
       <div className="p-4 border-b border-[#E6DFD5] bg-white relative space-y-1">
-        <div
-          className="absolute top-0 left-0 right-0 h-1.5"
-          style={{ backgroundColor: color || '#3B33FF' }}
-        />
+        <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: color || '#3B33FF' }} />
 
         <div className="flex items-center justify-between gap-2 pt-1">
           <div className="flex items-center gap-2">
@@ -1290,12 +1154,10 @@ function PipelineColumn({
             >
               {icon}
             </span>
-            <h3 className="text-xs sm:text-sm font-extrabold text-[#18181B] truncate">
-              {title}
-            </h3>
+            <h3 className="text-xs sm:text-sm font-extrabold text-[#18181B] truncate">{title}</h3>
           </div>
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
             style={{ backgroundColor: `${color}15`, color: color }}
           >
             {fields.length} question(s)
@@ -1305,7 +1167,7 @@ function PipelineColumn({
         <p className="text-[11px] text-[#71717A] line-clamp-1">{subtitle}</p>
       </div>
 
-      {/* Column Body: Questions List / Drop Zone */}
+      {/* Column Questions List / Drop Zone */}
       <div className="p-3.5 space-y-2.5 flex-1 min-h-[220px]">
         {fields.length === 0 ? (
           <div className="p-8 text-center border-2 border-dashed border-[#D4D4D8] rounded-xl space-y-2 bg-white/60">
@@ -1330,14 +1192,14 @@ function PipelineColumn({
                 key={fieldId}
                 className="bg-white border border-[#E6DFD5] hover:border-[#3B33FF] rounded-xl p-3 shadow-2xs space-y-2 transition"
               >
-                {/* Compact Card Header */}
+                {/* Card Header */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="w-5 h-5 rounded-full bg-[#18181B] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
                     <span
-                      className="text-[10px] font-bold px-1.5 py-0.2 rounded inline-flex items-center gap-1 shrink-0"
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1 shrink-0"
                       style={{
                         backgroundColor: `${typeInfo.color}15`,
                         color: typeInfo.color,
@@ -1373,22 +1235,21 @@ function PipelineColumn({
                       onClick={() => setExpandedFieldId(isExpanded ? null : fieldId)}
                       className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] cursor-pointer"
                     >
-                      {isExpanded ? 'Fermer' : 'Éditer'}
+                      {isExpanded ? 'Réduire' : 'Éditer'}
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveField(fieldId)}
-                      className="w-5 h-5 rounded text-[#DC2626] hover:bg-[#FEF2F2] text-[10px] font-bold flex items-center justify-center cursor-pointer"
-                      title="Supprimer cette question"
+                      className="w-5 h-5 rounded text-[#DC2626] hover:bg-[#FEF2F2] text-[11px] flex items-center justify-center cursor-pointer font-bold"
                     >
                       ✕
                     </button>
                   </div>
                 </div>
 
-                {/* Expanded Question Properties Editor */}
+                {/* Inline Expanded Question Editor */}
                 {isExpanded && (
-                  <div className="pt-2 border-t border-[#E6DFD5] space-y-3 animate-in fade-in duration-100">
+                  <div className="pt-2 border-t border-[#E6DFD5] space-y-2.5 text-xs animate-in fade-in duration-100">
                     <div>
                       <label className="block text-[11px] font-bold text-[#18181B] mb-0.5">
                         Intitulé de la question :
@@ -1479,36 +1340,30 @@ function PipelineColumn({
                             + Option
                           </button>
                         </div>
-                        <div className="space-y-1">
-                          {(field.options || []).map((opt, oIdx) => (
-                            <div key={oIdx} className="flex items-center gap-1.5">
-                              <span className="text-[10px] text-[#71717A] w-3">{oIdx + 1}.</span>
-                              <input
-                                type="text"
-                                value={opt.label}
-                                onChange={(e) => {
-                                  const next = [...(field.options || [])];
-                                  next[oIdx] = {
-                                    label: e.target.value,
-                                    value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-                                  };
-                                  onUpdateField(fieldId, { options: next });
-                                }}
-                                className="flex-1 px-2 py-0.5 text-xs border border-[#D4D4D8] rounded bg-white"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = (field.options || []).filter((_, i) => i !== oIdx);
-                                  onUpdateField(fieldId, { options: next });
-                                }}
-                                className="text-[10px] text-[#DC2626] p-0.5 cursor-pointer"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                        {(field.options || []).map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={opt.label}
+                              onChange={(e) => {
+                                const newOpts = [...(field.options || [])];
+                                newOpts[optIdx] = { ...opt, label: e.target.value };
+                                onUpdateField(fieldId, { options: newOpts });
+                              }}
+                              className="w-full px-2 py-0.5 text-xs bg-white border border-[#D4D4D8] rounded"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newOpts = (field.options || []).filter((_, i) => i !== optIdx);
+                                onUpdateField(fieldId, { options: newOpts });
+                              }}
+                              className="text-[#DC2626] text-xs font-bold px-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1519,35 +1374,43 @@ function PipelineColumn({
         )}
       </div>
 
-      {/* Column Footer: Quick Add Button */}
+      {/* Column Footer: Quick Add Question */}
       <div className="p-3 border-t border-[#E6DFD5] bg-white relative">
-        <button
-          type="button"
-          onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-full py-2 px-3 text-xs font-bold rounded-xl bg-[#FAF8F5] hover:bg-[#F4F0EA] border border-[#E6DFD5] text-[#18181B] transition flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <span>+ Ajouter une question</span>
-          <span>▾</span>
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            className="w-full py-2 px-3 text-xs font-bold rounded-xl border border-dashed border-[#3B33FF]/40 text-[#3B33FF] hover:bg-[#3B33FF]/5 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>+</span>
+            <span>Ajouter une question</span>
+            <span className="text-[10px]">▾</span>
+          </button>
 
-        {showAddMenu && (
-          <div className="absolute bottom-12 left-3 right-3 z-20 bg-white rounded-xl border border-[#E6DFD5] shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-            {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => {
-                  onAddField(t as FieldType);
-                  setShowAddMenu(false);
-                }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-[#FAF8F5] flex items-center gap-2 cursor-pointer"
-              >
-                <span>{info.icon}</span>
-                <span>{info.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+          {showAddMenu && (
+            <div className="absolute bottom-10 left-0 right-0 z-30 bg-white border border-[#E6DFD5] rounded-xl shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] px-2 py-1">
+                Choisir le type de champ :
+              </p>
+              <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
+                {Object.entries(FIELD_TYPE_LABELS).map(([t, info]) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      onAddField(t as FieldType);
+                      setShowAddMenu(false);
+                    }}
+                    className="p-1.5 rounded-lg text-left hover:bg-[#FAF8F5] flex items-center gap-1.5 text-xs font-medium cursor-pointer transition"
+                  >
+                    <span>{info.icon}</span>
+                    <span className="truncate">{info.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
