@@ -28,15 +28,26 @@ const supabaseAnonKey =
   process.env.SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5c3lzeXJqcWhxcmNxb2luYmd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NTQ4NjEsImV4cCI6MjEwNDAzMDg2MX0.BYCjCewjcfGMm-fTtuZf2NNiQkfx3n8SD1bhg_MoRJ0';
 
-function createAnonClient() {
+const supabaseServiceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  '';
+
+export function createAnonClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false },
+  });
+}
+
+export function createServiceClient() {
+  const key = supabaseServiceRoleKey || supabaseAnonKey;
+  return createClient(supabaseUrl, key, {
     auth: { persistSession: false },
   });
 }
 
 /**
  * Fetch forms registry directly from Supabase Storage bucket 'Html_forms'.
- * Uses timestamp cache-busting and no-store to guarantee immediate synchronization.
  */
 export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> {
   try {
@@ -82,10 +93,9 @@ export async function fetchCloudStoredForms(): Promise<StoredFormData[] | null> 
 
 /**
  * Upload forms registry to Supabase Storage bucket 'Html_forms'.
- * Explicitly sets cacheControl to 0 so updates propagate instantly worldwide.
  */
 export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boolean> {
-  const client = createAnonClient();
+  const client = createServiceClient();
   try {
     const jsonStr = JSON.stringify(forms, null, 2);
     const { error } = await client.storage
@@ -109,7 +119,6 @@ export async function saveCloudStoredForms(forms: StoredFormData[]): Promise<boo
 
 /**
  * Fetch submissions registry directly from Supabase Storage bucket 'Html_forms'.
- * Uses timestamp cache-busting and no-store to guarantee immediate synchronization.
  */
 export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null> {
   try {
@@ -133,7 +142,6 @@ export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null
     console.warn('fetchCloudSubmissions direct fetch warning:', err);
   }
 
-  // Fallback to client.storage.download
   const client = createAnonClient();
   try {
     const { data, error } = await client.storage
@@ -155,10 +163,9 @@ export async function fetchCloudSubmissions(): Promise<SubmissionRecord[] | null
 
 /**
  * Upload submissions registry to Supabase Storage bucket 'Html_forms'.
- * Explicitly sets cacheControl to 0 so updates propagate instantly worldwide.
  */
 export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<boolean> {
-  const client = createAnonClient();
+  const client = createServiceClient();
   try {
     const jsonStr = JSON.stringify(subs, null, 2);
     const { error } = await client.storage
@@ -180,142 +187,28 @@ export async function saveCloudSubmissions(subs: SubmissionRecord[]): Promise<bo
   }
 }
 
-export const DEFAULT_TARGET_ROLES: TargetRoleDefinition[] = [
-  {
-    id: 'role_medecin',
-    name: 'Médecin / Praticien',
-    description: 'Médecins spécialistes, généralistes, résidents hospitaliers et praticiens de santé',
-    color: '#3B33FF',
-    icon: '🩺',
-  },
-  {
-    id: 'role_etudiant',
-    name: 'Étudiant en Médecine',
-    description: 'Étudiants en médecine (1ère à 6ème année), externes et internes hospitaliers',
-    color: '#8B3EE1',
-    icon: '🎓',
-  },
-  {
-    id: 'role_professeur',
-    name: 'Professeur / Enseignant',
-    description: 'Professeurs, maîtres de conférences, chercheurs et chefs de service hospitalo-universitaires',
-    color: '#E53888',
-    icon: '👨‍🏫',
-  },
-  {
-    id: 'role_participant',
-    name: 'Participant / Externe',
-    description: 'Membres d’associations médicales partenaires, soignants et participants libres',
-    color: '#10B981',
-    icon: '🤝',
-  },
-];
-
-export const DEFAULT_QUESTION_BANK: BankQuestionRecord[] = [
-  {
-    id: 'bq_nom',
-    category: 'Identité & Contact',
-    type: 'short_text',
-    key: 'full_name',
-    label: 'Nom et Prénom complets',
-    help_text: 'Votre nom d’usage académique ou hospitalier',
-    placeholder: 'Ex. Dr. Sarah Benali',
-    required: true,
-  },
-  {
-    id: 'bq_email',
-    category: 'Identité & Contact',
-    type: 'email',
-    key: 'email',
-    label: 'Adresse email officielle',
-    help_text: 'Indispensable pour recevoir l’accusé de réception et vos convocations',
-    placeholder: 'sarah.benali@univ-ouargla.dz',
-    required: true,
-  },
-  {
-    id: 'bq_phone',
-    category: 'Identité & Contact',
-    type: 'phone',
-    key: 'phone',
-    label: 'Numéro de téléphone (WhatsApp)',
-    help_text: 'Pour les communications rapides et groupes d’organisation',
-    placeholder: '0660 00 00 00',
-    required: true,
-  },
-  {
-    id: 'bq_specialty',
-    category: 'Cursus & Profession',
-    type: 'short_text',
-    key: 'specialty',
-    label: 'Spécialité médicale ou Service',
-    help_text: 'Ex. Cardiologie, Urgences, Chirurgie pédiatrique...',
-    placeholder: 'Votre spécialité ou service...',
-    required: false,
-  },
-  {
-    id: 'bq_year',
-    category: 'Cursus & Profession',
-    type: 'select',
-    key: 'academic_level',
-    label: 'Niveau d’études ou Statut professionnel',
-    help_text: 'Sélectionnez votre situation actuelle',
-    required: true,
-    options: [
-      { label: '1ère Année Médecine', value: 'med_1' },
-      { label: '2ème Année Médecine', value: 'med_2' },
-      { label: '3ème Année Médecine', value: 'med_3' },
-      { label: 'Externe (4ème à 6ème Année)', value: 'externe' },
-      { label: 'Interne / Résident en médecine', value: 'resident' },
-      { label: 'Médecin Généraliste / Praticien', value: 'praticien' },
-      { label: 'Professeur / Chef de Service', value: 'professeur' },
-    ],
-  },
-  {
-    id: 'bq_faculty',
-    category: 'Cursus & Profession',
-    type: 'short_text',
-    key: 'affiliation',
-    label: 'Faculté ou Établissement de rattachement',
-    help_text: 'Ex. Faculté de Médecine Ouargla, EPH Mohamed Boudiaf...',
-    placeholder: 'Votre établissement...',
-    required: false,
-  },
-  {
-    id: 'bq_motivation',
-    category: 'Motivation & Objectifs',
-    type: 'long_text',
-    key: 'motivation',
-    label: 'Motivations & Attentes pour cette session',
-    help_text: 'Décrivez vos objectifs d’apprentissage ou de contribution',
-    placeholder: 'Exposez vos motivations et vos disponibilités...',
-    required: true,
-    validation: { minLength: 20 },
-  },
-  {
-    id: 'bq_proof',
-    category: 'Justificatifs',
-    type: 'file',
-    key: 'proof_doc',
-    label: 'Carte d’étudiant ou Justificatif professionnel',
-    help_text: 'Document officiel au format PDF, JPG ou PNG (max 10 Mo)',
-    placeholder: 'Déposer le justificatif...',
-    required: false,
-  },
-  {
-    id: 'bq_consent',
-    category: 'Conditions & Éthique',
-    type: 'consent',
-    key: 'club_rules_consent',
-    label: 'Engagement déontologique et assiduité',
-    help_text: 'J’atteste sur l’honneur l’exactitude de mes déclarations et m’engage à respecter la déontologie du New Era Medical Club.',
-    required: true,
-  },
-];
-
 /**
- * Fetch defined target roles from Supabase Storage bucket 'Html_forms'.
+ * Fetch defined target roles directly from Supabase DB table `public.target_roles`
+ * with fallback to Cloud Storage bucket. Returns empty array if none found (zero hardcoded static data).
  */
 export async function fetchCloudRoles(): Promise<TargetRoleDefinition[]> {
+  const client = createAnonClient();
+
+  // 1. Primary: Supabase PostgreSQL table public.target_roles
+  try {
+    const { data, error } = await client
+      .from('target_roles')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data as TargetRoleDefinition[];
+    }
+  } catch (err) {
+    console.warn('fetchCloudRoles table notice:', err);
+  }
+
+  // 2. Secondary: Supabase Storage file
   try {
     const fetchUrl = `${supabaseUrl}/storage/v1/object/Html_forms/${ROLES_STORAGE_FILE}?t=${Date.now()}`;
     const res = await fetch(fetchUrl, {
@@ -334,11 +227,9 @@ export async function fetchCloudRoles(): Promise<TargetRoleDefinition[]> {
       }
     }
   } catch (err) {
-    console.warn('fetchCloudRoles notice:', err);
+    console.warn('fetchCloudRoles storage fetch notice:', err);
   }
 
-  // Fallback to client.storage.download
-  const client = createAnonClient();
   try {
     const { data, error } = await client.storage
       .from('Html_forms')
@@ -353,14 +244,39 @@ export async function fetchCloudRoles(): Promise<TargetRoleDefinition[]> {
     }
   } catch {}
 
-  return DEFAULT_TARGET_ROLES;
+  return [];
 }
 
 /**
- * Upload target roles to Supabase Storage bucket 'Html_forms'.
+ * Persist target roles directly to Supabase PostgreSQL table `public.target_roles`
+ * and sync with Cloud Storage.
  */
 export async function saveCloudRoles(roles: TargetRoleDefinition[]): Promise<boolean> {
-  const client = createAnonClient();
+  const client = createServiceClient();
+
+  // 1. Save to Supabase PostgreSQL table public.target_roles
+  try {
+    if (roles.length > 0) {
+      const { error: upsertErr } = await client.from('target_roles').upsert(
+        roles.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description || null,
+          color: r.color || '#3B33FF',
+          icon: r.icon || '🎯',
+          created_at: r.created_at || new Date().toISOString(),
+        })),
+        { onConflict: 'id' }
+      );
+      if (upsertErr) {
+        console.warn('saveCloudRoles DB upsert notice:', upsertErr.message);
+      }
+    }
+  } catch (err) {
+    console.warn('saveCloudRoles DB notice:', err);
+  }
+
+  // 2. Sync to Supabase Storage
   try {
     const jsonStr = JSON.stringify(roles, null, 2);
     const { error } = await client.storage
@@ -372,20 +288,67 @@ export async function saveCloudRoles(roles: TargetRoleDefinition[]): Promise<boo
       });
 
     if (error) {
-      console.warn('saveCloudRoles warning:', error.message);
-      return false;
+      console.warn('saveCloudRoles storage notice:', error.message);
     }
-    return true;
   } catch (err) {
-    console.warn('saveCloudRoles exception:', err);
-    return false;
+    console.warn('saveCloudRoles storage notice:', err);
   }
+
+  return true;
 }
 
 /**
- * Fetch pre-created question bank from Supabase Storage bucket 'Html_forms'.
+ * Delete a target role from Supabase DB table and update storage.
+ */
+export async function deleteCloudRole(roleId: string): Promise<boolean> {
+  const client = createServiceClient();
+
+  // 1. Delete from PostgreSQL
+  try {
+    await client.from('target_roles').delete().eq('id', roleId);
+  } catch (err) {
+    console.warn('deleteCloudRole DB notice:', err);
+  }
+
+  // 2. Update storage
+  try {
+    const current = await fetchCloudRoles();
+    const filtered = current.filter((r) => r.id !== roleId);
+    const jsonStr = JSON.stringify(filtered, null, 2);
+    await client.storage
+      .from('Html_forms')
+      .upload(ROLES_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
+        contentType: 'application/json',
+        cacheControl: '0',
+        upsert: true,
+      });
+  } catch {}
+
+  return true;
+}
+
+/**
+ * Fetch reusable question bank directly from Supabase DB table `public.question_bank`
+ * with fallback to Cloud Storage. Returns empty array if none found (zero hardcoded static data).
  */
 export async function fetchCloudQuestionBank(): Promise<BankQuestionRecord[]> {
+  const client = createAnonClient();
+
+  // 1. Primary: Supabase PostgreSQL table public.question_bank
+  try {
+    const { data, error } = await client
+      .from('question_bank')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data as BankQuestionRecord[];
+    }
+  } catch (err) {
+    console.warn('fetchCloudQuestionBank table notice:', err);
+  }
+
+  // 2. Secondary: Supabase Storage file
   try {
     const fetchUrl = `${supabaseUrl}/storage/v1/object/Html_forms/${QUESTION_BANK_STORAGE_FILE}?t=${Date.now()}`;
     const res = await fetch(fetchUrl, {
@@ -404,11 +367,9 @@ export async function fetchCloudQuestionBank(): Promise<BankQuestionRecord[]> {
       }
     }
   } catch (err) {
-    console.warn('fetchCloudQuestionBank notice:', err);
+    console.warn('fetchCloudQuestionBank storage notice:', err);
   }
 
-  // Fallback to client.storage.download
-  const client = createAnonClient();
   try {
     const { data, error } = await client.storage
       .from('Html_forms')
@@ -423,14 +384,43 @@ export async function fetchCloudQuestionBank(): Promise<BankQuestionRecord[]> {
     }
   } catch {}
 
-  return DEFAULT_QUESTION_BANK;
+  return [];
 }
 
 /**
- * Upload pre-created question bank to Supabase Storage bucket 'Html_forms'.
+ * Persist reusable question bank directly to Supabase PostgreSQL table `public.question_bank`
+ * and sync with Cloud Storage.
  */
 export async function saveCloudQuestionBank(questions: BankQuestionRecord[]): Promise<boolean> {
-  const client = createAnonClient();
+  const client = createServiceClient();
+
+  // 1. Save to Supabase PostgreSQL table public.question_bank
+  try {
+    if (questions.length > 0) {
+      const { error: upsertErr } = await client.from('question_bank').upsert(
+        questions.map((q) => ({
+          id: q.id,
+          label: q.label,
+          key: q.key,
+          type: q.type,
+          category: q.category || 'Général',
+          help_text: q.help_text || null,
+          placeholder: q.placeholder || null,
+          required: q.required ?? false,
+          options: q.options || [],
+          created_at: q.created_at || new Date().toISOString(),
+        })),
+        { onConflict: 'id' }
+      );
+      if (upsertErr) {
+        console.warn('saveCloudQuestionBank DB notice:', upsertErr.message);
+      }
+    }
+  } catch (err) {
+    console.warn('saveCloudQuestionBank DB notice:', err);
+  }
+
+  // 2. Sync to Supabase Storage
   try {
     const jsonStr = JSON.stringify(questions, null, 2);
     const { error } = await client.storage
@@ -442,17 +432,46 @@ export async function saveCloudQuestionBank(questions: BankQuestionRecord[]): Pr
       });
 
     if (error) {
-      console.warn('saveCloudQuestionBank warning:', error.message);
-      return false;
+      console.warn('saveCloudQuestionBank storage notice:', error.message);
     }
-    return true;
   } catch (err) {
-    console.warn('saveCloudQuestionBank exception:', err);
-    return false;
+    console.warn('saveCloudQuestionBank storage notice:', err);
   }
+
+  return true;
 }
 
-// Deprecated local storage shims (retained as in-memory / no-op for backward compatibility)
+/**
+ * Delete a question from Supabase DB table and update storage.
+ */
+export async function deleteCloudQuestion(questionId: string): Promise<boolean> {
+  const client = createServiceClient();
+
+  // 1. Delete from PostgreSQL
+  try {
+    await client.from('question_bank').delete().eq('id', questionId);
+  } catch (err) {
+    console.warn('deleteCloudQuestion DB notice:', err);
+  }
+
+  // 2. Update storage
+  try {
+    const current = await fetchCloudQuestionBank();
+    const filtered = current.filter((q) => q.id !== questionId);
+    const jsonStr = JSON.stringify(filtered, null, 2);
+    await client.storage
+      .from('Html_forms')
+      .upload(QUESTION_BANK_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
+        contentType: 'application/json',
+        cacheControl: '0',
+        upsert: true,
+      });
+  } catch {}
+
+  return true;
+}
+
+// Deprecated local storage shims
 export function getLocalStoredForms(): StoredFormData[] {
   return [];
 }

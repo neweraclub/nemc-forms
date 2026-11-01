@@ -17,7 +17,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { showAdminToast } from '../AdminToast';
 import { CustomDateTimePicker } from './CustomDateTimePicker';
-import { DEFAULT_TARGET_ROLES, DEFAULT_QUESTION_BANK } from '@/lib/supabase/cloud-registry';
 
 interface FormBuilderProps {
   initialForm?: FormRecord;
@@ -86,7 +85,7 @@ export function FormBuilder({
   });
 
   // Target Roles State
-  const allRoles = availableRoles && availableRoles.length > 0 ? availableRoles : DEFAULT_TARGET_ROLES;
+  const allRoles = availableRoles || [];
 
   const [targetRoles, setTargetRoles] = useState<FormRole[]>(() => {
     if (initialForm?.target_roles && initialForm.target_roles.length > 0) {
@@ -96,7 +95,7 @@ export function FormBuilder({
   });
 
   // Question Bank State
-  const bank = questionBank && questionBank.length > 0 ? questionBank : DEFAULT_QUESTION_BANK;
+  const bank = questionBank || [];
   const [bankSearch, setBankSearch] = useState('');
   const [bankCategory, setBankCategory] = useState('all');
   const [bankDrawerOpen, setBankDrawerOpen] = useState(false);

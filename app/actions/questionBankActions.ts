@@ -5,7 +5,7 @@ import { BankQuestionRecord } from '@/types/form';
 import {
   fetchCloudQuestionBank,
   saveCloudQuestionBank,
-  DEFAULT_QUESTION_BANK,
+  deleteCloudQuestion,
 } from '@/lib/supabase/cloud-registry';
 import { revalidatePath } from 'next/cache';
 
@@ -18,12 +18,12 @@ export async function getQuestionBankAction(): Promise<{
     const questions = await fetchCloudQuestionBank();
     return {
       success: true,
-      questions: questions && questions.length > 0 ? questions : DEFAULT_QUESTION_BANK,
+      questions: questions || [],
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('getQuestionBankAction error:', err);
-    return { success: false, questions: DEFAULT_QUESTION_BANK, error: msg };
+    return { success: false, questions: [], error: msg };
   }
 }
 
@@ -44,18 +44,17 @@ export async function saveQuestionBankAction(
       return { success: false, error: 'L’intitulé de la question est obligatoire.' };
     }
 
-    const currentQuestions = (await fetchCloudQuestionBank()) || [...DEFAULT_QUESTION_BANK];
+    const currentQuestions = (await fetchCloudQuestionBank()) || [];
     const qId = questionData.id || `bq_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const fullQuestion: BankQuestionRecord = {
       ...questionData,
       id: qId,
-      category: (questionData.category || 'Général').trim(),
       label: questionData.label.trim(),
-      key: (questionData.key || questionData.label.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 25)).trim(),
-      type: questionData.type || 'short_text',
-      help_text: questionData.help_text?.trim() || null,
-      placeholder: questionData.placeholder?.trim() || null,
-      required: Boolean(questionData.required),
+      key: (questionData.key || '').trim() || `q_${Date.now().toString(36)}`,
+      category: (questionData.category || 'Général').trim(),
+      help_text: questionData.help_text ? questionData.help_text.trim() : null,
+      placeholder: questionData.placeholder ? questionData.placeholder.trim() : null,
+      required: questionData.required ?? false,
       options: questionData.options || [],
       validation: questionData.validation || {},
       created_at: questionData.created_at || new Date().toISOString(),
@@ -70,7 +69,7 @@ export async function saveQuestionBankAction(
 
     const saved = await saveCloudQuestionBank(currentQuestions);
     if (!saved) {
-      return { success: false, error: 'Échec de l’enregistrement dans le cloud Supabase.' };
+      return { success: false, error: 'Échec de la sauvegarde dans la base de données.' };
     }
 
     revalidatePath('/admin');
@@ -93,13 +92,7 @@ export async function deleteQuestionBankAction(questionId: string): Promise<{
       return { success: false, error: 'Session expirée. Veuillez vous reconnecter.' };
     }
 
-    const currentQuestions = (await fetchCloudQuestionBank()) || [...DEFAULT_QUESTION_BANK];
-    const filtered = currentQuestions.filter((q) => q.id !== questionId);
-
-    const saved = await saveCloudQuestionBank(filtered);
-    if (!saved) {
-      return { success: false, error: 'Échec de la suppression dans le cloud Supabase.' };
-    }
+    await deleteCloudQuestion(questionId);
 
     revalidatePath('/admin');
     revalidatePath('/admin/questions');

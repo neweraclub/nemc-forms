@@ -5,7 +5,7 @@ import { TargetRoleDefinition } from '@/types/form';
 import {
   fetchCloudRoles,
   saveCloudRoles,
-  DEFAULT_TARGET_ROLES,
+  deleteCloudRole,
 } from '@/lib/supabase/cloud-registry';
 import { revalidatePath } from 'next/cache';
 
@@ -18,12 +18,12 @@ export async function getTargetRolesAction(): Promise<{
     const roles = await fetchCloudRoles();
     return {
       success: true,
-      roles: roles && roles.length > 0 ? roles : DEFAULT_TARGET_ROLES,
+      roles: roles || [],
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('getTargetRolesAction error:', err);
-    return { success: false, roles: DEFAULT_TARGET_ROLES, error: msg };
+    return { success: false, roles: [], error: msg };
   }
 }
 
@@ -44,7 +44,7 @@ export async function saveTargetRoleAction(
       return { success: false, error: 'Le nom du rôle ou public cible est obligatoire.' };
     }
 
-    const currentRoles = (await fetchCloudRoles()) || [...DEFAULT_TARGET_ROLES];
+    const currentRoles = (await fetchCloudRoles()) || [];
     const roleId = roleData.id || `role_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const fullRole: TargetRoleDefinition = {
       ...roleData,
@@ -65,7 +65,7 @@ export async function saveTargetRoleAction(
 
     const saved = await saveCloudRoles(currentRoles);
     if (!saved) {
-      return { success: false, error: 'Échec de l’enregistrement dans le cloud Supabase.' };
+      return { success: false, error: 'Échec de la sauvegarde dans la base de données.' };
     }
 
     revalidatePath('/admin');
@@ -88,13 +88,7 @@ export async function deleteTargetRoleAction(roleId: string): Promise<{
       return { success: false, error: 'Session expirée. Veuillez vous reconnecter.' };
     }
 
-    const currentRoles = (await fetchCloudRoles()) || [...DEFAULT_TARGET_ROLES];
-    const filtered = currentRoles.filter((r) => r.id !== roleId);
-
-    const saved = await saveCloudRoles(filtered);
-    if (!saved) {
-      return { success: false, error: 'Échec de la suppression dans le cloud Supabase.' };
-    }
+    await deleteCloudRole(roleId);
 
     revalidatePath('/admin');
     revalidatePath('/admin/roles');

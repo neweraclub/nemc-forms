@@ -88,3 +88,4 @@ export function AdminLayoutClient({ user, children }: AdminLayoutClientProps) {
     </div>
   );
 }
+
