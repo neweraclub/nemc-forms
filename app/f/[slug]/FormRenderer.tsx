@@ -5,8 +5,19 @@ import Image from 'next/image';
 import { FormFieldRecord, FormRecord } from '@/types/form';
 import { isFieldVisible } from '@/lib/schema-builder';
 import { submitFormAction } from '@/app/actions/submitForm';
+import { uploadFormFileAction } from '@/app/actions/uploadFileAction';
 import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
-import { Target, AlertTriangle, HelpCircle } from 'lucide-react';
+import {
+  Target,
+  AlertTriangle,
+  HelpCircle,
+  UploadCloud,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  Trash2,
+  ExternalLink,
+} from 'lucide-react';
 
 interface FormRendererProps {
   form: FormRecord;
@@ -29,6 +40,10 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
 
   // Honeypot field
   const [honeypot, setHoneypot] = useState<string>('');
+
+  // File Upload State (Max 5MB to Supabase Storage 'files' bucket)
+  const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
+  const [fileUploadErrors, setFileUploadErrors] = useState<Record<string, string>>({});
 
   // Stable idempotency key for this session
   const idempotencyKeyRef = useRef<string>('');
@@ -139,6 +154,53 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         delete next[key];
         return next;
       });
+    }
+  };
+
+  // Upload candidate document (PDF, PNG, etc. max 5MB) to Supabase Storage 'files' bucket
+  const handleFileUpload = async (fieldKey: string, file: File | null) => {
+    if (!file) return;
+
+    // 1. Client-side size limit validation (5 MB)
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const sizeMo = (file.size / (1024 * 1024)).toFixed(1);
+      setFileUploadErrors((prev) => ({
+        ...prev,
+        [fieldKey]: `Ce document dépasse la limite maximale de 5 Mo (taille actuelle : ${sizeMo} Mo).`,
+      }));
+      return;
+    }
+
+    setUploadingFieldKey(fieldKey);
+    setFileUploadErrors((prev) => {
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('formSlug', form.slug);
+      fd.append('fieldKey', fieldKey);
+
+      const res = await uploadFormFileAction(fd);
+      if (res.success && res.publicUrl) {
+        handleAnswerChange(fieldKey, res.publicUrl);
+      } else {
+        setFileUploadErrors((prev) => ({
+          ...prev,
+          [fieldKey]: res.error || 'Échec du téléversement vers le serveur de stockage.',
+        }));
+      }
+    } catch {
+      setFileUploadErrors((prev) => ({
+        ...prev,
+        [fieldKey]: 'Erreur de connexion lors du téléversement du document.',
+      }));
+    } finally {
+      setUploadingFieldKey(null);
     }
   };
 
@@ -559,23 +621,87 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
           </div>
         )}
 
-        {/* File Upload */}
+        {/* File Upload (Max 5MB to Supabase Storage 'files' bucket) */}
         {field.type === 'file' && (
-          <div className="space-y-2">
-            <input
-              id={fieldId}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleAnswerChange(field.key, `Fichier: ${file.name} (${Math.round(file.size / 1024)} Ko)`);
-                }
-              }}
-              className="block w-full text-xs sm:text-sm text-[#52525B] file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#3B33FF]/10 file:text-[#3B33FF] hover:file:bg-[#3B33FF]/20 cursor-pointer"
-            />
-            {typeof val === 'string' && val.length > 0 && (
-              <p className="text-xs text-[#059669] font-medium">{val}</p>
+          <div className="space-y-2 pt-1">
+            {typeof val === 'string' && val.startsWith('http') ? (
+              // 1. Uploaded Success State
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] transition">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-8 h-8 rounded-lg bg-[#059669]/10 text-[#059669] flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#065F46]">Document téléversé</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
+                    </div>
+                    <a
+                      href={val}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#2563EB] hover:underline inline-flex items-center gap-1 font-semibold truncate max-w-xs"
+                      title="Ouvrir le fichier dans un nouvel onglet"
+                    >
+                      <span>Consulter le document PDF</span>
+                      <ExternalLink className="w-3 h-3 text-[#2563EB]" />
+                    </a>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAnswerChange(field.key, '')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] rounded-lg border border-[#FCA5A5] bg-white transition shrink-0 cursor-pointer"
+                  title="Supprimer ce document et en choisir un autre"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remplacer</span>
+                </button>
+              </div>
+            ) : uploadingFieldKey === field.key ? (
+              // 2. Uploading State
+              <div className="p-5 border-2 border-dashed border-[#3B33FF]/40 rounded-xl bg-[#EFF6FF]/40 flex flex-col items-center justify-center text-center space-y-2">
+                <Loader2 className="w-6 h-6 text-[#3B33FF] animate-spin" />
+                <p className="text-xs font-bold text-[#1E40AF]">Téléversement du fichier en cours...</p>
+                <p className="text-[11px] text-[#52525B]">Envoi sécurisé vers le stockage Supabase (Max 5 Mo)</p>
+              </div>
+            ) : (
+              // 3. Dropzone / Upload Picker State
+              <div>
+                <label
+                  htmlFor={fieldId}
+                  className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-[#D4D4D8] hover:border-[#3B33FF] bg-[#FAF8F5]/60 hover:bg-white rounded-xl cursor-pointer transition group text-center"
+                >
+                  <UploadCloud className="w-7 h-7 text-[#71717A] group-hover:text-[#3B33FF] transition-colors mb-1.5" />
+                  <span className="text-xs font-bold text-[#18181B] group-hover:text-[#3B33FF] transition-colors">
+                    Cliquez pour téléverser votre document PDF
+                  </span>
+                  <span className="text-[11px] text-[#71717A] mt-0.5">
+                    Formats acceptés : PDF, PNG, JPG &bull; <strong>5 Mo maximum</strong>
+                  </span>
+                  <input
+                    id={fieldId}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileUpload(field.key, file);
+                      }
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+            )}
+
+            {/* Error feedback for file upload */}
+            {fileUploadErrors[field.key] && (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-[#DC2626] text-xs">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{fileUploadErrors[field.key]}</span>
+              </div>
             )}
           </div>
         )}

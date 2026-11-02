@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FormFieldRecord, FormRecord, SubmissionRecord } from '@/types/form';
-import { X, Download, FileSpreadsheet } from 'lucide-react';
+import { X, Download, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react';
 
 interface SubmissionsExplorerProps {
   form: FormRecord;
@@ -164,7 +164,22 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
                             className="py-3.5 px-4 text-xs text-[#18181B] max-w-xs truncate whitespace-nowrap font-normal"
                             title={display}
                           >
-                            {display}
+                            {typeof raw === 'string' && raw.startsWith('http') ? (
+                              <a
+                                href={raw}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-[#1E40AF] hover:underline font-semibold bg-[#EFF6FF] px-2 py-0.5 rounded border border-[#BFDBFE]"
+                                title="Ouvrir le document dans un nouvel onglet"
+                              >
+                                <FileText className="w-3 h-3 text-[#2563EB]" />
+                                <span>PDF / Fichier</span>
+                                <ExternalLink className="w-2.5 h-2.5 text-[#2563EB]" />
+                              </a>
+                            ) : (
+                              display
+                            )}
                           </td>
                         );
                       })}
@@ -248,9 +263,22 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
                 return (
                   <div key={f.id} className="border-b border-[#E6DFD5]/60 pb-3">
                     <p className="text-xs font-semibold text-[#52525B] mb-1">{f.label}</p>
-                    <p className="text-sm text-[#18181B] whitespace-pre-wrap leading-relaxed">
-                      {displayVal}
-                    </p>
+                    {typeof answerVal === 'string' && answerVal.startsWith('http') ? (
+                      <a
+                        href={answerVal}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[#1E40AF] text-xs font-bold rounded-xl border border-[#BFDBFE] transition mt-1"
+                      >
+                        <FileText className="w-4 h-4 text-[#2563EB]" />
+                        <span>Consulter / Télécharger le document téléversé</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-[#2563EB]" />
+                      </a>
+                    ) : (
+                      <p className="text-sm text-[#18181B] whitespace-pre-wrap leading-relaxed">
+                        {displayVal}
+                      </p>
+                    )}
                   </div>
                 );
               })}
