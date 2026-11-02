@@ -30,6 +30,7 @@ import {
   Edit3,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
   Plus,
   Search,
   ChevronUp,
@@ -440,9 +441,10 @@ export function FormBuilder({
         <div>
           <Link
             href="/admin"
-            className="text-xs font-semibold text-[#52525B] hover:text-[#18181B] inline-flex items-center gap-1 mb-1 transition"
+            className="text-xs font-semibold text-[#52525B] hover:text-[#18181B] inline-flex items-center gap-1.5 mb-1 transition"
           >
-            <span>←</span> <span>Retour aux formulaires</span>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Retour aux formulaires</span>
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#18181B] tracking-tight">
@@ -697,7 +699,7 @@ export function FormBuilder({
           >
             <Settings className="w-3.5 h-3.5" />
             <span>Gérer le catalogue des rôles</span>
-            <span>↗</span>
+            <ExternalLink className="w-3 h-3 text-[#8B3EE1]" />
           </Link>
         </div>
 
@@ -932,7 +934,8 @@ export function FormBuilder({
                         <div className="flex items-center justify-between text-[10px]">
                           <span className="inline-flex items-center gap-1 font-semibold text-[#3B33FF] group-hover:translate-y-0.5 transition-transform">
                             <GripVertical className="w-3 h-3 text-[#A1A1AA]" />
-                            <span>Glisser vers le bas ↓</span>
+                            <span>Glisser vers le bas</span>
+                            <ArrowDown className="w-3 h-3 text-[#3B33FF]" />
                           </span>
                           {bq.required && (
                             <span className="text-[9px] font-bold text-[#DC2626] bg-[#DC2626]/10 px-1 py-0.2 rounded">

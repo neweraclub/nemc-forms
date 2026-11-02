@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
+import { ArrowUp } from 'lucide-react';
 
 export function DocsClient() {
   const [activeId, setActiveId] = useState<string>('intro');
@@ -815,9 +816,10 @@ export function DocsClient() {
             <button
               type="button"
               onClick={() => scrollToSection('top')}
-              className="text-xs sm:text-sm font-semibold text-[#0A3670] hover:underline flex items-center gap-1.5"
+              className="text-xs sm:text-sm font-semibold text-[#0A3670] hover:underline flex items-center gap-1.5 cursor-pointer"
             >
-              <span>↑ Revenir en haut de page (Return to top)</span>
+              <ArrowUp className="w-4 h-4" />
+              <span>Revenir en haut de page (Return to top)</span>
             </button>
           </div>
         </main>

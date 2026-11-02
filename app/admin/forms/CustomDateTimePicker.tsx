@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CustomDateTimePickerProps {
   value: string; // Expected: "YYYY-MM-DDTHH:mm:ss" or ISO string
@@ -296,9 +296,9 @@ export function CustomDateTimePicker({
               </svg>
             </button>
           )}
-          <span className={`text-xs text-[#71717A] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-            ▼
-          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-[#71717A] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          />
         </div>
       </div>
 
@@ -353,7 +353,7 @@ export function CustomDateTimePicker({
               }`}
               title={isPrevMonthDisabled ? 'Mois passés inaccessibles' : 'Mois précédent'}
             >
-              ◀
+              <ChevronLeft className="w-4 h-4" />
             </button>
 
             <div className="flex items-center gap-1.5">
@@ -368,7 +368,7 @@ export function CustomDateTimePicker({
               className="p-1.5 rounded-lg hover:bg-[#FAF8F5] text-[#18181B] transition font-bold"
               title="Mois suivant"
             >
-              ▶
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 

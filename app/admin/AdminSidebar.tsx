@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { AdminUserSession } from '@/lib/auth';
 import { logoutAction } from '@/app/actions/authActions';
+import { ChevronLeft } from 'lucide-react';
 
 interface AdminSidebarProps {
   user: AdminUserSession;
@@ -182,10 +183,10 @@ export function AdminSidebar({ user, collapsed = false, onToggleCollapse }: Admi
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="hidden lg:flex w-7 h-7 rounded-lg border border-[#E6DFD5] hover:bg-[#FAF8F5] text-xs items-center justify-center text-[#71717A] hover:text-[#18181B] transition cursor-pointer"
+                  className="hidden lg:flex w-7 h-7 rounded-lg border border-[#E6DFD5] hover:bg-[#FAF8F5] items-center justify-center text-[#71717A] hover:text-[#18181B] transition cursor-pointer"
                   title="Réduire le menu"
                 >
-                  ◀
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
               )}
             </div>

@@ -20,7 +20,7 @@ import { HtmlStorageItem } from '@/lib/supabase/html-storage';
 import { GeneratedEmailResult } from '@/lib/gemini';
 import { SmtpDiagnosticResult } from '@/lib/mailer';
 import { showAdminToast } from '../AdminToast';
-import { Folder, X, Sparkles, Check, AlertTriangle, Edit3, Eye, Settings, Tag, Smartphone, Monitor, Cloud, Save, Ban, Link2, Wrench, FlaskConical, Trash2, HelpCircle } from 'lucide-react';
+import { Folder, X, Sparkles, Check, AlertTriangle, Edit3, Eye, Settings, Tag, Smartphone, Monitor, Cloud, Save, Ban, Link2, Wrench, FlaskConical, Trash2, HelpCircle, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 
 export interface EmailStudioClientProps {
   formsWithFields?: AdminFormWithFields[];
@@ -843,7 +843,10 @@ export function EmailStudioClient({
                     (Bouton CTA, Alerte importante, Thème graphique)
                   </span>
                 </span>
-                <span className="text-xs">{showAdvanced ? '▲ Réduire' : '▼ Déplier'}</span>
+                <span className="text-xs flex items-center gap-1">
+                  <span>{showAdvanced ? 'Réduire' : 'Déplier'}</span>
+                  {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </span>
               </button>
 
               {showAdvanced && (
@@ -1430,7 +1433,7 @@ export function EmailStudioClient({
                         }`}
                     >
                       <span className="flex items-center gap-1.5"><Wrench className="w-4 h-4 text-zinc-600" /> <span>Mode Debug SMTP</span></span>
-                      <span>{showDebugConsole ? '▲' : '▼'}</span>
+                      {showDebugConsole ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   </div>
 
@@ -1638,7 +1641,7 @@ export function EmailStudioClient({
                 onClick={refreshStorageList}
                 className="text-xs font-semibold text-[#3B33FF] hover:underline flex items-center gap-1"
               >
-                <span>↻</span>
+                <RefreshCw className="w-3.5 h-3.5" />
                 <span>Actualiser la liste</span>
               </button>
               <button

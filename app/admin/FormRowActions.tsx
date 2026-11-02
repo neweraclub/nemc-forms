@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { deleteFormAction } from '@/app/actions/formManagerActions';
 import { useRouter } from 'next/navigation';
 import { showAdminToast } from './AdminToast';
-import { Sparkles, AlertTriangle } from 'lucide-react';
+import { Sparkles, AlertTriangle, ExternalLink, FileSpreadsheet } from 'lucide-react';
 
 interface FormRowActionsProps {
   slug: string;
@@ -94,13 +94,24 @@ export function FormRowActions({
           Consulter ({submissionsCount})
         </Link>
 
+        <a
+          href={`/admin/${slug}/export`}
+          download
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#18181B] rounded-lg transition shadow-2xs"
+          title="Télécharger le rapport Excel officiel (.xlsx)"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-[#10B981]" />
+          <span>Excel</span>
+        </a>
+
         <Link
           href={`/f/${slug}`}
           target="_blank"
-          className="inline-flex items-center px-3 py-1.5 border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#52525B] rounded-lg transition shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#52525B] rounded-lg transition shadow-2xs"
           title="Ouvrir le formulaire public dans un nouvel onglet"
         >
-          Ouvrir ↗
+          <span>Ouvrir</span>
+          <ExternalLink className="w-3.5 h-3.5 text-[#3B33FF]" />
         </Link>
 
         <button

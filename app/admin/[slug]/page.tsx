@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminSubmissions } from '@/lib/supabase/admin';
 import { SubmissionsExplorer } from './SubmissionsExplorer';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -25,7 +26,8 @@ export default async function AdminFormSubmissionsPage({ params }: PageProps) {
           href="/admin"
           className="text-xs font-semibold text-[#52525B] hover:text-[#18181B] inline-flex items-center gap-1.5"
         >
-          ← Retour aux formulaires
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Retour aux formulaires</span>
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
           <div>
@@ -54,7 +56,8 @@ export default async function AdminFormSubmissionsPage({ params }: PageProps) {
               target="_blank"
               className="inline-flex items-center px-3.5 py-2 border border-[#E6DFD5] bg-white hover:bg-[#FAF8F5] rounded-lg text-xs font-semibold text-[#52525B] transition"
             >
-              Ouvrir le formulaire public ↗
+              <span>Ouvrir le formulaire public</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#3B33FF]" />
             </Link>
           </div>
         </div>

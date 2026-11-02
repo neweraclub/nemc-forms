@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ClubSocialLinks } from '@/app/components/ClubSocialLinks';
+import { ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -61,9 +62,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <Link
               href="/admin"
-              className="brand-gradient-btn min-h-[48px] px-8 py-3.5 rounded-lg text-sm sm:text-base font-semibold text-white shadow-xs text-center inline-flex items-center justify-center transition"
+              className="brand-gradient-btn min-h-[48px] px-8 py-3.5 rounded-lg text-sm sm:text-base font-semibold text-white shadow-xs text-center inline-flex items-center justify-center gap-2 transition"
             >
-              Accéder au Tableau de Bord Admin →
+              <span>Accéder au Tableau de Bord Admin</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
