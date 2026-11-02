@@ -49,7 +49,7 @@ const CIRCLE_COLORS = [
   '#8B5CF6', // Purple
   '#06B6D4', // Cyan
   '#EC4899', // Pink
-  '#3B82F6', // Blue
+  '#3B82F6', // Cobalt Blue
   '#F97316', // Orange
   '#14B8A6', // Teal
   '#6366F1', // Violet
@@ -57,13 +57,14 @@ const CIRCLE_COLORS = [
 ];
 
 // ---------------------------------------------------------------------------
-// INTERACTIVE SVG CIRCULAR PIE & DONUT CHART COMPONENT
+// ROBUST INTERACTIVE SVG CIRCULAR PIE & DONUT CHART COMPONENT
 // ---------------------------------------------------------------------------
 interface SvgCircularChartProps {
   title: string;
   subtitle: string;
   slices: ChartSlice[];
   totalLabel?: string;
+  centerDefaultOverride?: { value: string | number; label: string };
   defaultType?: 'donut' | 'pie';
 }
 
@@ -72,6 +73,7 @@ function SvgCircularChart({
   subtitle,
   slices,
   totalLabel = 'candidats',
+  centerDefaultOverride,
   defaultType = 'donut',
 }: SvgCircularChartProps) {
   const [chartType, setChartType] = useState<'donut' | 'pie'>(defaultType);
@@ -81,17 +83,37 @@ function SvgCircularChart({
     return slices.reduce((acc, s) => acc + s.value, 0);
   }, [slices]);
 
-  const cx = 140;
-  const cy = 140;
-  const defaultR = 100;
-  const defaultInnerR = chartType === 'donut' ? 62 : 0;
+  const cx = 100;
+  const cy = 100;
+  const defaultR = 76;
+  const defaultInnerR = chartType === 'donut' ? 48 : 0;
 
-  // Compute angles & SVG paths
-  const computedSlices = useMemo(() => {
-    if (total === 0) return [];
-    let currentAngle = -Math.PI / 2; // Start from top 12 o'clock
+  // Filter non-zero slices for actual SVG arc geometry
+  const nonZeroSlices = useMemo(() => {
+    return slices.filter((s) => s.value > 0);
+  }, [slices]);
 
-    return slices.map((slice) => {
+  // Compute angles & SVG paths for non-zero slices
+  const computedArcs = useMemo(() => {
+    if (total === 0 || nonZeroSlices.length === 0) return [];
+
+    // Case 1: Exactly 1 non-zero slice => Full 360 circle
+    if (nonZeroSlices.length === 1) {
+      const single = nonZeroSlices[0];
+      return [
+        {
+          ...single,
+          isFullCircle: true,
+          pct: 100,
+          pathData: '',
+        },
+      ];
+    }
+
+    // Case 2: Multiple non-zero slices => Compute SVG arc paths
+    let currentAngle = -Math.PI / 2; // 12 o'clock
+
+    return nonZeroSlices.map((slice) => {
       const sliceAngle = (slice.value / total) * 2 * Math.PI;
       const startAngle = currentAngle;
       const endAngle = currentAngle + sliceAngle;
@@ -99,11 +121,11 @@ function SvgCircularChart({
       currentAngle += sliceAngle;
 
       const isHovered = hoveredId === slice.id;
-      const rOut = isHovered ? defaultR + 7 : defaultR;
+      const rOut = isHovered ? defaultR + 5 : defaultR;
       const rIn = defaultInnerR;
 
-      // Pop-out shift on hover
-      const shiftDist = isHovered ? 4 : 0;
+      // Slight pop-out shift along midAngle on hover
+      const shiftDist = isHovered ? 3 : 0;
       const shiftX = Math.cos(midAngle) * shiftDist;
       const shiftY = Math.sin(midAngle) * shiftDist;
 
@@ -116,11 +138,8 @@ function SvgCircularChart({
       const pct = Math.round((slice.value / total) * 100);
 
       let pathData = '';
-      if (slices.length === 1 || sliceAngle >= 2 * Math.PI - 0.001) {
-        // Full circle
-        pathData = '';
-      } else if (rIn > 0) {
-        // Donut arc
+      if (rIn > 0) {
+        // Donut arc path
         const x2In = cx + shiftX + rIn * Math.cos(endAngle);
         const y2In = cy + shiftY + rIn * Math.sin(endAngle);
         const x1In = cx + shiftX + rIn * Math.cos(startAngle);
@@ -128,231 +147,233 @@ function SvgCircularChart({
 
         pathData = `M ${x1Out} ${y1Out} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2Out} ${y2Out} L ${x2In} ${y2In} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x1In} ${y1In} Z`;
       } else {
-        // Full pie arc
+        // Pie arc path
         pathData = `M ${cx + shiftX} ${cy + shiftY} L ${x1Out} ${y1Out} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2Out} ${y2Out} Z`;
       }
 
       return {
         ...slice,
+        isFullCircle: false,
         pct,
         pathData,
-        isHovered,
-        isSingle: slices.length === 1,
       };
     });
-  }, [slices, total, hoveredId, chartType, defaultInnerR]);
+  }, [nonZeroSlices, total, hoveredId, chartType, defaultInnerR]);
 
-  const activeSlice = computedSlices.find((s) => s.id === hoveredId);
+  // Active slice when user hovers either on the circular chart or on the legend row
+  const activeSlice = useMemo(() => {
+    if (!hoveredId) return null;
+    const found = slices.find((s) => s.id === hoveredId);
+    if (!found) return null;
+    const pct = total > 0 ? Math.round((found.value / total) * 100) : 0;
+    return { ...found, pct };
+  }, [hoveredId, slices, total]);
 
   return (
-    <div className="bg-white border border-[#E6DFD5] rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-5">
-      {/* Chart Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E6DFD5]">
-        <div>
-          <h3 className="text-base font-bold text-[#18181B] flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />
-            <span>{title}</span>
+    <div className="bg-white border border-[#E6DFD5] rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+      {/* Card Header: Title & View Toggle */}
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#E6DFD5]">
+        <div className="min-w-0">
+          <h3 className="text-sm sm:text-base font-bold text-[#18181B] truncate">
+            {title}
           </h3>
-          <p className="text-xs text-[#71717A] mt-0.5">{subtitle}</p>
+          <p className="text-[11px] text-[#71717A] truncate mt-0.5">{subtitle}</p>
         </div>
 
-        {/* Chart View Toggle (Donut vs Pie) */}
-        <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-xl border border-[#E6DFD5] self-start sm:self-auto">
+        {/* Donut vs Pie Toggle */}
+        <div className="flex items-center gap-1 bg-[#FAF8F5] p-0.5 rounded-lg border border-[#E6DFD5] shrink-0">
           <button
             type="button"
             onClick={() => setChartType('donut')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+            className={`px-2 py-0.5 text-[11px] font-semibold rounded-md flex items-center gap-1 transition cursor-pointer ${
               chartType === 'donut'
                 ? 'bg-white text-[#18181B] shadow-2xs font-bold'
                 : 'text-[#71717A] hover:text-[#18181B]'
             }`}
-            title="Afficher sous forme d'anneau (Donut)"
+            title="Mode Anneau"
           >
-            <CircleDot className="w-3.5 h-3.5" />
-            <span>Anneau</span>
+            <CircleDot className="w-3 h-3" />
+            <span className="hidden sm:inline">Anneau</span>
           </button>
           <button
             type="button"
             onClick={() => setChartType('pie')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+            className={`px-2 py-0.5 text-[11px] font-semibold rounded-md flex items-center gap-1 transition cursor-pointer ${
               chartType === 'pie'
                 ? 'bg-white text-[#18181B] shadow-2xs font-bold'
                 : 'text-[#71717A] hover:text-[#18181B]'
             }`}
-            title="Afficher sous forme de camembert plein (Pie)"
+            title="Mode Camembert Plein"
           >
-            <PieChart className="w-3.5 h-3.5" />
-            <span>Camembert</span>
+            <PieChart className="w-3 h-3" />
+            <span className="hidden sm:inline">Plein</span>
           </button>
         </div>
       </div>
 
-      {/* Main Chart Body: SVG + Legend Side-by-Side */}
-      {total === 0 ? (
-        <div className="py-12 text-center text-xs text-[#71717A]">
-          Aucune donnée disponible pour ce graphique.
-        </div>
-      ) : (
-        <div className="flex flex-col lg:flex-row items-center justify-around gap-6 py-2">
-          {/* Circular SVG Graphic with Animated Center */}
-          <div className="relative w-[280px] h-[280px] shrink-0 flex items-center justify-center">
-            <svg
-              viewBox="0 0 280 280"
-              className="w-full h-full drop-shadow-sm select-none"
-            >
-              {computedSlices.map((slice) => {
-                if (slice.isSingle) {
-                  return chartType === 'donut' ? (
-                    <circle
-                      key={slice.id}
-                      cx={cx}
-                      cy={cy}
-                      r={(defaultR + defaultInnerR) / 2}
-                      fill="none"
-                      stroke={slice.color}
-                      strokeWidth={defaultR - defaultInnerR}
-                      onMouseEnter={() => setHoveredId(slice.id)}
-                      onMouseLeave={() => setHoveredId(null)}
-                      className="cursor-pointer transition-all duration-300"
-                    />
-                  ) : (
-                    <circle
-                      key={slice.id}
-                      cx={cx}
-                      cy={cy}
-                      r={defaultR}
-                      fill={slice.color}
-                      onMouseEnter={() => setHoveredId(slice.id)}
-                      onMouseLeave={() => setHoveredId(null)}
-                      className="cursor-pointer transition-all duration-300"
-                    />
-                  );
-                }
-
+      {/* Main Chart Section: Circular Graphic Centered */}
+      <div className="py-2 flex justify-center items-center">
+        <div className="relative w-[190px] h-[190px] sm:w-[200px] sm:h-[200px] shrink-0 flex items-center justify-center">
+          <svg
+            viewBox="0 0 200 200"
+            className="w-full h-full drop-shadow-sm select-none"
+          >
+            {total === 0 || nonZeroSlices.length === 0 ? (
+              // Empty State Ring
+              <circle
+                cx={cx}
+                cy={cy}
+                r={defaultR - 10}
+                fill="none"
+                stroke="#E6DFD5"
+                strokeWidth={14}
+                strokeDasharray="4 4"
+              />
+            ) : computedArcs.length === 1 && computedArcs[0].isFullCircle ? (
+              // Full 360 circle (Single Active Slice)
+              chartType === 'donut' ? (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={(defaultR + defaultInnerR) / 2}
+                  fill="none"
+                  stroke={computedArcs[0].color}
+                  strokeWidth={defaultR - defaultInnerR}
+                  onMouseEnter={() => setHoveredId(computedArcs[0].id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className="cursor-pointer transition-all duration-300 hover:brightness-105"
+                />
+              ) : (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={defaultR}
+                  fill={computedArcs[0].color}
+                  onMouseEnter={() => setHoveredId(computedArcs[0].id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className="cursor-pointer transition-all duration-300 hover:brightness-105"
+                />
+              )
+            ) : (
+              // Multiple Slice Arcs
+              computedArcs.map((arc) => {
+                const isHovered = hoveredId === arc.id;
                 return (
                   <path
-                    key={slice.id}
-                    d={slice.pathData}
-                    fill={slice.color}
+                    key={arc.id}
+                    d={arc.pathData}
+                    fill={arc.color}
                     stroke="#FFFFFF"
                     strokeWidth={2}
-                    onMouseEnter={() => setHoveredId(slice.id)}
+                    onMouseEnter={() => setHoveredId(arc.id)}
                     onMouseLeave={() => setHoveredId(null)}
                     className="cursor-pointer transition-all duration-200 hover:brightness-110"
                     style={{
-                      transformOrigin: '140px 140px',
-                      filter: slice.isHovered ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' : 'none',
+                      transformOrigin: '100px 100px',
+                      filter: isHovered ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))' : 'none',
                     }}
                   />
                 );
-              })}
-            </svg>
-
-            {/* Donut Center Display */}
-            {chartType === 'donut' && (
-              <div className="absolute inset-0 m-auto w-[114px] h-[114px] rounded-full bg-white shadow-2xs flex flex-col items-center justify-center text-center p-2 pointer-events-none transition-all duration-200">
-                {activeSlice ? (
-                  <div className="space-y-0.5 animate-in fade-in duration-150">
-                    <span className="text-[10px] font-bold text-[#71717A] uppercase tracking-wider block truncate max-w-[95px]">
-                      {activeSlice.label}
-                    </span>
-                    <span className="text-xl font-extrabold text-[#18181B] leading-none block">
-                      {activeSlice.value}
-                    </span>
-                    <span
-                      className="text-[11px] font-extrabold px-1.5 py-0.2 rounded-full inline-block"
-                      style={{ color: activeSlice.color, backgroundColor: `${activeSlice.color}15` }}
-                    >
-                      {activeSlice.pct}%
-                    </span>
-                  </div>
-                ) : (
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] block">
-                      Total
-                    </span>
-                    <span className="text-2xl font-extrabold text-[#18181B] leading-none block">
-                      {total}
-                    </span>
-                    <span className="text-[10px] font-medium text-[#71717A] block">
-                      {totalLabel}
-                    </span>
-                  </div>
-                )}
-              </div>
+              })
             )}
-          </div>
+          </svg>
 
-          {/* Interactive Legend with Circular Color Badges */}
-          <div className="flex-1 w-full max-w-md space-y-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] pb-1 border-b border-[#E6DFD5] flex items-center justify-between">
-              <span>Catégories &amp; Répartition</span>
-              <span>Volume</span>
-            </div>
-
-            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 scrollbar-none">
-              {computedSlices.map((slice) => {
-                const isHovered = hoveredId === slice.id;
-                return (
-                  <div
-                    key={slice.id}
-                    onMouseEnter={() => setHoveredId(slice.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    className={`flex items-center justify-between gap-3 p-2 rounded-xl transition cursor-pointer ${
-                      isHovered
-                        ? 'bg-[#FAF8F5] ring-1 ring-[#E6DFD5] shadow-2xs'
-                        : 'hover:bg-[#FAF8F5]/60'
-                    }`}
+          {/* Donut Center Display */}
+          {chartType === 'donut' && (
+            <div className="absolute inset-0 m-auto w-[88px] h-[88px] rounded-full bg-white shadow-xs flex flex-col items-center justify-center text-center p-1.5 pointer-events-none transition-all duration-150">
+              {activeSlice ? (
+                <div className="space-y-0.5 animate-in fade-in duration-100">
+                  <span className="text-[9px] font-bold text-[#71717A] uppercase tracking-wider block truncate max-w-[76px]">
+                    {activeSlice.label}
+                  </span>
+                  <span className="text-lg font-black text-[#18181B] leading-none block">
+                    {activeSlice.value}
+                  </span>
+                  <span
+                    className="text-[10px] font-black px-1.5 py-0.2 rounded-full inline-block"
+                    style={{
+                      color: activeSlice.color,
+                      backgroundColor: `${activeSlice.color}15`,
+                    }}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs transition-transform"
-                        style={{
-                          backgroundColor: slice.color,
-                          transform: isHovered ? 'scale(1.25)' : 'scale(1)',
-                        }}
-                      />
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-[#18181B] block truncate">
-                          {slice.label}
-                        </span>
-                        {slice.subtext && (
-                          <span className="text-[10px] text-[#71717A] block truncate">
-                            {slice.subtext}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-extrabold text-[#18181B]">
-                        {slice.value}
-                      </span>
-                      <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: `${slice.color}15`,
-                          color: slice.color,
-                        }}
-                      >
-                        {slice.pct}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                    {activeSlice.pct}%
+                  </span>
+                </div>
+              ) : centerDefaultOverride ? (
+                <div className="space-y-0.5">
+                  <span className="text-2xl font-black text-[#18181B] leading-none block">
+                    {centerDefaultOverride.value}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#71717A] block truncate max-w-[76px]">
+                    {centerDefaultOverride.label}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  <span className="text-2xl font-black text-[#18181B] leading-none block">
+                    {total}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#71717A] block">
+                    {totalLabel}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Chart Footer Tip */}
-      <div className="pt-3 border-t border-[#E6DFD5] flex items-center justify-between text-xs text-[#71717A]">
-        <span className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
-          <span>Survolez une part du camembert pour afficher les détails précis</span>
-        </span>
-        <span className="font-semibold text-[#18181B]">{slices.length} segment(s)</span>
+      {/* Legend Rows List: Clean, Balanced, Right-Aligned Metrics */}
+      <div className="space-y-1.5 pt-2 border-t border-[#E6DFD5]">
+        <div className="max-h-44 overflow-y-auto space-y-1 pr-1 scrollbar-none">
+          {slices.map((slice) => {
+            const isHovered = hoveredId === slice.id;
+            const pct = total > 0 ? Math.round((slice.value / total) * 100) : 0;
+            return (
+              <div
+                key={slice.id}
+                onMouseEnter={() => setHoveredId(slice.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className={`flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-xl transition cursor-pointer ${
+                  isHovered
+                    ? 'bg-[#FAF8F5] ring-1 ring-[#E6DFD5] shadow-2xs'
+                    : 'hover:bg-[#FAF8F5]/70'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0 shadow-2xs transition-transform"
+                    style={{
+                      backgroundColor: slice.color,
+                      transform: isHovered ? 'scale(1.25)' : 'scale(1)',
+                    }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#18181B] truncate">{slice.label}</p>
+                    {slice.subtext && (
+                      <p className="text-[10px] text-[#71717A] truncate">{slice.subtext}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs font-bold text-[#18181B] tabular-nums">
+                    {slice.value}
+                  </span>
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-md tabular-nums"
+                    style={{
+                      backgroundColor: `${slice.color}15`,
+                      color: slice.color,
+                    }}
+                  >
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -374,7 +395,7 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
   const pendingCount = submissions.filter((s) => s.email_status === 'pending').length;
   const emailRate = totalSubmissions > 0 ? Math.round((sentCount / totalSubmissions) * 100) : 100;
 
-  // 1. DATA: Submissions per Form
+  // 1. DATA: Submissions per Form (Volumes & Colors)
   const formVolumeData = useMemo(() => {
     return formsData.map(({ form, submissionsCount, fields }, idx) => ({
       id: form.id,
@@ -456,8 +477,8 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
         color: '#EF4444', // Coral Red
         subtext: 'Erreur SMTP ou boîte pleine',
       },
-    ].filter((s) => s.value > 0 || totalSubmissions === 0);
-  }, [sentCount, pendingCount, failedCount, totalSubmissions]);
+    ];
+  }, [sentCount, pendingCount, failedCount]);
 
   // 4. DATA: Submissions by Day of Week
   const dayOfWeekData = useMemo(() => {
@@ -500,10 +521,10 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#18181B]">
-            Statistiques &amp; Camemberts Circulaires
+            Tableau de Bord Analytique &amp; Statistiques
           </h1>
           <p className="text-xs sm:text-sm text-[#52525B] mt-0.5 max-w-2xl">
-            Explorez les graphiques en anneau (Donut) et camembert (Pie Chart) avec couleurs éclatantes, et exportez des rapports Excel (.xlsx) aux palettes dynamiques personnalisées pour chaque formulaire.
+            Visualisez les performances en direct via des anneaux et camemberts interactifs, et téléchargez les classeurs Excel (.xlsx) thématisés pour chaque formulaire.
           </p>
         </div>
 
@@ -615,7 +636,7 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
             }`}
           >
             <CircleDot className="w-3.5 h-3.5" />
-            <span>Camemberts &amp; Anneaux</span>
+            <span>Anneaux &amp; Camemberts</span>
           </button>
 
           <button
@@ -651,14 +672,14 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
       </div>
 
       {/* =================================================================== */}
-      {/* SECTION 1: CIRCULAR PIE & DONUT CHARTS (Primary Visual Focus)       */}
+      {/* SECTION 1: BALANCED 3-COLUMN CIRCULAR CHARTS GRID                   */}
       {/* =================================================================== */}
       {(activeChartTab === 'all' || activeChartTab === 'pies') && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Circular Chart 1: Role / Target Profile Distribution */}
           <SvgCircularChart
-            title="Répartition par Profil &amp; Rôle Cible"
-            subtitle="Distribution des candidats par filière (Étudiant, Résident, etc.) avec pourcentages"
+            title="Profils &amp; Rôles Cibles"
+            subtitle="Répartition des filières candidates"
             slices={rolePieSlices}
             totalLabel="candidats"
             defaultType="donut"
@@ -666,23 +687,22 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
 
           {/* Circular Chart 2: Forms Submission Distribution */}
           <SvgCircularChart
-            title="Distribution des Candidatures par Formulaire"
-            subtitle="Part de chaque formulaire dans le volume total de candidatures"
+            title="Volume par Formulaire"
+            subtitle="Part de chaque formulaire dans le total"
             slices={formPieSlices}
             totalLabel="réponses"
             defaultType="donut"
           />
 
           {/* Circular Chart 3: Email Deliverability Ring */}
-          <div className="xl:col-span-2">
-            <SvgCircularChart
-              title="Taux de Délivrance Email &amp; État du Serveur SMTP"
-              subtitle="Statut de livraison des accusés de réception envoyés aux candidats"
-              slices={emailDeliverabilitySlices}
-              totalLabel="notifications"
-              defaultType="donut"
-            />
-          </div>
+          <SvgCircularChart
+            title="Délivrance Accusés (SMTP)"
+            subtitle="Taux de transmission des notifications"
+            slices={emailDeliverabilitySlices}
+            totalLabel="notifications"
+            centerDefaultOverride={{ value: `${emailRate}%`, label: 'Délivrés' }}
+            defaultType="donut"
+          />
         </div>
       )}
 
