@@ -15,6 +15,221 @@ function csvEscape(val: unknown): string {
   return `"${str}"`;
 }
 
+// ---------------------------------------------------------------------------
+// DYNAMIC COLOR THEMES ENGINE (100% Unique Palette per Form)
+// ---------------------------------------------------------------------------
+interface ExcelTheme {
+  name: string;
+  tabColor: string;
+  bannerPrimary: string;
+  bannerAccent: string;
+  superHeaderSystem: string;
+  superHeaderCandidate: string;
+  superHeaderQuestions: string;
+  colHeaderSystem: string;
+  colHeaderCandidate: string;
+  colHeaderQuestions: string;
+  zebraEven: string;
+  zebraOdd: string;
+  borderColor: string;
+  kpiCards: [
+    { title: string; bg: string; text: string; border: string },
+    { title: string; bg: string; text: string; border: string },
+    { title: string; bg: string; text: string; border: string },
+    { title: string; bg: string; text: string; border: string },
+  ];
+}
+
+const THEME_PALETTES: ExcelTheme[] = [
+  // 1. Emerald & Mint (Medical Health)
+  {
+    name: 'Émeraude Médicale',
+    tabColor: 'FF064E3B',
+    bannerPrimary: 'FF064E3B',
+    bannerAccent: 'FF10B981',
+    superHeaderSystem: 'FF134E4A',
+    superHeaderCandidate: 'FF065F46',
+    superHeaderQuestions: 'FF047857',
+    colHeaderSystem: 'FF0F766E',
+    colHeaderCandidate: 'FF047857',
+    colHeaderQuestions: 'FF065F46',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFF0FDF4',
+    borderColor: 'FFA7F3D0',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Accusés E-mail', bg: 'FFF0FDF4', text: 'FF166534', border: 'FFBBF7D0' },
+      { title: 'Questions Actives', bg: 'FFF0FDFA', text: 'FF0F766E', border: 'FF99F6E4' },
+      { title: 'Capacité Quota', bg: 'FFFEF9C3', text: 'FF854D0E', border: 'FFFEF08A' },
+    ],
+  },
+  // 2. Cobalt Sapphire & Electric Sky (Kasdi Merbah University)
+  {
+    name: 'Saphir Cobalt',
+    tabColor: 'FF1E3A8A',
+    bannerPrimary: 'FF1E3A8A',
+    bannerAccent: 'FF0284C7',
+    superHeaderSystem: 'FF1E293B',
+    superHeaderCandidate: 'FF1E40AF',
+    superHeaderQuestions: 'FF1D4ED8',
+    colHeaderSystem: 'FF334155',
+    colHeaderCandidate: 'FF2563EB',
+    colHeaderQuestions: 'FF1D4ED8',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFF0F9FF',
+    borderColor: 'FFBAE6FD',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFEFF6FF', text: 'FF1E40AF', border: 'FFBFDBFE' },
+      { title: 'Accusés E-mail', bg: 'FFF0FDF4', text: 'FF166534', border: 'FFBBF7D0' },
+      { title: 'Questions Actives', bg: 'FFF0F9FF', text: 'FF0369A1', border: 'FFBAE6FD' },
+      { title: 'Capacité Quota', bg: 'FFFEF3C7', text: 'FF92400E', border: 'FFFDE68A' },
+    ],
+  },
+  // 3. Royal Violet & Lavender (Academic Excellence)
+  {
+    name: 'Violet Royal',
+    tabColor: 'FF4C1D95',
+    bannerPrimary: 'FF4C1D95',
+    bannerAccent: 'FF8B5CF6',
+    superHeaderSystem: 'FF312E81',
+    superHeaderCandidate: 'FF5B21B6',
+    superHeaderQuestions: 'FF6D28D9',
+    colHeaderSystem: 'FF4338CA',
+    colHeaderCandidate: 'FF6D28D9',
+    colHeaderQuestions: 'FF5B21B6',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFF5F3FF',
+    borderColor: 'FFDDD6FE',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFF5F3FF', text: 'FF5B21B6', border: 'FFDDD6FE' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFEDE9FE', text: 'FF6D28D9', border: 'FFC4B5FD' },
+      { title: 'Capacité Quota', bg: 'FFFFFBEB', text: 'FFB45309', border: 'FFFDE68A' },
+    ],
+  },
+  // 4. Crimson Ruby & Coral (Clinical Urgentology)
+  {
+    name: 'Rubis Clinique',
+    tabColor: 'FF881337',
+    bannerPrimary: 'FF881337',
+    bannerAccent: 'FFF43F5E',
+    superHeaderSystem: 'FF4C0519',
+    superHeaderCandidate: 'FF9F1239',
+    superHeaderQuestions: 'FFBE123C',
+    colHeaderSystem: 'FF881337',
+    colHeaderCandidate: 'FFE11D48',
+    colHeaderQuestions: 'FFBE123C',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFFFF1F2',
+    borderColor: 'FFFECDD3',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFFFF1F2', text: 'FF9F1239', border: 'FFFECDD3' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFFFE4E6', text: 'FFBE123C', border: 'FFF43F5E' },
+      { title: 'Capacité Quota', bg: 'FFFEF3C7', text: 'FF92400E', border: 'FFFDE68A' },
+    ],
+  },
+  // 5. Deep Abyssal Teal & Cyan (Kasdi Merbah Oasis)
+  {
+    name: 'Oasis Kasdi Merbah',
+    tabColor: 'FF0F3A4B',
+    bannerPrimary: 'FF0F3A4B',
+    bannerAccent: 'FF14B8A6',
+    superHeaderSystem: 'FF134E4A',
+    superHeaderCandidate: 'FF115E59',
+    superHeaderQuestions: 'FF0D9488',
+    colHeaderSystem: 'FF115E59',
+    colHeaderCandidate: 'FF0D9488',
+    colHeaderQuestions: 'FF14B8A6',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFF0FDFA',
+    borderColor: 'FF99F6E4',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFF0FDFA', text: 'FF115E59', border: 'FF99F6E4' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFF0F9FF', text: 'FF075985', border: 'FFBAE6FD' },
+      { title: 'Capacité Quota', bg: 'FFFEF9C3', text: 'FF854D0E', border: 'FFFEF08A' },
+    ],
+  },
+  // 6. Sahara Terracotta & Amber (Ouargla Desert Sun)
+  {
+    name: 'Ambre Sahara',
+    tabColor: 'FF7C2D12',
+    bannerPrimary: 'FF7C2D12',
+    bannerAccent: 'FFF59E0B',
+    superHeaderSystem: 'FF431407',
+    superHeaderCandidate: 'FF9A3412',
+    superHeaderQuestions: 'FFC2410C',
+    colHeaderSystem: 'FF7C2D12',
+    colHeaderCandidate: 'FFEA580C',
+    colHeaderQuestions: 'FFC2410C',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFFFF7ED',
+    borderColor: 'FFFED7AA',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFFFF7ED', text: 'FF9A3412', border: 'FFFED7AA' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFFEF3C7', text: 'FFB45309', border: 'FFFDE68A' },
+      { title: 'Capacité Quota', bg: 'FFFFFBEB', text: 'FFB45309', border: 'FFFDE68A' },
+    ],
+  },
+  // 7. Executive Midnight Slate & Gold (Lead Board)
+  {
+    name: 'Ardoise Exécutive',
+    tabColor: 'FF0F172A',
+    bannerPrimary: 'FF0F172A',
+    bannerAccent: 'FFEAB308',
+    superHeaderSystem: 'FF1E293B',
+    superHeaderCandidate: 'FF334155',
+    superHeaderQuestions: 'FF1E293B',
+    colHeaderSystem: 'FF334155',
+    colHeaderCandidate: 'FF475569',
+    colHeaderQuestions: 'FF1E293B',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFF8FAFC',
+    borderColor: 'FFCBD5E1',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFF8FAFC', text: 'FF0F172A', border: 'FFE2E8F0' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFEFF6FF', text: 'FF1E40AF', border: 'FFBFDBFE' },
+      { title: 'Capacité Quota', bg: 'FFFFFBEB', text: 'FFB45309', border: 'FFFDE68A' },
+    ],
+  },
+  // 8. Plum Orchid & Fuchsia (New Era Creative)
+  {
+    name: 'Orchidée New Era',
+    tabColor: 'FF581C87',
+    bannerPrimary: 'FF581C87',
+    bannerAccent: 'FFD946EF',
+    superHeaderSystem: 'FF3B0764',
+    superHeaderCandidate: 'FF6B21A8',
+    superHeaderQuestions: 'FF7E22CE',
+    colHeaderSystem: 'FF581C87',
+    colHeaderCandidate: 'FF9333EA',
+    colHeaderQuestions: 'FF7E22CE',
+    zebraEven: 'FFFFFFFF',
+    zebraOdd: 'FFFAF5FF',
+    borderColor: 'FFF5D0FE',
+    kpiCards: [
+      { title: 'Total Candidatures', bg: 'FFFAF5FF', text: 'FF6B21A8', border: 'FFF5D0FE' },
+      { title: 'Accusés E-mail', bg: 'FFECFDF5', text: 'FF065F46', border: 'FFA7F3D0' },
+      { title: 'Questions Actives', bg: 'FFFDF4FF', text: 'FF86198F', border: 'FFF0ABFC' },
+      { title: 'Capacité Quota', bg: 'FFFEF3C7', text: 'FF92400E', border: 'FFFDE68A' },
+    ],
+  },
+];
+
+function getFormTheme(slug: string, title: string): ExcelTheme {
+  let hash = 0;
+  const str = `${slug}-${title}`.toLowerCase();
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % THEME_PALETTES.length;
+  return THEME_PALETTES[index];
+}
+
 export async function GET(req: NextRequest, { params }: RouteProps) {
   const { slug } = await params;
   const { form, fields, submissions } = await getAdminSubmissions(slug);
@@ -26,7 +241,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
   const { searchParams } = new URL(req.url);
   const format = searchParams.get('format');
 
-  // If CSV explicitly requested, return CSV
+  // If CSV explicitly requested, return standard CSV
   if (format === 'csv') {
     const headers = [
       '#',
@@ -77,11 +292,13 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
   }
 
   // ---------------------------------------------------------------------------
-  // GENERATE MODERN EXECUTIVE EXCEL (.xlsx) REPORT
-  // Matching the New Era ECOS / Master Gradebook visual reference
+  // GENERATE DYNAMIC CREATIVE EXCEL (.xlsx) REPORT
+  // Every form gets its own bespoke theme, dynamic column linking & custom palette
   // ---------------------------------------------------------------------------
+  const theme = getFormTheme(form.slug, form.title);
+
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'New Era Medical Club (NEMC)';
+  workbook.creator = 'Club Médical New Era (Université Kasdi Merbah Ouargla)';
   workbook.lastModifiedBy = 'Administration NEMC';
   workbook.created = new Date();
   workbook.modified = new Date();
@@ -91,7 +308,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     .slice(0, 30);
 
   const worksheet = workbook.addWorksheet(sanitizedTabName, {
-    properties: { tabColor: { argb: 'FF0F172A' } },
+    properties: { tabColor: { argb: theme.tabColor } },
     views: [{ showGridLines: true }],
   });
 
@@ -100,58 +317,40 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
   const sentEmails = submissions.filter((s) => s.email_status === 'sent').length;
   const deliveryRate = totalSubmissions > 0 ? Math.round((sentEmails / totalSubmissions) * 100) : 100;
 
-  // Base fixed columns + dynamic questions
-  const fixedHeaders = [
-    '#',
-    'Date de soumission',
-    'Email du Candidat',
-    'Statut Accusé',
-    'Profil / Rôle',
-  ];
-  const questionHeaders = fields.map((f) => f.label || 'Question');
-  const allHeaders = [...fixedHeaders, ...questionHeaders];
+  // Header structure: System (2 cols), Candidate (3 cols), Questions (N cols)
+  const systemHeaders = ['#', 'Date de soumission'];
+  const candidateHeaders = ['Email du Candidat', 'Statut Accusé', 'Profil / Rôle'];
+  const questionHeaders = fields.map((f, idx) => `Q${idx + 1} • ${f.label}${f.required ? ' *' : ''}`);
+  const allHeaders = [...systemHeaders, ...candidateHeaders, ...questionHeaders];
   const totalCols = Math.max(8, allHeaders.length);
 
-  // Helper styles
-  const navyFill: ExcelJS.Fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF0F172A' },
+  // Common thin border
+  const standardBorder: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: theme.borderColor } },
+    left: { style: 'thin', color: { argb: theme.borderColor } },
+    bottom: { style: 'thin', color: { argb: theme.borderColor } },
+    right: { style: 'thin', color: { argb: theme.borderColor } },
   };
 
-  const tealFill: ExcelJS.Fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF0D9488' },
-  };
+  // 1. BANNER HEADER ROW 1: Institution Header
+  worksheet.mergeCells(1, 1, 1, totalCols);
+  const instCell = worksheet.getCell(1, 1);
+  instCell.value = 'CLUB MÉDICAL NEW ERA • FACULTÉ DE MÉDECINE DE OUARGLA';
+  instCell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFE2E8F0' } };
+  instCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  instCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.bannerPrimary } };
+  worksheet.getRow(1).height = 20;
 
-  const thinBorder: Partial<ExcelJS.Borders> = {
-    top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-    left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-    bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-    right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-  };
-
-  // 1. BANNER HEADER (Rows 1 & 2)
-  worksheet.mergeCells(1, 1, 2, totalCols);
-  const titleCell = worksheet.getCell(1, 1);
-  titleCell.value = `NEW ERA MEDICAL CLUB • ${form.title.toUpperCase()} • RAPPORT DES CANDIDATURES`;
-  titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+  // 2. BANNER HEADER ROW 2: Form Title
+  worksheet.mergeCells(2, 1, 2, totalCols);
+  const titleCell = worksheet.getCell(2, 1);
+  titleCell.value = `${form.title.toUpperCase()} — REGISTRE OFFICIEL DES CANDIDATURES`;
+  titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-  titleCell.fill = navyFill;
-  worksheet.getRow(1).height = 18;
-  worksheet.getRow(2).height = 18;
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.bannerPrimary } };
+  worksheet.getRow(2).height = 28;
 
-  // 2. ACCENT STRIPE (Row 3)
-  worksheet.mergeCells(3, 1, 3, totalCols);
-  const accentCell = worksheet.getCell(3, 1);
-  accentCell.fill = tealFill;
-  worksheet.getRow(3).height = 4;
-
-  // 3. SPACER (Row 4)
-  worksheet.getRow(4).height = 8;
-
-  // 4. METADATA SECTION (Rows 5 to 7)
+  // 3. BANNER HEADER ROW 3: Subtitle & Theme Tag
   const nowStr = new Date().toLocaleString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
@@ -160,30 +359,41 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     minute: '2-digit',
     second: '2-digit',
   });
+  worksheet.mergeCells(3, 1, 3, totalCols);
+  const subCell = worksheet.getCell(3, 1);
+  subCell.value = `Formulaire interactif : /f/${form.slug}   |   Thème visuel : ${theme.name}   |   Exporté le : ${nowStr}`;
+  subCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FFCBD5E1' } };
+  subCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.bannerPrimary } };
+  worksheet.getRow(3).height = 18;
 
+  // 4. ACCENT STRIPE (Row 4)
+  worksheet.mergeCells(4, 1, 4, totalCols);
+  const accentCell = worksheet.getCell(4, 1);
+  accentCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.bannerAccent } };
+  worksheet.getRow(4).height = 4;
+
+  // 5. SPACER (Row 5)
+  worksheet.getRow(5).height = 8;
+
+  // 6. METADATA SECTION (Rows 6 & 7)
   const metaRows = [
     {
-      k1: "Export Timestamp (HH:MM:SS)",
-      v1: nowStr,
-      k2: "Institution Responsable",
-      v2: "Club Médical New Era",
+      k1: 'Établissement Universitaire',
+      v1: 'Faculté de Médecine — Université Kasdi Merbah Ouargla',
+      k2: 'Statut du Formulaire',
+      v2: form.status === 'open' ? 'Ouvert aux candidatures' : form.status === 'closed' ? 'Clôturé' : 'Brouillon',
     },
     {
-      k1: "Faculté / Établissement",
-      v1: "Faculté de Médecine de Ouargla",
-      k2: "Statut du Formulaire",
-      v2: form.status === 'open' ? 'Ouvert (Actif)' : form.status === 'closed' ? 'Clôturé' : 'Brouillon',
-    },
-    {
-      k1: "Portée du Rapport",
-      v1: "Registre exhaustif des réponses reçues",
-      k2: "Candidatures Enregistrées",
-      v2: `${totalSubmissions} Candidature${totalSubmissions > 1 ? 's' : ''}`,
+      k1: 'Périmètre Académique',
+      v1: 'Année Universitaire 2026-2027',
+      k2: 'Nombre de Questions',
+      v2: `${fields.length} questions interactives configurées`,
     },
   ];
 
   metaRows.forEach((m, idx) => {
-    const rIdx = 5 + idx;
+    const rIdx = 6 + idx;
     worksheet.getRow(rIdx).height = 19;
 
     // Col 2 Label
@@ -192,7 +402,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     k1Cell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FF475569' } };
     k1Cell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-    // Col 3-4 Value (Merged)
+    // Col 3-4 Value
     worksheet.mergeCells(rIdx, 3, rIdx, 4);
     const v1Cell = worksheet.getCell(rIdx, 3);
     v1Cell.value = m.v1;
@@ -205,7 +415,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     k2Cell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FF475569' } };
     k2Cell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-    // Col 7-8 Value (Merged)
+    // Col 7-8 Value
     worksheet.mergeCells(rIdx, 7, rIdx, 8);
     const v2Cell = worksheet.getCell(rIdx, 7);
     v2Cell.value = m.v2;
@@ -213,98 +423,97 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     v2Cell.alignment = { vertical: 'middle', horizontal: 'left' };
   });
 
-  // 5. SPACER (Row 8)
-  worksheet.getRow(8).height = 8;
+  // 7. DYNAMIC THEMED KPI CARDS (Row 8)
+  worksheet.getRow(8).height = 28;
 
-  // 6. KPI SUMMARY STATS CARDS (Row 9)
-  worksheet.getRow(9).height = 28;
+  const kpiData = [
+    { text: `Total : ${totalSubmissions} Candidats`, style: theme.kpiCards[0], cols: [1, 2] },
+    { text: `Accusés : ${sentEmails} / ${totalSubmissions} (${deliveryRate}%)`, style: theme.kpiCards[1], cols: [3, 4] },
+    { text: `Questions : ${fields.length} Champs`, style: theme.kpiCards[2], cols: [5, 6] },
+    { text: `Plafond : ${form.max_responses ? form.max_responses + ' max' : 'Illimité'}`, style: theme.kpiCards[3], cols: [7, 8] },
+  ];
 
-  // Card 1: Total Candidates (Cols 1-2)
-  worksheet.mergeCells(9, 1, 9, 2);
-  const card1 = worksheet.getCell(9, 1);
-  card1.value = `Total : ${totalSubmissions} Candidats`;
-  card1.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E40AF' } };
-  card1.alignment = { vertical: 'middle', horizontal: 'center' };
-  card1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-  card1.border = {
-    top: { style: 'thin', color: { argb: 'FFBFDBFE' } },
-    left: { style: 'thin', color: { argb: 'FFBFDBFE' } },
-    bottom: { style: 'thin', color: { argb: 'FFBFDBFE' } },
-    right: { style: 'thin', color: { argb: 'FFBFDBFE' } },
-  };
+  kpiData.forEach(({ text, style, cols }) => {
+    worksheet.mergeCells(8, cols[0], 8, cols[1]);
+    const cell = worksheet.getCell(8, cols[0]);
+    cell.value = text;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: style.text } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: style.bg } };
+    cell.border = {
+      top: { style: 'thin', color: { argb: style.border } },
+      left: { style: 'thin', color: { argb: style.border } },
+      bottom: { style: 'thin', color: { argb: style.border } },
+      right: { style: 'thin', color: { argb: style.border } },
+    };
+  });
 
-  // Card 2: Sent Emails (Cols 3-4)
-  worksheet.mergeCells(9, 3, 9, 4);
-  const card2 = worksheet.getCell(9, 3);
-  card2.value = `Accusés Envoyés : ${sentEmails} / ${totalSubmissions}`;
-  card2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF065F46' } };
-  card2.alignment = { vertical: 'middle', horizontal: 'center' };
-  card2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
-  card2.border = {
-    top: { style: 'thin', color: { argb: 'FFA7F3D0' } },
-    left: { style: 'thin', color: { argb: 'FFA7F3D0' } },
-    bottom: { style: 'thin', color: { argb: 'FFA7F3D0' } },
-    right: { style: 'thin', color: { argb: 'FFA7F3D0' } },
-  };
+  // 8. SPACER (Row 9)
+  worksheet.getRow(9).height = 8;
 
-  // Card 3: Delivery Rate (Cols 5-6)
-  worksheet.mergeCells(9, 5, 9, 6);
-  const card3 = worksheet.getCell(9, 5);
-  card3.value = `Taux de Délivrance : ${deliveryRate}%`;
-  card3.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF6B21A8' } };
-  card3.alignment = { vertical: 'middle', horizontal: 'center' };
-  card3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
-  card3.border = {
-    top: { style: 'thin', color: { argb: 'FFD8B4FE' } },
-    left: { style: 'thin', color: { argb: 'FFD8B4FE' } },
-    bottom: { style: 'thin', color: { argb: 'FFD8B4FE' } },
-    right: { style: 'thin', color: { argb: 'FFD8B4FE' } },
-  };
+  // 9. SUPER-CATEGORY HEADER ROW (Row 10)
+  // Categorizes columns into distinct themed sections: Index, Candidate Info, and Form Questions
+  const superRow = worksheet.getRow(10);
+  superRow.height = 20;
 
-  // Card 4: Academic Year / Scope (Cols 7-8)
-  worksheet.mergeCells(9, 7, 9, 8);
-  const card4 = worksheet.getCell(9, 7);
-  card4.value = `Exercice Académique : 2026-2027`;
-  card4.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF92400E' } };
-  card4.alignment = { vertical: 'middle', horizontal: 'center' };
-  card4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
-  card4.border = {
-    top: { style: 'thin', color: { argb: 'FFFDE68A' } },
-    left: { style: 'thin', color: { argb: 'FFFDE68A' } },
-    bottom: { style: 'thin', color: { argb: 'FFFDE68A' } },
-    right: { style: 'thin', color: { argb: 'FFFDE68A' } },
-  };
+  // Cols 1-2: Index & Date
+  worksheet.mergeCells(10, 1, 10, 2);
+  const superSysCell = worksheet.getCell(10, 1);
+  superSysCell.value = 'INDEXATION & HORODATAGE';
+  superSysCell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
+  superSysCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  superSysCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.superHeaderSystem } };
 
-  // 7. SPACER (Row 10)
-  worksheet.getRow(10).height = 10;
+  // Cols 3-5: Candidate Identity
+  worksheet.mergeCells(10, 3, 10, 5);
+  const superCandCell = worksheet.getCell(10, 3);
+  superCandCell.value = 'IDENTITÉ & CONTACT CANDIDAT';
+  superCandCell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
+  superCandCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  superCandCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.superHeaderCandidate } };
 
-  // 8. DATA TABLE HEADER (Row 11)
+  // Cols 6 to totalCols: Form Questionnaire
+  if (totalCols >= 6) {
+    worksheet.mergeCells(10, 6, 10, totalCols);
+    const superQuestCell = worksheet.getCell(10, 6);
+    superQuestCell.value = `QUESTIONNAIRE SPÉCIFIQUE DU FORMULAIRE (${fields.length} QUESTIONS DYNAMIQUES)`;
+    superQuestCell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    superQuestCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    superQuestCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.superHeaderQuestions } };
+  }
+
+  // 10. MAIN TABLE COLUMN HEADERS (Row 11)
   const headerRow = worksheet.getRow(11);
-  headerRow.height = 26;
+  headerRow.height = 28;
 
   allHeaders.forEach((title, colIdx) => {
     const cell = headerRow.getCell(colIdx + 1);
     cell.value = title;
-    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF1E293B' }, // Dark slate
-    };
+    cell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+
+    // Dynamic header coloring per column section
+    const colBg =
+      colIdx < 2
+        ? theme.colHeaderSystem
+        : colIdx < 5
+        ? theme.colHeaderCandidate
+        : theme.colHeaderQuestions;
+
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBg } };
     cell.alignment = {
       vertical: 'middle',
-      horizontal: colIdx === 0 ? 'center' : colIdx === 1 ? 'center' : 'left',
+      horizontal: colIdx === 0 || colIdx === 1 ? 'center' : colIdx === 3 ? 'center' : 'left',
       wrapText: true,
     };
     cell.border = {
-      top: { style: 'medium', color: { argb: 'FF0F172A' } },
-      bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
-      left: { style: 'thin', color: { argb: 'FF334155' } },
-      right: { style: 'thin', color: { argb: 'FF334155' } },
+      top: { style: 'thin', color: { argb: theme.borderColor } },
+      bottom: { style: 'medium', color: { argb: theme.bannerPrimary } },
+      left: { style: 'thin', color: { argb: theme.borderColor } },
+      right: { style: 'thin', color: { argb: theme.borderColor } },
     };
   });
 
-  // 9. DATA ROWS (Row 12+)
+  // 11. DATA ROWS (Row 12+)
   submissions.forEach((sub, rowIdx) => {
     const currentRIdx = 12 + rowIdx;
     const dataRow = worksheet.getRow(currentRIdx);
@@ -326,7 +535,6 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
       minute: '2-digit',
     });
 
-    // Translate email status
     const statusLabel =
       sub.email_status === 'sent'
         ? 'Délivré'
@@ -350,7 +558,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     ];
 
     const isEven = rowIdx % 2 === 0;
-    const rowBg = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+    const rowBg = isEven ? theme.zebraEven : theme.zebraOdd;
 
     rowValues.forEach((val, colIdx) => {
       const cell = dataRow.getCell(colIdx + 1);
@@ -370,20 +578,41 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
         vertical: 'middle',
         horizontal: colIdx === 0 || colIdx === 1 ? 'center' : colIdx === 3 ? 'center' : 'left',
       };
-      cell.border = thinBorder;
+      cell.border = standardBorder;
 
       // Status pill coloring
       if (colIdx === 3) {
         if (sub.email_status === 'sent') {
           cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF065F46' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
         } else if (sub.email_status === 'failed') {
           cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFDC2626' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        } else {
+          cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF92400E' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
         }
       }
     });
   });
 
-  // 10. AUTO-FIT COLUMN WIDTHS
+  // 12. SUMMARY BOTTOM ROW
+  const finalRowIdx = 12 + submissions.length;
+  const summaryRow = worksheet.getRow(finalRowIdx);
+  summaryRow.height = 24;
+
+  worksheet.mergeCells(finalRowIdx, 1, finalRowIdx, totalCols);
+  const summaryCell = worksheet.getCell(finalRowIdx, 1);
+  summaryCell.value = `TOTAL ENREGISTRÉ : ${totalSubmissions} CANDIDATURE(S) TRAITÉE(S)   •   ACCUSÉS ENVOYÉS : ${sentEmails} (${deliveryRate}%)   •   CLUB MÉDICAL NEW ERA`;
+  summaryCell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+  summaryCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  summaryCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: theme.bannerPrimary } };
+  summaryCell.border = {
+    top: { style: 'medium', color: { argb: theme.bannerAccent } },
+    bottom: { style: 'double', color: { argb: theme.bannerPrimary } },
+  };
+
+  // 13. DYNAMIC COLUMN WIDTHS CALCULATION
   allHeaders.forEach((title, colIdx) => {
     let maxLen = title.length;
     submissions.forEach((sub) => {
@@ -406,16 +635,15 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
       }
     });
 
-    const colWidth = Math.min(55, Math.max(12, maxLen + 4));
+    const colWidth = Math.min(50, Math.max(13, maxLen + 3));
     worksheet.getColumn(colIdx + 1).width = colWidth;
   });
 
-  // Make sure Col 1 (#) is compact
+  // Make index column compact
   worksheet.getColumn(1).width = 7;
 
-  // 11. GENERATE BUFFER & RETURN
+  // 14. GENERATE BUFFER & RETURN
   const buffer = await workbook.xlsx.writeBuffer();
-
   const fileDate = new Date().toISOString().split('T')[0];
   const filename = `Rapport-Candidatures-${slug}-${fileDate}.xlsx`;
 
