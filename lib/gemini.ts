@@ -35,7 +35,7 @@ export interface GeneratedEmailResult {
   plainText: string;
 }
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const API_KEY = process.env.GEMINI_API_KEY || '';
 
 /**
