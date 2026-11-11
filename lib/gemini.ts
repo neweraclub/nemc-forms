@@ -35,7 +35,26 @@ export interface GeneratedEmailResult {
   plainText: string;
 }
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+// High-stability, low-latency lighter model roster with automatic fallback on 503 / 429
+const STABLE_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+];
+
+function getCandidateModels(): string[] {
+  const envModel = process.env.GEMINI_MODEL?.trim();
+  const list: string[] = [];
+  // If envModel is specified and not the deprecated/overloaded gemini-3.8-flash, include it first
+  if (envModel && envModel !== 'gemini-3.8-flash' && !STABLE_MODELS.includes(envModel)) {
+    list.push(envModel);
+  }
+  list.push(...STABLE_MODELS);
+  return Array.from(new Set(list));
+}
+
 const API_KEY = process.env.GEMINI_API_KEY || '';
 
 /**
@@ -125,53 +144,90 @@ You must output ONLY valid JSON without any markdown formatting or \`\`\`json wr
 }`;
 
 /**
- * Call Gemini API using generateContent with gemini-3.8-flash.
+ * Calls Gemini API with automatic model fallback & retry on 503 / 429 / 500 errors.
+ * Prioritizes high-availability lightweight models for rock-solid stability.
  */
 async function callGemini(prompt: string, systemPrompt: string = EMAIL_DESIGN_SYSTEM_PROMPT): Promise<string> {
-  if (!API_KEY) {
+  const apiKey = API_KEY;
+  if (!apiKey) {
     throw new Error("Clé API Gemini non configurée dans GEMINI_API_KEY. Veuillez la renseigner dans le fichier .env.");
   }
 
-  const model = DEFAULT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+  const candidateModels = getCandidateModels();
+  let lastError: Error | null = null;
 
-  const requestBody = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: prompt }],
+  for (const model of candidateModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const requestBody = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
       },
-    ],
-    systemInstruction: {
-      parts: [{ text: systemPrompt }],
-    },
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-    },
-  };
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
+    };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
-  });
+    // Retry up to 2 times for temporary 503 / 429 errors before switching to next candidate model
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        });
 
-  if (!response.ok) {
-    const errorData = await response.text();
-    console.error(`Gemini API Error [${response.status}]:`, errorData);
-    throw new Error(`Erreur Gemini API (${response.status}): ${errorData.slice(0, 200)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            return text;
+          }
+          throw new Error("Réponse vide reçue de l'IA Gemini.");
+        }
+
+        const errorText = await response.text();
+        console.warn(
+          `[Gemini] Modèle ${model} tentative ${attempt}/2 a retourné [${response.status}]: ${errorText.slice(0, 160)}`
+        );
+
+        const isUnavailable =
+          response.status === 503 ||
+          response.status === 429 ||
+          errorText.includes('high demand') ||
+          errorText.includes('UNAVAILABLE') ||
+          errorText.includes('RESOURCE_EXHAUSTED');
+
+        if (isUnavailable && attempt === 1) {
+          await new Promise((r) => setTimeout(r, 600));
+          continue;
+        }
+
+        lastError = new Error(`Erreur Gemini API (${response.status}) sur ${model}: ${errorText.slice(0, 180)}`);
+        break; // Switch to next candidate model
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[Gemini] Exception sur ${model} (tentative ${attempt}/2): ${msg}`);
+        lastError = err instanceof Error ? err : new Error(msg);
+        if (attempt === 1) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+    }
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Réponse vide reçue de l'IA Gemini.");
-  }
-
-  return text;
+  throw (
+    lastError ||
+    new Error("Impossible de générer le courriel : tous les modèles d'IA légers sont temporairement occupés.")
+  );
 }
 
 /**
