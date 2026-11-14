@@ -30,11 +30,17 @@ export async function submitFormAction(
 ): Promise<SubmitFormResult> {
   try {
     // 1. Client identification & rate limiting
-    const headerList = await headers();
-    const forwardedFor = headerList.get('x-forwarded-for');
-    const realIp = headerList.get('x-real-ip');
-    const rawIp = forwardedFor ? forwardedFor.split(',')[0].trim() : realIp || '127.0.0.1';
-    const userAgent = headerList.get('user-agent') || 'unknown';
+    let rawIp = '127.0.0.1';
+    let userAgent = 'unknown';
+    try {
+      const headerList = await headers();
+      const forwardedFor = headerList.get('x-forwarded-for');
+      const realIp = headerList.get('x-real-ip');
+      rawIp = forwardedFor ? forwardedFor.split(',')[0].trim() : realIp || '127.0.0.1';
+      userAgent = headerList.get('user-agent') || 'unknown';
+    } catch {
+      // Graceful fallback for non-request contexts or synthetic calls
+    }
 
     const ipHash = hashClientIp(rawIp);
     const rateLimit = checkRateLimit(ipHash);
@@ -84,17 +90,24 @@ export async function submitFormAction(
     const parseResult = schema.safeParse(rawAnswers);
 
     if (!parseResult.success) {
+      console.warn('[Validation Failed]', JSON.stringify(parseResult.error.issues, null, 2));
       const fieldErrors: Record<string, string> = {};
+      let firstMessage = '';
       for (const issue of parseResult.error.issues) {
         const fieldKey = issue.path[0];
         if (fieldKey && typeof fieldKey === 'string') {
           fieldErrors[fieldKey] = issue.message;
+          if (!firstMessage) firstMessage = issue.message;
+        } else if (!firstMessage && issue.message) {
+          firstMessage = issue.message;
         }
       }
       return {
         success: false,
         errors: fieldErrors,
-        generalError: 'Certains champs comportent des erreurs. Veuillez les corriger.',
+        generalError: firstMessage
+          ? `Certains champs comportent des erreurs (${firstMessage}). Veuillez les corriger.`
+          : 'Certains champs comportent des erreurs. Veuillez les corriger.',
       };
     }
 

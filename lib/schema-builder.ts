@@ -39,8 +39,8 @@ export function isFieldVisible(field: FormFieldRecord, answers: Record<string, u
 }
 
 /**
- * Builds a strict Zod schema at runtime based strictly on form fields and current values.
- * Unknown keys are explicitly rejected via z.object().strict().
+ * Builds a flexible, type-safe Zod schema at runtime based strictly on form fields and current values.
+ * Uses .passthrough() so extraneous localStorage draft keys do not cause validation failure.
  */
 export function buildFormZodSchema(
   fields: FormFieldRecord[],
@@ -78,7 +78,7 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = str.trim().min(1, `${field.label} est obligatoire.`);
         } else {
-          fieldValidator = str.optional().or(z.literal(''));
+          fieldValidator = str.optional().nullable().or(z.literal(''));
         }
         break;
       }
@@ -100,7 +100,7 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = str.trim().min(1, `${field.label} est obligatoire.`);
         } else {
-          fieldValidator = str.optional().or(z.literal(''));
+          fieldValidator = str.optional().nullable().or(z.literal(''));
         }
         break;
       }
@@ -114,13 +114,13 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = emailRule.min(1, 'L’adresse email est obligatoire.');
         } else {
-          fieldValidator = emailRule.optional().or(z.literal(''));
+          fieldValidator = emailRule.optional().nullable().or(z.literal(''));
         }
         break;
       }
 
       case 'phone': {
-        const phoneRegex = /^[\d\s+\-().]{6,20}$/;
+        const phoneRegex = /^[\d\s+\-().]{6,25}$/;
         const phoneRule = z
           .string()
           .trim()
@@ -129,7 +129,7 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = phoneRule.min(1, 'Le numéro de téléphone est obligatoire.');
         } else {
-          fieldValidator = phoneRule.optional().or(z.literal(''));
+          fieldValidator = phoneRule.optional().nullable().or(z.literal(''));
         }
         break;
       }
@@ -151,34 +151,51 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = numRule;
         } else {
-          fieldValidator = numRule.optional().nullable();
+          fieldValidator = z.union([numRule, z.literal('')]).optional().nullable();
         }
         break;
       }
 
       case 'select':
       case 'radio': {
-        const validValues = (field.options || []).map((o) => o.value);
-        if (validValues.length > 0) {
-          const enumRule = z.enum(validValues as [string, ...string[]], {
-            message: `Veuillez sélectionner une option pour ${field.label}.`,
-          });
-          if (field.required && isVisible) {
-            fieldValidator = enumRule;
+        const validValues = Array.from(
+          new Set(
+            (field.options || [])
+              .flatMap((o) => (typeof o === 'string' ? [o] : [o.value, o.label]))
+              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+          )
+        );
+
+        if (field.required && isVisible) {
+          if (validValues.length > 0) {
+            fieldValidator = z
+              .string()
+              .trim()
+              .min(1, `Veuillez sélectionner une option pour ${field.label}.`)
+              .refine((val) => validValues.includes(val), {
+                message: `Veuillez sélectionner une option valide pour ${field.label}.`,
+              });
           } else {
-            fieldValidator = enumRule.optional().or(z.literal(''));
+            fieldValidator = z.string().trim().min(1, `Veuillez sélectionner une option pour ${field.label}.`);
           }
         } else {
-          fieldValidator = field.required && isVisible ? z.string().min(1) : z.string().optional();
+          fieldValidator = z.string().optional().nullable().or(z.literal(''));
         }
         break;
       }
 
       case 'checkboxes': {
-        const validValues = (field.options || []).map((o) => o.value);
+        const validValues = Array.from(
+          new Set(
+            (field.options || [])
+              .flatMap((o) => (typeof o === 'string' ? [o] : [o.value, o.label]))
+              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+          )
+        );
         const arrayRule = z.array(z.string()).refine(
           (arr) => {
             if (!arr || arr.length === 0) return !field.required || !isVisible;
+            if (validValues.length === 0) return true;
             return arr.every((item) => validValues.includes(item));
           },
           { message: `Une ou plusieurs sélections pour ${field.label} ne sont pas valides.` }
@@ -187,7 +204,7 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = arrayRule.min(1, `Veuillez sélectionner au moins une option pour ${field.label}.`);
         } else {
-          fieldValidator = arrayRule.optional().default([]);
+          fieldValidator = arrayRule.optional().nullable().default([]);
         }
         break;
       }
@@ -199,16 +216,24 @@ export function buildFormZodSchema(
         if (field.required && isVisible) {
           fieldValidator = dateRule.min(1, `${field.label} est obligatoire.`);
         } else {
-          fieldValidator = dateRule.optional().or(z.literal(''));
+          fieldValidator = dateRule.optional().nullable().or(z.literal(''));
         }
         break;
       }
 
       case 'file': {
+        const fileRule = z.union([z.string(), z.array(z.string())]);
         if (field.required && isVisible) {
-          fieldValidator = z.string().min(1, `Le fichier pour ${field.label} est obligatoire.`);
+          fieldValidator = fileRule.refine(
+            (val) => {
+              if (typeof val === 'string') return val.trim().length > 0;
+              if (Array.isArray(val)) return val.length > 0 && val.some((s) => s.trim().length > 0);
+              return false;
+            },
+            { message: `Le fichier pour ${field.label} est obligatoire.` }
+          );
         } else {
-          fieldValidator = z.string().optional().or(z.literal(''));
+          fieldValidator = fileRule.optional().nullable().or(z.literal(''));
         }
         break;
       }
@@ -219,25 +244,25 @@ export function buildFormZodSchema(
             message: 'Vous devez accepter cette condition pour continuer.',
           });
         } else {
-          fieldValidator = z.boolean().optional();
+          fieldValidator = z.boolean().optional().nullable();
         }
         break;
       }
 
       default:
-        fieldValidator = z.any().optional();
+        fieldValidator = z.any().optional().nullable();
     }
 
     shape[field.key] = fieldValidator;
   }
 
   // Allow system & role fields
-  shape['_target_role'] = z.string().optional();
-  shape['_target_role_label'] = z.string().optional();
+  shape['_target_role'] = z.string().optional().nullable();
+  shape['_target_role_label'] = z.string().optional().nullable();
 
   // Add honeypot key: must be absent or empty string
-  shape['_hp'] = z.string().max(0, 'Spam detection triggered').optional().or(z.literal(''));
+  shape['_hp'] = z.string().max(0, 'Spam detection triggered').optional().nullable().or(z.literal(''));
 
-  // Strict: rejects any unknown field submitted by the client
-  return z.object(shape).strict();
+  // Passthrough unknown keys (e.g. from localStorage drafts or custom keys)
+  return z.object(shape).passthrough();
 }
