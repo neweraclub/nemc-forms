@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { TargetRoleDefinition, FormRecord } from '@/types/form';
 import { saveTargetRoleAction, deleteTargetRoleAction } from '@/app/actions/roleActions';
 import { showAdminToast } from '../AdminToast';
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   Users,
   ClipboardList,
+  RefreshCw,
 } from 'lucide-react';
 
 interface RolesManagerClientProps {
@@ -47,8 +49,10 @@ const PRESET_ICONS = [
 ];
 
 export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerClientProps) {
+  const router = useRouter();
   const [roles, setRoles] = useState<TargetRoleDefinition[]>(initialRoles);
   const [isPending, startTransition] = useTransition();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,6 +66,35 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
 
   // Delete Confirmation State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      setRoles(initialRoles);
+    }
+  }, [initialRoles, isModalOpen]);
+
+  useEffect(() => {
+    const doAutoRefresh = () => {
+      if (!isModalOpen && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    };
+
+    const intervalTimer = setInterval(doAutoRefresh, 8000);
+    const handleFocus = () => doAutoRefresh();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') doAutoRefresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [router, isModalOpen]);
 
   const openCreateModal = () => {
     setEditingRole(null);
@@ -166,14 +199,35 @@ export function RolesManagerClient({ initialRoles, forms = [] }: RolesManagerCli
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="brand-gradient-btn min-h-[44px] px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xs inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-        >
-          <span>+</span>
-          <span>Nouveau Public Cible</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+            <span>Actualisation auto active</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsRefreshing(true);
+              router.refresh();
+              setTimeout(() => setIsRefreshing(false), 700);
+            }}
+            disabled={isRefreshing}
+            className="p-2.5 text-xs text-[#52525B] hover:text-[#18181B] bg-white hover:bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl transition shadow-2xs cursor-pointer inline-flex items-center justify-center"
+            title="Actualiser les rôles depuis Supabase"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#3B33FF]' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="brand-gradient-btn min-h-[44px] px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xs inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            <span>+</span>
+            <span>Nouveau Public Cible</span>
+          </button>
+        </div>
       </div>
 
       {/* Roles Grid */}

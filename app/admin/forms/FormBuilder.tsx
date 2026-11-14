@@ -251,7 +251,12 @@ export function FormBuilder({
 
   // Insert question from Bank into a target role pipeline
   const insertFromBank = (bankQuestion: BankQuestionRecord, roleId: string) => {
-    const uniqueKey = `${bankQuestion.key}_${Date.now().toString(36).slice(-3)}`;
+    const baseKey = (bankQuestion.key || bankQuestion.id || 'field')
+      .replace(/^q_/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .slice(0, 24);
+    const uniqueKey = `${baseKey || 'field'}_${Date.now().toString(36).slice(-3)}`;
     const newField: Partial<FormFieldRecord> = {
       id: `f_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       type: bankQuestion.type,

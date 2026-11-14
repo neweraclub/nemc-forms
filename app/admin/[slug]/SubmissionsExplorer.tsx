@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { FormFieldRecord, FormRecord, SubmissionRecord } from '@/types/form';
-import { X, Download, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react';
+import { X, Download, FileSpreadsheet, FileText, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface SubmissionsExplorerProps {
   form: FormRecord;
@@ -11,8 +12,34 @@ interface SubmissionsExplorerProps {
 }
 
 export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsExplorerProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionRecord | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto refresh submissions live
+  useEffect(() => {
+    const doAutoRefresh = () => {
+      if (!selectedSubmission && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    };
+
+    const intervalTimer = setInterval(doAutoRefresh, 8000);
+    const handleFocus = () => doAutoRefresh();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') doAutoRefresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [router, selectedSubmission]);
 
   // Filter submissions by search query
   const filtered = submissions.filter((sub) => {
@@ -76,6 +103,25 @@ export function SubmissionsExplorer({ form, fields, submissions }: SubmissionsEx
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+            <span className="hidden sm:inline">Sync auto</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsRefreshing(true);
+              router.refresh();
+              setTimeout(() => setIsRefreshing(false), 700);
+            }}
+            disabled={isRefreshing}
+            className="p-2.5 text-xs text-[#52525B] hover:text-[#18181B] bg-white hover:bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl transition shadow-2xs cursor-pointer inline-flex items-center justify-center"
+            title="Actualiser les réponses"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#3B33FF]' : ''}`} />
+          </button>
+
           <a
             href={`/admin/${form.slug}/export`}
             download

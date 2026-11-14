@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FormRecord, FormFieldRecord, SubmissionRecord } from '@/types/form';
 import {
   BarChart3,
@@ -17,6 +18,7 @@ import {
   Activity,
   Layers,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface FormDataSummary {
@@ -383,7 +385,33 @@ function SvgCircularChart({
 // MAIN ADMIN STATS CLIENT PAGE
 // ---------------------------------------------------------------------------
 export function AdminStatsClient({ formsData, submissions }: AdminStatsClientProps) {
+  const router = useRouter();
   const [activeChartTab, setActiveChartTab] = useState<'all' | 'pies' | 'forms' | 'timeline'>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh stats every 10 seconds and on tab focus
+  useEffect(() => {
+    const doAutoRefresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    };
+
+    const intervalTimer = setInterval(doAutoRefresh, 10000);
+    const handleFocus = () => doAutoRefresh();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') doAutoRefresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [router]);
 
   // Overall KPIs
   const totalForms = formsData.length;
@@ -529,6 +557,25 @@ export function AdminStatsClient({ formsData, submissions }: AdminStatsClientPro
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+            <span>Actualisation auto active</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsRefreshing(true);
+              router.refresh();
+              setTimeout(() => setIsRefreshing(false), 700);
+            }}
+            disabled={isRefreshing}
+            className="p-2 text-xs text-[#52525B] hover:text-[#18181B] bg-white hover:bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl transition shadow-2xs cursor-pointer inline-flex items-center justify-center"
+            title="Actualiser les statistiques"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#3B33FF]' : ''}`} />
+          </button>
+
           <Link
             href="/admin"
             className="px-4 py-2 text-xs font-semibold rounded-xl bg-white border border-[#E6DFD5] text-[#52525B] hover:bg-[#FAF8F5] transition"

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BankQuestionRecord, FieldType, FieldOption } from '@/types/form';
 import { saveQuestionBankAction, deleteQuestionBankAction } from '@/app/actions/questionBankActions';
@@ -17,6 +17,7 @@ import {
   CheckSquare,
   Layers,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface QuestionBankClientProps {
@@ -25,10 +26,13 @@ interface QuestionBankClientProps {
 
 const PREDEFINED_CATEGORIES = [
   'Identité & Contact',
+  'المعلومات الشخصية',
   'Cursus & Médical',
+  'المهارات والاهتمامات',
   'Engagement & Projet',
-  'Logistique & Présence',
+  'رؤيتك للنادي',
   'Justificatifs & Documents',
+  'Logistique & Présence',
   'Conditions & Consentement',
   'Général',
 ];
@@ -102,6 +106,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isPending, startTransition] = useTransition();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,6 +124,37 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
 
   // Delete State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // Sync questions whenever initialQuestions changes from server refresh
+  useEffect(() => {
+    if (!isModalOpen) {
+      setQuestions(initialQuestions);
+    }
+  }, [initialQuestions, isModalOpen]);
+
+  // Automatic live refresh on interval and tab focus
+  useEffect(() => {
+    const doLiveRefresh = () => {
+      if (!isModalOpen && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    };
+
+    const intervalTimer = setInterval(doLiveRefresh, 8000);
+    const handleFocus = () => doLiveRefresh();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') doLiveRefresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [router, isModalOpen]);
 
   // Categories list extracted from predefined + existing data
   const categories = Array.from(
@@ -295,14 +331,35 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="brand-gradient-btn min-h-[44px] px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xs inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-        >
-          <span>+</span>
-          <span>Créer une Question Type</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+            <span>Actualisation auto active</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsRefreshing(true);
+              router.refresh();
+              setTimeout(() => setIsRefreshing(false), 700);
+            }}
+            disabled={isRefreshing}
+            className="p-2.5 text-xs text-[#52525B] hover:text-[#18181B] bg-white hover:bg-[#FAF8F5] border border-[#E6DFD5] rounded-xl transition shadow-2xs cursor-pointer inline-flex items-center justify-center"
+            title="Actualiser la liste depuis Supabase"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#3B33FF]' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="brand-gradient-btn min-h-[44px] px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xs inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            <span>+</span>
+            <span>Créer une Question Type</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

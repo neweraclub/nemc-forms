@@ -18,16 +18,16 @@ CREATE TABLE public.target_roles (
     name TEXT NOT NULL,
     description TEXT,
     color TEXT DEFAULT '#3B33FF',
-    icon TEXT DEFAULT '🎯',
+    icon TEXT DEFAULT 'target',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.target_roles DISABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.target_roles (id, name, description, color, icon) VALUES
-    ('student', 'Étudiant en Médecine', 'Étudiants de la 1ère à la 6ème année de médecine.', '#3B33FF', '🎓'),
-    ('resident', 'Médecin Résident', 'Médecins en cours de spécialisation hospitalo-universitaire.', '#10B981', '🩺'),
-    ('professor', 'Professeur / Enseignant', 'Membres du corps professoral et encadrants hospitaliers.', '#8B5CF6', '👨‍🏫'),
-    ('other', 'Autre professionnel de santé', 'Pharmaciens, dentistes, personnel soignant et partenaires.', '#F59E0B', '🌐')
+    ('student', 'Étudiant en Médecine', 'Étudiants de la 1ère à la 6ème année de médecine.', '#3B33FF', 'graduation-cap'),
+    ('resident', 'Médecin Résident', 'Médecins en cours de spécialisation hospitalo-universitaire.', '#10B981', 'stethoscope'),
+    ('professor', 'Professeur / Enseignant', 'Membres du corps professoral et encadrants hospitaliers.', '#8B5CF6', 'user-check'),
+    ('other', 'Autre professionnel de santé', 'Pharmaciens, dentistes, personnel soignant et partenaires.', '#F59E0B', 'globe')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. RECREATE REUSABLE QUESTION BANK

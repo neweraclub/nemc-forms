@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.target_roles (
     name TEXT NOT NULL,
     description TEXT,
     color TEXT DEFAULT '#3B33FF',
-    icon TEXT DEFAULT '🎯',
+    icon TEXT DEFAULT 'target',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
