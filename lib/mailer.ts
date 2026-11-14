@@ -233,14 +233,19 @@ export function buildReceiptEmailHtml(
   summary: Array<{ label: string; value: string }>,
   submissionId: string
 ): string {
+  const isArabic =
+    /[\u0600-\u06FF]/.test(form.title || '') ||
+    /[\u0600-\u06FF]/.test(form.description || '') ||
+    /[\u0600-\u06FF]/.test(form.confirmation_message || '');
+
   const tableRows = summary
     .map(
       (item) => `
       <tr>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #E6DFD5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #52525B; width: 40%; vertical-align: top;">
+        <td ${isArabic ? 'dir="rtl"' : ''} style="padding: 8px 12px; border-bottom: 1px solid #E6DFD5; font-family: 'Plus Jakarta Sans', Tahoma, 'Segoe UI', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #52525B; width: 40%; vertical-align: top; ${isArabic ? 'text-align: right;' : 'text-align: left;'}">
           ${escapeHtml(item.label)}
         </td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #E6DFD5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #18181B; vertical-align: top;">
+        <td ${isArabic ? 'dir="rtl"' : ''} style="padding: 8px 12px; border-bottom: 1px solid #E6DFD5; font-family: 'Plus Jakarta Sans', Tahoma, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #18181B; vertical-align: top; ${isArabic ? 'text-align: right;' : 'text-align: left;'}">
           ${escapeHtml(item.value).replace(/\n/g, '<br/>')}
         </td>
       </tr>
@@ -250,48 +255,89 @@ export function buildReceiptEmailHtml(
 
   return `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="${isArabic ? 'ar' : 'fr'}" dir="${isArabic ? 'rtl' : 'ltr'}">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Accusé de réception — ${escapeHtml(form.title)}</title>
+  <title>${escapeHtml(form.title)}</title>
 </head>
-<body style="margin: 0; padding: 24px 0; background-color: #FAF6EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<body style="margin: 0; padding: 24px 0; background-color: #FAF6EE; font-family: 'Plus Jakarta Sans', Tahoma, 'Segoe UI', Arial, sans-serif; ${isArabic ? 'direction: rtl; text-align: right;' : ''}">
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
       <td align="center">
-        <table border="0" cellpadding="0" cellspacing="0" width="560" style="max-width: 560px; width: 100%; background-color: #FFFFFF; border: 1px solid #E6DFD5; border-radius: 8px; overflow: hidden;">
+        <table border="0" cellpadding="0" cellspacing="0" width="560" style="max-width: 560px; width: 100%; background-color: #FFFFFF; border: 1px solid #E6DFD5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
           <tr>
-            <td style="background: linear-gradient(90deg, #3B33FF 0%, #8B3EE1 50%, #E53888 100%); height: 4px;">&nbsp;</td>
+            <td style="background: linear-gradient(90deg, #3B33FF 0%, #8B3EE1 50%, #E53888 100%); height: 5px;">&nbsp;</td>
           </tr>
           <tr>
-            <td style="padding: 24px 28px 16px 28px;">
-              <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/Html_forms/logo_light_mode.png" alt="Club Médical New Era" width="130" style="display: block; max-width: 140px; height: auto; margin-bottom: 16px; border: 0;" />
-              <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #3B33FF; text-transform: uppercase;">New Era Medical Club</span>
-              <h1 style="margin: 8px 0 12px 0; font-size: 20px; font-weight: 700; color: #18181B;">
-                Accusé de réception
-              </h1>
-              <p style="margin: 0 0 16px 0; font-size: 14px; color: #3F3F46; line-height: 1.5;">
-                ${escapeHtml(form.confirmation_message || 'Votre candidature a bien été transmise à notre équipe.')}
-              </p>
-              <div style="background-color: #FAF8F5; border: 1px solid #E6DFD5; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; color: #52525B;">
-                Référence de votre dossier: <strong style="color: #18181B;">${escapeHtml(submissionId.slice(0, 8))}</strong>
+            <td style="padding: 28px 32px 16px 32px; ${isArabic ? 'text-align: right; direction: rtl;' : ''}">
+              <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/logo_light_mode.png" alt="Club Médical New Era" width="130" style="display: block; max-width: 140px; height: auto; margin: 0 auto 16px auto; border: 0;" />
+              <div style="text-align: center; margin-bottom: 12px;">
+                <span style="display: inline-block; background-color: rgba(139,62,225,0.08); color: #8B3EE1; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 20px; text-transform: uppercase;">
+                  ${isArabic ? 'إشعار استلام رسمي' : 'ACCUSÉ DE RÉCEPTION'}
+                </span>
               </div>
-              <h2 style="margin: 16px 0 8px 0; font-size: 14px; font-weight: 600; color: #18181B;">
-                Récapitulatif de vos réponses
+              <h1 style="margin: 8px 0 12px 0; font-size: 20px; font-weight: 800; color: #18181B; text-align: center;">
+                ${escapeHtml(form.title)}
+              </h1>
+              <p style="margin: 0 0 16px 0; font-size: 14px; color: #3F3F46; line-height: 1.6; ${isArabic ? 'direction: rtl; text-align: right;' : ''}">
+                ${escapeHtml(form.confirmation_message || (isArabic ? 'تم بنجاح تسجيل طلبكم وسيقوم فريق النادي بدراسته بعناية.' : 'Votre candidature a bien été transmise à notre équipe.'))}
+              </p>
+              <div style="background-color: #FAF8F5; border: 1px solid #E6DFD5; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; color: #52525B; ${isArabic ? 'direction: rtl; text-align: right;' : ''}">
+                ${isArabic ? 'الرقم المرجعي لملفكم :' : 'Référence de votre dossier :'} <strong style="color: #3B33FF; font-family: monospace; font-size: 13px;">${escapeHtml(submissionId.slice(0, 8).toUpperCase())}</strong>
+              </div>
+              <h2 style="margin: 16px 0 10px 0; font-size: 14px; font-weight: 700; color: #18181B; ${isArabic ? 'direction: rtl; text-align: right;' : ''}">
+                ${isArabic ? 'ملخص البيانات المسجلة :' : 'Récapitulatif de vos réponses :'}
               </h2>
             </td>
           </tr>
           <tr>
-            <td style="padding: 0 28px 24px 28px;">
-              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #E6DFD5; border-radius: 6px;">
+            <td style="padding: 0 32px 24px 32px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #E6DFD5; border-radius: 8px;">
                 ${tableRows}
               </table>
             </td>
           </tr>
+
+          {/* Official 5 Social Networks Footer */}
           <tr>
-            <td style="padding: 16px 28px; background-color: #FAF8F5; border-top: 1px solid #E6DFD5; font-size: 12px; color: #71717A;">
-              New Era Medical Club &bull; contact@new-era-medical-club-univ-ouargla.dz &bull; Cet email confirme la bonne transmission de vos données.
+            <td style="padding: 20px 32px 24px 32px; background-color: #FAF8F5; border-top: 1px solid #E6DFD5; text-align: center;">
+              <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; color: #1B1740; letter-spacing: 0.05em; text-transform: uppercase;">
+                ${isArabic ? 'تابعونا على منصاتنا الرسمية' : 'REJOIGNEZ NOS RÉSEAUX OFFICIELS'}
+              </p>
+              <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px auto;">
+                <tr>
+                  <td style="padding: 0 5px;">
+                    <a href="http://new-era-medical-club-univ-ouargla.dz/" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+                      <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/website.png" alt="Site Web" width="24" height="24" style="display: block; border: 0;" />
+                    </a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="https://t.me/UOMKM" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+                      <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/telegram.png" alt="Telegram" width="24" height="24" style="display: block; border: 0;" />
+                    </a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="https://www.facebook.com/profile.php?id=61583732851117" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+                      <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/facebook.png" alt="Facebook" width="24" height="24" style="display: block; border: 0;" />
+                    </a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="https://www.instagram.com/new.eraclub3?dlrf=MTN5bmlyYmVnYjljdg==" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+                      <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/instagram.png" alt="Instagram" width="24" height="24" style="display: block; border: 0;" />
+                    </a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="https://www.linkedin.com/company/new-era-club" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+                      <img src="https://klggvkylzvkyhxtpwpxd.supabase.co/storage/v1/object/public/files/social_icons/linkedin.png" alt="LinkedIn" width="24" height="24" style="display: block; border: 0;" />
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0; font-size: 11px; color: #71717A; line-height: 1.5;">
+                NEW ERA MEDICAL CLUB &bull; FACULTÉ DE MÉDECINE &bull; UNIV. OUARGLA<br/>
+                ${isArabic ? 'جميع الحقوق محفوظة &copy; 2026' : '&copy; 2026 New Era Club. Tous droits réservés.'}
+              </p>
             </td>
           </tr>
         </table>
@@ -360,25 +406,57 @@ export function renderCustomEmailHtml(
     }
   }
 
-  // 3. Fallback name detection (if name question used a custom key like 'n' or 'name')
-  let detectedFullName = String(answers.full_name || answers.nom_complet || answers.nom || '');
-  if (!detectedFullName) {
+  // 3. Fallback name detection (handles both French and Arabic name fields)
+  let detectedFirstName = String(answers.first_name || answers.prenom || answers.first_name_aeu || '');
+  let detectedLastName = String(answers.last_name || answers.nom || answers.last_name_8tz || '');
+
+  if (!detectedFirstName) {
     for (const [k, v] of Object.entries(answers)) {
       const keyLower = k.toLowerCase();
-      if ((keyLower === 'n' || keyLower.includes('name') || keyLower.includes('nom')) && typeof v === 'string' && v.trim()) {
-        detectedFullName = v.trim();
+      if ((keyLower.includes('first_name') || keyLower.includes('prenom') || keyLower.includes('الاسم')) && typeof v === 'string' && v.trim()) {
+        detectedFirstName = v.trim();
         break;
       }
     }
   }
-  const firstName = detectedFullName ? detectedFullName.split(' ')[0] : 'Candidat';
+
+  if (!detectedLastName) {
+    for (const [k, v] of Object.entries(answers)) {
+      const keyLower = k.toLowerCase();
+      if ((keyLower.includes('last_name') || keyLower.includes('nom') || keyLower.includes('اللقب')) && typeof v === 'string' && v.trim()) {
+        detectedLastName = v.trim();
+        break;
+      }
+    }
+  }
+
+  let detectedFullName = String(answers.full_name || answers.nom_complet || answers.nom || '');
+  if (!detectedFullName) {
+    if (detectedFirstName || detectedLastName) {
+      detectedFullName = `${detectedFirstName} ${detectedLastName}`.trim();
+    } else {
+      for (const [k, v] of Object.entries(answers)) {
+        const keyLower = k.toLowerCase();
+        if ((keyLower === 'n' || keyLower.includes('name') || keyLower.includes('nom')) && typeof v === 'string' && v.trim()) {
+          detectedFullName = v.trim();
+          break;
+        }
+      }
+    }
+  }
+  const firstName = detectedFirstName || (detectedFullName ? detectedFullName.split(' ')[0] : 'Candidat');
+  const lastName = detectedLastName || '';
   const email = String(answers.email || answers.adresse_email || '');
   const roleValue = String(answers['_target_role_label'] || answers['_target_role'] || '');
 
   rendered = rendered
-    .replace(/\{\{nom\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
-    .replace(/\{\{full_name\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
+    .replace(/\{\{nom\}\}/gi, escapeHtml(lastName || detectedFullName || 'Candidat'))
+    .replace(/\{\{last_name\}\}/gi, escapeHtml(lastName || detectedFullName || 'Candidat'))
+    .replace(/\{\{last_name_8tz\}\}/gi, escapeHtml(lastName || ''))
     .replace(/\{\{prenom\}\}/gi, escapeHtml(firstName))
+    .replace(/\{\{first_name\}\}/gi, escapeHtml(firstName))
+    .replace(/\{\{first_name_aeu\}\}/gi, escapeHtml(firstName))
+    .replace(/\{\{full_name\}\}/gi, escapeHtml(detectedFullName || 'Candidat'))
     .replace(/\{\{email\}\}/gi, escapeHtml(email))
     .replace(/\{\{role\}\}/gi, escapeHtml(roleValue))
     .replace(/\{\{profil\}\}/gi, escapeHtml(roleValue))

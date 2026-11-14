@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { showAdminToast } from '../AdminToast';
 import { CustomDateTimePicker } from './CustomDateTimePicker';
 import { RoleIcon, FieldTypeIcon } from '@/components/DynamicIcon';
+import { generateAiEmailAction } from '@/app/actions/aiEmailActions';
 import {
   Package,
   Settings,
@@ -37,6 +38,10 @@ import {
   ChevronDown,
   GripVertical,
   ExternalLink,
+  Sparkles,
+  Code,
+  Eye,
+  Loader2,
 } from 'lucide-react';
 
 interface FormBuilderProps {
@@ -104,6 +109,53 @@ export function FormBuilder({
       return '';
     }
   });
+
+  const [isGeneratingAiEmail, setIsGeneratingAiEmail] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+
+  const handleGenerateAiEmailForForm = async () => {
+    if (!title.trim()) {
+      showAdminToast({ type: 'error', message: 'Veuillez d\'abord saisir un titre pour le formulaire.' });
+      return;
+    }
+    setIsGeneratingAiEmail(true);
+    try {
+      const isArabic = /[\u0600-\u06FF]/.test(title) || /[\u0600-\u06FF]/.test(description);
+      const selectedFields = fields
+        .filter((f) => Boolean(f.key && f.label))
+        .map((f) => ({ key: String(f.key), label: String(f.label), placeholder: f.placeholder || undefined }));
+
+      const res = await generateAiEmailAction({
+        selectedFormTitle: title,
+        selectedFormSlug: slug,
+        subject: customEmailSubject || (isArabic ? `تأكيد استلام طلب — ${title}` : `Confirmation — ${title}`),
+        title: title,
+        contentPrompt: description || (isArabic ? 'تأكيد استلام الطلب وشكر المترشح وتوضيح الخطوات القادمة' : 'Confirmation de réception de candidature et prochaines étapes'),
+        language: isArabic ? 'ar' : 'fr',
+        isRTL: isArabic,
+        selectedFields,
+      });
+
+      if (res.success && res.result) {
+        setCustomEmailSubject(res.result.subject);
+        setCustomEmailHtml(res.result.html);
+        setShowEmailPreview(true);
+        showAdminToast({
+          type: 'success',
+          title: 'Gemini AI',
+          message: isArabic
+            ? 'تم إنشاء نموذج البريد الإلكتروني (RTL) بنجاح بواسطة Gemini AI !'
+            : 'Email généré avec succès par Gemini AI !',
+        });
+      } else {
+        showAdminToast({ type: 'error', message: res.error || 'Erreur lors de la génération par Gemini AI.' });
+      }
+    } catch (err: unknown) {
+      showAdminToast({ type: 'error', message: err instanceof Error ? err.message : 'Erreur imprévue' });
+    } finally {
+      setIsGeneratingAiEmail(false);
+    }
+  };
 
   // Target Roles State
   const allRoles = availableRoles || [];
@@ -659,7 +711,7 @@ export function FormBuilder({
               </div>
 
               {/* Receipts & Email Alerts */}
-              <div className="pt-3 border-t border-[#E6DFD5] space-y-2">
+              <div className="pt-3 border-t border-[#E6DFD5] space-y-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -674,6 +726,94 @@ export function FormBuilder({
                 <p className="text-[11px] text-[#71717A]">
                   Email de notification interne du club : <strong>{FIXED_OFFICIAL_EMAIL}</strong>
                 </p>
+
+                {sendReceipt && (
+                  <div className="mt-2 p-4 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5]/80 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E6DFD5]">
+                      <div>
+                        <h4 className="text-xs font-bold text-[#18181B] flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#8B3EE1]" />
+                          <span>Modèle d&apos;email accusé de réception (Propulsé par Gemini AI)</span>
+                        </h4>
+                        <p className="text-[11px] text-[#71717A] mt-0.5">
+                          Génération dynamique avec support natif Arabe (RTL), isolation des noms et les 5 réseaux officiels.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiEmailForForm}
+                        disabled={isGeneratingAiEmail}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#3B33FF] to-[#8B3EE1] text-white hover:opacity-90 transition disabled:opacity-50 shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {isGeneratingAiEmail ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Génération Gemini...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Générer l&apos;email avec Gemini AI</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-[#18181B]">
+                        Objet de l&apos;email (Subject)
+                      </label>
+                      <input
+                        type="text"
+                        value={customEmailSubject}
+                        onChange={(e) => setCustomEmailSubject(e.target.value)}
+                        placeholder="ex: تأكيد استلام طلب الانضمام إلى New Era Medical Club"
+                        className="w-full h-9 px-3 text-xs bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-1 focus:ring-[#3B33FF]"
+                      />
+                    </div>
+
+                    {customEmailHtml ? (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-[#18181B] flex items-center gap-1.5">
+                            <Code className="w-3.5 h-3.5 text-[#71717A]" />
+                            <span>Code HTML du modèle (supporte variables {`{{nom}}`}, {`{{prenom}}`}, etc.)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowEmailPreview(!showEmailPreview)}
+                            className="text-xs font-semibold text-[#3B33FF] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>{showEmailPreview ? 'Afficher code HTML' : 'Afficher aperçu en direct'}</span>
+                          </button>
+                        </div>
+
+                        {showEmailPreview ? (
+                          <div className="p-2 bg-white border border-[#E6DFD5] rounded-xl overflow-hidden">
+                            <iframe
+                              srcDoc={customEmailHtml}
+                              title="Aperçu Email"
+                              className="w-full h-72 border-0 rounded-lg"
+                            />
+                          </div>
+                        ) : (
+                          <textarea
+                            rows={7}
+                            value={customEmailHtml}
+                            onChange={(e) => setCustomEmailHtml(e.target.value)}
+                            className="w-full p-2.5 font-mono text-[11px] text-[#18181B] bg-white border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] focus:ring-1 focus:ring-[#3B33FF]"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[#71717A] italic">
+                        Aucun modèle HTML personnalisé défini. L&apos;email standard de réception sera utilisé, ou cliquez sur le bouton ci-dessus pour que Gemini AI conçoive un email sur mesure adapté à la langue du formulaire.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

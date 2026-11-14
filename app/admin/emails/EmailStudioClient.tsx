@@ -102,6 +102,7 @@ export function EmailStudioClient({
   const [buttonText, setButtonText] = useState('');
   const [buttonUrl, setButtonUrl] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [emailLanguage, setEmailLanguage] = useState<'auto' | 'fr' | 'ar'>('auto');
   const [tone, setTone] = useState<'officiel' | 'chaleureux' | 'urgent'>('chaleureux');
   const [designMode, setDesignMode] = useState<'cream' | 'dark' | 'light'>('cream');
   const [infoPresentation, setInfoPresentation] = useState<
@@ -362,6 +363,8 @@ export function EmailStudioClient({
         selectedFormTitle: activeFormWithFields?.form.title || 'Formulaire New Era Club',
         selectedFormSlug,
         selectedFields: selectedFieldsData,
+        language: emailLanguage === 'auto' ? undefined : emailLanguage,
+        isRTL: emailLanguage === 'ar' ? true : emailLanguage === 'fr' ? false : undefined,
       });
 
       if (res.success && res.result) {
@@ -904,6 +907,33 @@ export function EmailStudioClient({
                         placeholder="https://..."
                         className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg"
                       />
+                    </div>
+                  </div>
+
+                  {/* Language & RTL Selector */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-[#18181B]">
+                      Langue &amp; Direction du texte (RTL) :
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'auto', label: 'Auto (Détection)' },
+                        { id: 'fr', label: 'Français (LTR)' },
+                        { id: 'ar', label: 'العربية (RTL)' },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setEmailLanguage(item.id as 'auto' | 'fr' | 'ar')}
+                          className={`py-1.5 px-2.5 rounded-lg text-xs font-medium border text-center transition ${
+                            emailLanguage === item.id
+                              ? 'bg-[#3B33FF] text-white border-[#3B33FF] font-bold'
+                              : 'bg-white text-[#52525B] border-[#D4D4D8] hover:bg-[#FAF8F5]'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 

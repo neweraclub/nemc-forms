@@ -9,34 +9,29 @@ interface SocialLink {
 
 const SOCIAL_NETWORKS: SocialLink[] = [
   {
-    name: 'Instagram',
-    icon: '/instagram.png',
-    url: 'https://instagram.com/newera.mc',
-  },
-  {
-    name: 'Facebook',
-    icon: '/facebook.png',
-    url: 'https://facebook.com/newera.mc',
+    name: 'Site Web',
+    icon: '/website.png',
+    url: 'http://new-era-medical-club-univ-ouargla.dz/',
   },
   {
     name: 'Telegram',
     icon: '/telegram.png',
-    url: 'https://t.me/newera_mc',
+    url: 'https://t.me/UOMKM',
   },
   {
-    name: 'TikTok',
-    icon: '/tiktok.png',
-    url: 'https://tiktok.com/@newera.mc',
+    name: 'Facebook',
+    icon: '/facebook.png',
+    url: 'https://www.facebook.com/profile.php?id=61583732851117',
+  },
+  {
+    name: 'Instagram',
+    icon: '/instagram.png',
+    url: 'https://www.instagram.com/new.eraclub3?dlrf=MTN5bmlyYmVnYjljdg==',
   },
   {
     name: 'LinkedIn',
     icon: '/linkedin.png',
-    url: 'https://linkedin.com/company/neweraclub',
-  },
-  {
-    name: 'Site Web',
-    icon: '/website.png',
-    url: 'http://form.new-era-medical-club-univ-ouargla.dz',
+    url: 'https://www.linkedin.com/company/new-era-club',
   },
 ];
 
