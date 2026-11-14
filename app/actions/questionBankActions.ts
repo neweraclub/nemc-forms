@@ -6,6 +6,7 @@ import {
   fetchCloudQuestionBank,
   saveCloudQuestionBank,
   deleteCloudQuestion,
+  deleteCloudQuestionsBatch,
 } from '@/lib/supabase/cloud-registry';
 import { revalidatePath } from 'next/cache';
 
@@ -101,6 +102,34 @@ export async function deleteQuestionBankAction(questionId: string): Promise<{
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('deleteQuestionBankAction error:', err);
+    return { success: false, error: msg };
+  }
+}
+
+export async function deleteBatchQuestionBankAction(questionIds: string[]): Promise<{
+  success: boolean;
+  count?: number;
+  error?: string;
+}> {
+  try {
+    const session = await getAdminSession();
+    if (!session) {
+      return { success: false, error: 'Session expirée. Veuillez vous reconnecter.' };
+    }
+
+    if (!questionIds || questionIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    await deleteCloudQuestionsBatch(questionIds);
+
+    revalidatePath('/admin');
+    revalidatePath('/admin/questions');
+    revalidatePath('/admin/forms/new');
+    return { success: true, count: questionIds.length };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('deleteBatchQuestionBankAction error:', err);
     return { success: false, error: msg };
   }
 }

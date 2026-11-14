@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BankQuestionRecord, FieldType, FieldOption } from '@/types/form';
-import { saveQuestionBankAction, deleteQuestionBankAction } from '@/app/actions/questionBankActions';
+import {
+  saveQuestionBankAction,
+  deleteQuestionBankAction,
+  deleteBatchQuestionBankAction,
+} from '@/app/actions/questionBankActions';
 import { showAdminToast } from '../AdminToast';
 import { FieldTypeIcon } from '@/components/DynamicIcon';
 import {
@@ -15,6 +19,7 @@ import {
   Plus,
   HelpCircle,
   CheckSquare,
+  CheckCheck,
   Layers,
   Sparkles,
   RefreshCw,
@@ -125,17 +130,22 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
   // Delete State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Sync questions whenever initialQuestions changes from server refresh
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+
+  // Sync questions whenever initialQuestions changes from server refresh (only when user is not actively selecting)
   useEffect(() => {
-    if (!isModalOpen) {
+    if (!isModalOpen && selectedIds.length === 0) {
       setQuestions(initialQuestions);
     }
-  }, [initialQuestions, isModalOpen]);
+  }, [initialQuestions, isModalOpen, selectedIds.length]);
 
   // Automatic live refresh on interval and tab focus
   useEffect(() => {
     const doLiveRefresh = () => {
-      if (!isModalOpen && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      // Don't refresh if user has open modal or has active multi-selection
+      if (!isModalOpen && selectedIds.length === 0 && typeof document !== 'undefined' && document.visibilityState === 'visible') {
         router.refresh();
       }
     };
@@ -154,7 +164,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [router, isModalOpen]);
+  }, [router, isModalOpen, selectedIds.length]);
 
   // Categories list extracted from predefined + existing data
   const categories = Array.from(
@@ -312,6 +322,57 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
     return matchesCategory && matchesSearch;
   });
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const allFilteredIds = filteredQuestions.map((q) => q.id);
+  const isAllFilteredSelected =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
+  const handleSelectAllGlobal = () => {
+    setSelectedIds(questions.map((q) => q.id));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds([]);
+  };
+
+  const handleBatchDeleteConfirm = () => {
+    if (selectedIds.length === 0) return;
+    startTransition(async () => {
+      const toDelete = [...selectedIds];
+      const res = await deleteBatchQuestionBankAction(toDelete);
+      if (res.success) {
+        setQuestions((prev) => prev.filter((q) => !toDelete.includes(q.id)));
+        setSelectedIds([]);
+        setIsBatchModalOpen(false);
+        showAdminToast({
+          type: 'success',
+          title: 'Questions supprimées',
+          message: `${toDelete.length} question(s) type(s) ont été supprimées définitivement de la base de données.`,
+        });
+        router.refresh();
+      } else {
+        showAdminToast({
+          type: 'error',
+          title: 'Erreur',
+          message: res.error || 'Impossible de supprimer les questions sélectionnées.',
+        });
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -395,16 +456,88 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
           })}
         </div>
 
-        <div className="sm:w-64 shrink-0">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une question..."
-            className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] bg-[#FAF8F5]"
-          />
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer shrink-0 ${
+              isAllFilteredSelected
+                ? 'bg-[#3B33FF] border-[#3B33FF] text-white shadow-2xs'
+                : 'bg-[#FAF8F5] border-[#E6DFD5] text-[#52525B] hover:bg-[#F4F0EA]'
+            }`}
+            title={isAllFilteredSelected ? 'Désélectionner tout' : 'Tout sélectionner'}
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            <span>
+              {isAllFilteredSelected
+                ? 'Désélectionner'
+                : `Sélectionner tout (${filteredQuestions.length})`}
+            </span>
+          </button>
+
+          <div className="sm:w-60 shrink-0">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une question..."
+              className="w-full px-3 py-1.5 text-xs border border-[#D4D4D8] rounded-lg focus:border-[#3B33FF] bg-[#FAF8F5]"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Floating Batch Selection Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="sticky top-4 z-20 bg-[#18181B] text-white p-3.5 sm:p-4 rounded-2xl shadow-xl border border-black/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#3B33FF] flex items-center justify-center font-bold text-sm text-white shadow-xs">
+              {selectedIds.length}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white flex items-center gap-2">
+                <span>{selectedIds.length} question{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}</span>
+                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                  sur {questions.length} au total
+                </span>
+              </p>
+              <p className="text-[11px] text-zinc-400">
+                Suppression directe dans la base de données PostgreSQL public.question_bank
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {selectedIds.length < questions.length && (
+              <button
+                type="button"
+                onClick={handleSelectAllGlobal}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition cursor-pointer border border-zinc-700"
+              >
+                Tout sélectionner ({questions.length})
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleDeselectAll}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition cursor-pointer border border-zinc-700"
+            >
+              Désélectionner
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsBatchModalOpen(true)}
+              disabled={isPending}
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Supprimer tout ({selectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Questions Grid */}
       {filteredQuestions.length === 0 ? (
@@ -418,6 +551,7 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuestions.map((q) => {
+            const isSelected = selectedIds.includes(q.id);
             const typeInfo = FIELD_TYPE_LABELS[q.type] || {
               label: q.type,
               color: '#71717A',
@@ -425,23 +559,45 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
             return (
               <div
                 key={q.id}
-                className="bg-white border border-[#E6DFD5] rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition flex flex-col justify-between group space-y-3"
+                className={`border rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition flex flex-col justify-between group space-y-3 relative ${
+                  isSelected
+                    ? 'bg-[#FAF9FF] border-[#3B33FF] ring-2 ring-[#3B33FF]/30 shadow-xs'
+                    : 'bg-white border-[#E6DFD5]'
+                }`}
               >
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border"
-                      style={{
-                        backgroundColor: `${typeInfo.color}10`,
-                        color: typeInfo.color,
-                        borderColor: `${typeInfo.color}30`,
-                      }}
-                    >
-                      <FieldTypeIcon type={q.type} className="w-3.5 h-3.5" />
-                      <span>{typeInfo.label}</span>
-                    </span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(q.id);
+                        }}
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'bg-[#3B33FF] border-[#3B33FF] text-white shadow-2xs'
+                            : 'bg-[#FAF8F5] border-[#D4D4D8] hover:border-[#3B33FF] text-transparent hover:text-zinc-300'
+                        }`}
+                        title={isSelected ? 'Désélectionner' : 'Sélectionner'}
+                      >
+                        <CheckSquare className="w-3.5 h-3.5" />
+                      </button>
 
-                    <span className="text-[10px] font-semibold text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#E6DFD5]">
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border truncate"
+                        style={{
+                          backgroundColor: `${typeInfo.color}10`,
+                          color: typeInfo.color,
+                          borderColor: `${typeInfo.color}30`,
+                        }}
+                      >
+                        <FieldTypeIcon type={q.type} className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{typeInfo.label}</span>
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] font-semibold text-[#71717A] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#E6DFD5] shrink-0 truncate max-w-[120px]">
                       {q.category || 'Général'}
                     </span>
                   </div>
@@ -740,6 +896,51 @@ export function QuestionBankClient({ initialQuestions }: QuestionBankClientProps
                 className="px-4 py-2 text-xs font-bold rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-xs transition cursor-pointer"
               >
                 {isPending ? 'Suppression...' : 'Confirmer la suppression'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {isBatchModalOpen && selectedIds.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsBatchModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl border border-[#E6DFD5] shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] text-[#DC2626] mx-auto flex items-center justify-center">
+              <Trash2 className="w-6 h-6 text-[#DC2626]" />
+            </div>
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base sm:text-lg font-bold text-[#18181B]">
+                Supprimer {selectedIds.length} question{selectedIds.length > 1 ? 's' : ''} type{selectedIds.length > 1 ? 's' : ''} ?
+              </h3>
+              <p className="text-xs text-[#71717A] leading-relaxed">
+                Ces {selectedIds.length} questions seront définitivement et directement supprimées de la table PostgreSQL <code className="bg-[#FAF8F5] px-1 py-0.5 rounded border border-[#E6DFD5] font-mono">public.question_bank</code>. Aucun cache de stockage ne les réactivera.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsBatchModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-[#E6DFD5] text-[#52525B] hover:bg-[#FAF8F5] transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchDeleteConfirm}
+                disabled={isPending}
+                className="px-5 py-2 text-xs font-bold rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-xs transition cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isPending ? 'Suppression en cours...' : `Confirmer la suppression (${selectedIds.length})`}</span>
               </button>
             </div>
           </div>

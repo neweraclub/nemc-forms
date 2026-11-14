@@ -328,61 +328,39 @@ export async function deleteCloudRole(roleId: string): Promise<boolean> {
 }
 
 /**
- * Fetch reusable question bank directly from Supabase DB table `public.question_bank`
- * with fallback to Cloud Storage. Returns empty array if none found (zero hardcoded static data).
+ * Fetch reusable question bank directly from Supabase PostgreSQL table `public.question_bank`.
+ * Only queries the database so if rows are deleted from the database, they are gone immediately
+ * with zero stale storage cache resurrecting them.
  */
 export async function fetchCloudQuestionBank(): Promise<BankQuestionRecord[]> {
-  const client = createAnonClient();
+  const client = createServiceClient();
 
-  // 1. Primary: Supabase PostgreSQL table public.question_bank
   try {
     const { data, error } = await client
       .from('question_bank')
       .select('*')
       .order('created_at', { ascending: true });
 
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (error) {
+      console.error('fetchCloudQuestionBank PostgreSQL error:', error.message);
+      // Fallback to anon client only if service client had connection issue
+      const anon = createAnonClient();
+      const { data: anonData, error: anonErr } = await anon
+        .from('question_bank')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (!anonErr && Array.isArray(anonData)) {
+        return anonData as BankQuestionRecord[];
+      }
+      return [];
+    }
+
+    if (Array.isArray(data)) {
       return data as BankQuestionRecord[];
     }
   } catch (err) {
-    console.warn('fetchCloudQuestionBank table notice:', err);
+    console.error('fetchCloudQuestionBank exception:', err);
   }
-
-  // 2. Secondary: Supabase Storage file
-  try {
-    const fetchUrl = `${supabaseUrl}/storage/v1/object/Html_forms/${QUESTION_BANK_STORAGE_FILE}?t=${Date.now()}`;
-    const res = await fetch(fetchUrl, {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-      },
-      cache: 'no-store',
-      next: { revalidate: 0 },
-    });
-
-    if (res.ok) {
-      const parsed = (await res.json()) as BankQuestionRecord[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn('fetchCloudQuestionBank storage notice:', err);
-  }
-
-  try {
-    const { data, error } = await client.storage
-      .from('Html_forms')
-      .download(QUESTION_BANK_STORAGE_FILE);
-
-    if (!error && data) {
-      const text = await data.text();
-      const parsed = JSON.parse(text) as BankQuestionRecord[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch {}
 
   return [];
 }
@@ -452,11 +430,48 @@ export async function deleteCloudQuestion(questionId: string): Promise<boolean> 
     throw new Error(`Erreur suppression Supabase: ${delErr.message}`);
   }
 
-  // 2. Update storage
+  // 2. Update storage with remaining PostgreSQL rows
   try {
-    const current = await fetchCloudQuestionBank();
-    const filtered = current.filter((q) => q.id !== questionId);
-    const jsonStr = JSON.stringify(filtered, null, 2);
+    const { data } = await client
+      .from('question_bank')
+      .select('*')
+      .order('created_at', { ascending: true });
+    const remaining = data || [];
+    const jsonStr = JSON.stringify(remaining, null, 2);
+    await client.storage
+      .from('Html_forms')
+      .upload(QUESTION_BANK_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
+        contentType: 'application/json',
+        cacheControl: '0',
+        upsert: true,
+      });
+  } catch {}
+
+  return true;
+}
+
+/**
+ * Delete multiple questions in batch from Supabase PostgreSQL table and update storage.
+ */
+export async function deleteCloudQuestionsBatch(questionIds: string[]): Promise<boolean> {
+  if (!questionIds || questionIds.length === 0) return true;
+  const client = createServiceClient();
+
+  // 1. Delete from PostgreSQL in batch
+  const { error: delErr } = await client.from('question_bank').delete().in('id', questionIds);
+  if (delErr) {
+    console.error('deleteCloudQuestionsBatch DB error:', delErr);
+    throw new Error(`Erreur suppression multiple Supabase: ${delErr.message}`);
+  }
+
+  // 2. Update storage with remaining PostgreSQL rows
+  try {
+    const { data } = await client
+      .from('question_bank')
+      .select('*')
+      .order('created_at', { ascending: true });
+    const remaining = data || [];
+    const jsonStr = JSON.stringify(remaining, null, 2);
     await client.storage
       .from('Html_forms')
       .upload(QUESTION_BANK_STORAGE_FILE, Buffer.from(jsonStr, 'utf-8'), {
